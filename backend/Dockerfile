@@ -10,7 +10,8 @@ COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 
 # Install dependencies (postinstall will automatically run prisma generate)
-RUN npm ci
+# Use npm ci if package-lock.json exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Build the application
 FROM base AS builder
