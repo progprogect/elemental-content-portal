@@ -79,14 +79,13 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
               </button>
             </>
           ) : (
-            <div className="w-full flex flex-col items-center gap-2">
-              <img src={logo} alt="Logo" className="h-8 w-auto" />
+            <div className="w-full flex justify-center">
               <button
                 onClick={onToggleCollapse}
-                className="p-1 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
+                className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
                 aria-label="Expand sidebar"
               >
-                <Bars3Icon className="h-4 w-4" />
+                <Bars3Icon className="h-5 w-5" />
               </button>
             </div>
           )}
