@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, fieldsApi, taskListsApi, tableColumnsApi, TaskField } from '../services/api/tasks'
+import { tasksApi, fieldsApi, taskListsApi, tableColumnsApi, platformsApi, publicationsApi, TaskField, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
 import { useErrorHandler } from '../hooks/useErrorHandler'
 import { getErrorMessage } from '../utils/error-handler'
 import Input from '../components/ui/Input'
@@ -10,6 +10,9 @@ import Button from '../components/ui/Button'
 import FieldEditor from '../components/FieldEditor'
 import FileUpload from '../components/FileUpload'
 import MediaPreview from '../components/MediaPreview'
+import PlatformSelector from '../components/PlatformSelector'
+import PublicationEditor from '../components/PublicationEditor'
+import PublicationCard from '../components/PublicationCard'
 
 const CONTENT_TYPES = [
   { value: 'video', label: 'Video' },
@@ -33,6 +36,11 @@ export default function TaskForm() {
   const [fields, setFields] = useState<TaskField[]>([])
   const [isFieldEditorOpen, setIsFieldEditorOpen] = useState(false)
   const [editingField, setEditingField] = useState<TaskField | undefined>()
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
+  const [publications, setPublications] = useState<TaskPublication[]>([])
+  const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
+  const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>()
+  const [editingPlatformCode, setEditingPlatformCode] = useState<string | undefined>()
   const { error, errorDetails, handleError, clearError } = useErrorHandler()
   const columnsInitialized = useRef(false)
 
@@ -59,8 +67,14 @@ export default function TaskForm() {
 
   const { data: task, isLoading } = useQuery({
     queryKey: ['task', id],
-    queryFn: () => tasksApi.getTask(id!),
+    queryFn: () => tasksApi.getTask(id!, 'publications'),
     enabled: !!isEdit,
+  })
+
+  // Get platforms
+  const { data: platforms } = useQuery({
+    queryKey: ['platforms'],
+    queryFn: platformsApi.getPlatforms,
   })
 
   useEffect(() => {
@@ -69,6 +83,8 @@ export default function TaskForm() {
       setContentType(task.contentType)
       setListId(task.listId || null)
       setFields(task.fields || [])
+      setPublications(task.publications || [])
+      setSelectedPlatforms((task.publications || []).map(p => p.platform))
       // Convert ISO date to YYYY-MM-DD format for date input
       if (task.scheduledDate) {
         try {
@@ -227,6 +243,48 @@ export default function TaskForm() {
     },
   })
 
+  const createPublicationMutation = useMutation({
+    mutationFn: ({ taskId, data }: { taskId: string; data: CreatePublicationData }) =>
+      publicationsApi.createPublication(taskId, data),
+    onSuccess: () => {
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['task', id] })
+      }
+      clearError()
+    },
+    onError: (error) => {
+      handleError(error, 'Failed to create publication')
+    },
+  })
+
+  const updatePublicationMutation = useMutation({
+    mutationFn: ({ taskId, publicationId, data }: { taskId: string; publicationId: string; data: UpdatePublicationData }) =>
+      publicationsApi.updatePublication(taskId, publicationId, data),
+    onSuccess: () => {
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['task', id] })
+      }
+      clearError()
+    },
+    onError: (error) => {
+      handleError(error, 'Failed to update publication')
+    },
+  })
+
+  const deletePublicationMutation = useMutation({
+    mutationFn: ({ taskId, publicationId }: { taskId: string; publicationId: string }) =>
+      publicationsApi.deletePublication(taskId, publicationId),
+    onSuccess: () => {
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['task', id] })
+      }
+      clearError()
+    },
+    onError: (error) => {
+      handleError(error, 'Failed to delete publication')
+    },
+  })
+
   const handleSave = async () => {
     if (!title.trim()) {
       handleError(new Error('Title is required'), 'Please enter a task title')
@@ -324,6 +382,54 @@ export default function TaskForm() {
             // Still navigate to task page so user can edit fields manually
             navigate(`/tasks/${newTask.id}`)
             return
+          }
+        }
+
+        // Create publications for selected platforms
+        if (newTask.id && (selectedPlatforms.length > 0 || publications.length > 0) && platforms) {
+          const failedPublications: Array<{ platform: string; error: string }> = []
+          
+          // Use publications from state if available, otherwise create from selectedPlatforms
+          const publicationsToCreate = publications.length > 0 
+            ? publications 
+            : selectedPlatforms.map((platformCode, i) => ({
+                platform: platformCode,
+                contentType: contentType,
+                executionType: 'manual' as const,
+                status: 'draft' as const,
+                orderIndex: i,
+              }))
+          
+          for (let i = 0; i < publicationsToCreate.length; i++) {
+            const pub = publicationsToCreate[i]
+            const platform = platforms.find(p => p.code === pub.platform)
+            
+            try {
+              await createPublicationMutation.mutateAsync({
+                taskId: newTask.id,
+                data: {
+                  platform: pub.platform,
+                  contentType: pub.contentType || contentType,
+                  executionType: pub.executionType || 'manual',
+                  status: pub.status || 'draft',
+                  note: pub.note || null,
+                  content: pub.content || null,
+                  orderIndex: pub.orderIndex !== undefined ? pub.orderIndex : i,
+                },
+              })
+            } catch (pubError) {
+              const errorMessage = getErrorMessage(pubError)
+              failedPublications.push({ platform: platform?.name || pub.platform, error: errorMessage })
+              console.error(`Failed to create publication for "${pub.platform}":`, pubError)
+            }
+          }
+          
+          if (failedPublications.length > 0) {
+            const failedNames = failedPublications.map(p => p.platform).join(', ')
+            handleError(
+              new Error(`Failed to create some publications: ${failedNames}`),
+              `Task created successfully, but ${failedPublications.length} publication(s) could not be created: ${failedNames}. You can add them manually.`
+            )
           }
         }
         
@@ -751,6 +857,119 @@ export default function TaskForm() {
             />
           </div>
 
+          {/* Platforms and Publications Section */}
+          {platforms && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold mb-4">Social Media Platforms</h3>
+              
+              {!isEdit && (
+                <div className="mb-4">
+                  <PlatformSelector
+                    platforms={platforms}
+                    selectedPlatforms={selectedPlatforms}
+                    onChange={setSelectedPlatforms}
+                    label="Select platforms for this task"
+                  />
+                </div>
+              )}
+
+              {/* Existing Publications */}
+              {isEdit && publications.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-medium text-gray-700">Publications</h4>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setEditingPublication(undefined)
+                        setEditingPlatformCode(undefined)
+                        setIsPublicationEditorOpen(true)
+                      }}
+                    >
+                      + Add Publication
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {publications.map((publication) => {
+                      const platform = platforms.find(p => p.code === publication.platform)
+                      return (
+                        <PublicationCard
+                          key={publication.id}
+                          publication={publication}
+                          platform={platform}
+                          onEdit={() => {
+                            setEditingPublication(publication)
+                            setEditingPlatformCode(publication.platform)
+                            setIsPublicationEditorOpen(true)
+                          }}
+                          onDelete={() => {
+                            if (id && window.confirm(`Delete publication for ${platform?.name || publication.platform}?`)) {
+                              deletePublicationMutation.mutate({ taskId: id, publicationId: publication.id })
+                            }
+                          }}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* New Publications Preview (for new tasks) */}
+              {!isEdit && selectedPlatforms.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Publications ({selectedPlatforms.length})
+                    </h4>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setEditingPublication(undefined)
+                        setEditingPlatformCode(undefined)
+                        setIsPublicationEditorOpen(true)
+                      }}
+                    >
+                      + Add Publication Details
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedPlatforms.map((platformCode, index) => {
+                      const platform = platforms.find(p => p.code === platformCode)
+                      const publication = publications.find(p => p.platform === platformCode)
+                      return (
+                        <div key={platformCode} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{platform?.icon || '📱'}</span>
+                              <span className="font-medium text-sm text-gray-900">{platform?.name || platformCode}</span>
+                              <span className="text-xs text-gray-500">• {contentType}</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setEditingPublication(publication)
+                                setEditingPlatformCode(platformCode)
+                                setIsPublicationEditorOpen(true)
+                              }}
+                              className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                            >
+                              {publication ? 'Edit' : 'Configure'}
+                            </button>
+                          </div>
+                          {publication && (
+                            <div className="mt-2 text-xs text-gray-600">
+                              {publication.note && <div>Note: {publication.note.substring(0, 50)}...</div>}
+                              {publication.content && <div>Content: {publication.content.substring(0, 50)}...</div>}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" onClick={() => navigate(-1)}>
               Cancel
@@ -775,6 +994,66 @@ export default function TaskForm() {
         onSave={handleFieldSave}
         field={editingField}
       />
+
+      {/* Publication Editor Modal */}
+      {platforms && (
+        <PublicationEditor
+          isOpen={isPublicationEditorOpen}
+          onClose={() => {
+            setIsPublicationEditorOpen(false)
+            setEditingPublication(undefined)
+            setEditingPlatformCode(undefined)
+          }}
+          onSave={async (data) => {
+            if (isEdit && id) {
+              if (editingPublication) {
+                await updatePublicationMutation.mutateAsync({
+                  taskId: id,
+                  publicationId: editingPublication.id,
+                  data,
+                })
+              } else {
+                await createPublicationMutation.mutateAsync({
+                  taskId: id,
+                  data: {
+                    ...data,
+                    orderIndex: publications.length,
+                  },
+                })
+              }
+            } else {
+              // For new tasks, store in local state
+              if (editingPublication) {
+                setPublications(publications.map(p => 
+                  p.id === editingPublication.id ? { ...p, ...data } as TaskPublication : p
+                ))
+              } else {
+                const platformCode = editingPlatformCode || data.platform || ''
+                const newPublication: TaskPublication = {
+                  id: `temp-${Date.now()}`,
+                  taskId: '',
+                  platform: platformCode,
+                  contentType: data.contentType || contentType,
+                  executionType: data.executionType || 'manual',
+                  status: data.status || 'draft',
+                  note: data.note || null,
+                  content: data.content || null,
+                  orderIndex: publications.length,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                }
+                setPublications([...publications, newPublication])
+                if (platformCode && !selectedPlatforms.includes(platformCode)) {
+                  setSelectedPlatforms([...selectedPlatforms, platformCode])
+                }
+              }
+            }
+          }}
+          publication={editingPublication}
+          platform={editingPlatformCode ? platforms.find(p => p.code === editingPlatformCode) : undefined}
+          platforms={platforms}
+        />
+      )}
     </div>
   )
 }

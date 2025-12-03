@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, resultsApi, promptsApi, TaskResult } from '../services/api/tasks'
+import { tasksApi, resultsApi, promptsApi, platformsApi, publicationsApi, TaskResult, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
 import { useExtension } from '../hooks/useExtension'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Input from '../components/ui/Input'
 import FileUpload from '../components/FileUpload'
 import MediaPreview from '../components/MediaPreview'
+import PublicationCard from '../components/PublicationCard'
+import PublicationEditor from '../components/PublicationEditor'
 
 // Utility function to format date for display
 function formatDateLong(dateString: string): string {
@@ -28,9 +30,12 @@ function formatDateLong(dateString: string): string {
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
+  const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
+  const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>(undefined)
   const [resultUrl, setResultUrl] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
   const [uploadedFile, setUploadedFile] = useState<{ path: string; url: string } | null>(null)
@@ -38,9 +43,29 @@ export default function TaskDetail() {
 
   const { data: task, isLoading } = useQuery({
     queryKey: ['task', id],
-    queryFn: () => tasksApi.getTask(id!),
+    queryFn: () => tasksApi.getTask(id!, 'publications'),
     enabled: !!id,
   })
+
+  // Get platforms
+  const { data: platforms } = useQuery({
+    queryKey: ['platforms'],
+    queryFn: platformsApi.getPlatforms,
+  })
+
+  // Check if we need to open publication editor from navigation state
+  useEffect(() => {
+    const editPublicationId = location.state?.editPublicationId
+    if (editPublicationId && task?.publications) {
+      const publication = task.publications.find(p => p.id === editPublicationId)
+      if (publication) {
+        setEditingPublication(publication)
+        setIsPublicationEditorOpen(true)
+        // Clear state
+        window.history.replaceState({}, document.title)
+      }
+    }
+  }, [location.state, task])
 
   const { data: promptData, isLoading: isLoadingPrompt } = useQuery({
     queryKey: ['prompt', id],
@@ -75,6 +100,32 @@ export default function TaskDetail() {
 
   const deleteResultMutation = useMutation({
     mutationFn: (resultId: string) => resultsApi.deleteResult(id!, resultId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', id] })
+    },
+  })
+
+  const createPublicationMutation = useMutation({
+    mutationFn: (data: CreatePublicationData) => publicationsApi.createPublication(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', id] })
+      setIsPublicationEditorOpen(false)
+      setEditingPublication(undefined)
+    },
+  })
+
+  const updatePublicationMutation = useMutation({
+    mutationFn: ({ publicationId, data }: { publicationId: string; data: UpdatePublicationData }) =>
+      publicationsApi.updatePublication(id!, publicationId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', id] })
+      setIsPublicationEditorOpen(false)
+      setEditingPublication(undefined)
+    },
+  })
+
+  const deletePublicationMutation = useMutation({
+    mutationFn: (publicationId: string) => publicationsApi.deletePublication(id!, publicationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', id] })
     },
@@ -211,6 +262,65 @@ export default function TaskDetail() {
         )}
       </div>
 
+      {/* Publications */}
+      {platforms && (
+        <div className="card mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Publications</h3>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setEditingPublication(undefined)
+                setIsPublicationEditorOpen(true)
+              }}
+            >
+              + Add Publication
+            </Button>
+          </div>
+          {task.publications && task.publications.length > 0 ? (
+            <div className="space-y-3">
+              {task.publications.map((publication) => {
+                const platform = platforms.find(p => p.code === publication.platform)
+                const publicationResults = task.results?.filter(r => r.publicationId === publication.id) || []
+                return (
+                  <div key={publication.id}>
+                    <PublicationCard
+                      publication={publication}
+                      platform={platform}
+                      onEdit={() => {
+                        setEditingPublication(publication)
+                        setIsPublicationEditorOpen(true)
+                      }}
+                      onDelete={() => {
+                        if (window.confirm(`Delete publication for ${platform?.name || publication.platform}?`)) {
+                          deletePublicationMutation.mutate(publication.id)
+                        }
+                      }}
+                    />
+                    {publicationResults.length > 0 && (
+                      <div className="mt-2 ml-4 pl-4 border-l-2 border-gray-200">
+                        <p className="text-xs font-medium text-gray-500 mb-2">Results for this publication:</p>
+                        <div className="space-y-2">
+                          {publicationResults.map((result) => (
+                            <ResultCard
+                              key={result.id}
+                              result={result}
+                              onDelete={() => deleteResultMutation.mutate(result.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500">No publications added yet</p>
+          )}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="card mb-6">
         <h3 className="text-lg font-semibold mb-4">Actions</h3>
@@ -249,23 +359,46 @@ export default function TaskDetail() {
         </div>
       </div>
 
-      {/* Results */}
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4">Results</h3>
-        {task.results.length === 0 ? (
-          <p className="text-gray-500">No results yet</p>
-        ) : (
+      {/* Results (for task, not publications) */}
+      {task.results && task.results.filter(r => !r.publicationId).length > 0 && (
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4">Task Results</h3>
           <div className="space-y-3">
-            {task.results.map((result) => (
-              <ResultCard
-                key={result.id}
-                result={result}
-                onDelete={() => deleteResultMutation.mutate(result.id)}
-              />
-            ))}
+            {task.results
+              .filter(r => !r.publicationId)
+              .map((result) => (
+                <ResultCard
+                  key={result.id}
+                  result={result}
+                  onDelete={() => deleteResultMutation.mutate(result.id)}
+                />
+              ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Publication Editor Modal */}
+      {platforms && (
+        <PublicationEditor
+          isOpen={isPublicationEditorOpen}
+          onClose={() => {
+            setIsPublicationEditorOpen(false)
+            setEditingPublication(undefined)
+          }}
+          onSave={async (data) => {
+            if (editingPublication) {
+              await updatePublicationMutation.mutateAsync({
+                publicationId: editingPublication.id,
+                data,
+              })
+            } else {
+              await createPublicationMutation.mutateAsync(data)
+            }
+          }}
+          publication={editingPublication}
+          platforms={platforms}
+        />
+      )}
 
       {/* Add Result Modal */}
       <Modal

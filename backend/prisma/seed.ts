@@ -105,6 +105,66 @@ Background: {background}`,
     learning: learningList,
     noProject: noProjectList,
   });
+
+  // Platforms
+  const tiktok = await prisma.platform.upsert({
+    where: { code: 'tiktok' },
+    update: {},
+    create: {
+      code: 'tiktok',
+      name: 'TikTok',
+      icon: '🎵',
+      color: '#000000',
+      isActive: true,
+      orderIndex: 0,
+    },
+  });
+
+  const youtube = await prisma.platform.upsert({
+    where: { code: 'youtube' },
+    update: {},
+    create: {
+      code: 'youtube',
+      name: 'YouTube',
+      icon: '▶️',
+      color: '#FF0000',
+      isActive: true,
+      orderIndex: 1,
+    },
+  });
+
+  const instagram = await prisma.platform.upsert({
+    where: { code: 'instagram' },
+    update: {},
+    create: {
+      code: 'instagram',
+      name: 'Instagram',
+      icon: '📷',
+      color: '#E4405F',
+      isActive: true,
+      orderIndex: 2,
+    },
+  });
+
+  const facebook = await prisma.platform.upsert({
+    where: { code: 'facebook' },
+    update: {},
+    create: {
+      code: 'facebook',
+      name: 'Facebook',
+      icon: '👥',
+      color: '#1877F2',
+      isActive: true,
+      orderIndex: 3,
+    },
+  });
+
+  console.log('Seeded platforms:', {
+    tiktok,
+    youtube,
+    instagram,
+    facebook,
+  });
 }
 
 main()

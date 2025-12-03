@@ -13,6 +13,7 @@ router.post('/', validate(z.object({
   assetPath: z.string().optional(),
   assetUrl: z.union([z.string().url(), z.literal('')]).optional(),
   source: z.enum(['manual', 'haygen', 'nanobanana']).optional(),
+  publicationId: z.string().uuid().optional().nullable(),
 })), asyncHandler(resultsController.addResult));
 router.delete('/:resultId', asyncHandler(resultsController.deleteResult));
 

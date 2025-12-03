@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
-import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, TableColumn, Task } from '../services/api/tasks'
+import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, platformsApi, publicationsApi, TableColumn, Task } from '../services/api/tasks'
 import Button from '../components/ui/Button'
 import TableColumnManager from '../components/TableColumnManager'
 import TableColumnHeader from '../components/TableColumnHeader'
 import TableCellEditor from '../components/TableCellEditor'
 import Modal from '../components/ui/Modal'
 import FieldEditor from '../components/FieldEditor'
+import ExpandableTaskRow from '../components/ExpandableTaskRow'
 
 // Utility function to group tasks by month
 function groupTasksByMonth(tasks: Task[]): Array<{ monthKey: string; monthLabel: string; tasks: Task[] }> {
@@ -91,7 +92,14 @@ export default function TasksList() {
       page,
       limit: 20,
       listId: listId || undefined,
+      include: 'publications',
     }),
+  })
+
+  // Get platforms
+  const { data: platforms } = useQuery({
+    queryKey: ['platforms'],
+    queryFn: platformsApi.getPlatforms,
   })
 
   const { data: columns } = useQuery({
@@ -282,77 +290,109 @@ export default function TasksList() {
                       </td>
                     </tr>
                     {/* Tasks for this month */}
-                    {group.tasks.map((task) => (
-                      <tr 
-                        key={task.id} 
-                        className="hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200 text-sm text-gray-600">
-                          {formatDate(task.scheduledDate)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                          {task.list && (
-                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                              {task.list.icon && <span>{task.list.icon}</span>}
-                              <span>{task.list.name}</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-700 font-medium">{task.contentType}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                            task.status === 'failed' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {task.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {new Date(task.createdAt).toLocaleDateString()}
-                        </td>
-                    {columns?.map((column) => {
-                      const field = getFieldForColumn(task, column.fieldName)
-                      if (!field) {
+                    {group.tasks.map((task) => {
+                      const hasPublications = task.publications && task.publications.length > 0
+                      
+                      if (hasPublications && platforms) {
                         return (
-                          <td key={column.id} className="px-6 py-4 min-w-[200px] max-w-[400px]">
-                            <div className="text-sm text-gray-400">-</div>
-                          </td>
+                          <ExpandableTaskRow
+                            key={task.id}
+                            task={task}
+                            platforms={platforms}
+                            columnsCount={columns?.length || 0}
+                            onEdit={(publicationId) => {
+                              navigate(`/tasks/${task.id}`, { state: { editPublicationId: publicationId } })
+                            }}
+                            onDelete={async (publicationId) => {
+                              if (window.confirm('Delete this publication?')) {
+                                try {
+                                  await publicationsApi.deletePublication(task.id, publicationId)
+                                  queryClient.invalidateQueries({ queryKey: ['tasks'] })
+                                } catch (error) {
+                                  console.error('Failed to delete publication:', error)
+                                }
+                              }
+                            }}
+                            onTaskView={() => navigate(`/tasks/${task.id}`)}
+                            onTaskDelete={() => deleteMutation.mutate(task.id)}
+                            formatDate={formatDate}
+                          />
                         )
                       }
+                      
+                      // Regular row for tasks without publications
                       return (
-                        <td key={column.id} className="px-6 py-4 min-w-[200px] max-w-[400px]">
-                          <TableCellEditor
-                            field={field}
-                            onSave={handleFieldSave}
-                          />
-                        </td>
+                        <tr 
+                          key={task.id} 
+                          className="hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200 text-sm text-gray-600">
+                            {formatDate(task.scheduledDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                            {task.list && (
+                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                {task.list.icon && <span>{task.list.icon}</span>}
+                                <span>{task.list.name}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-700 font-medium">{task.contentType}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                              task.status === 'failed' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {task.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {new Date(task.createdAt).toLocaleDateString()}
+                          </td>
+                      {columns?.map((column) => {
+                        const field = getFieldForColumn(task, column.fieldName)
+                        if (!field) {
+                          return (
+                            <td key={column.id} className="px-6 py-4 min-w-[200px] max-w-[400px]">
+                              <div className="text-sm text-gray-400">-</div>
+                            </td>
+                          )
+                        }
+                        return (
+                          <td key={column.id} className="px-6 py-4 min-w-[200px] max-w-[400px]">
+                            <TableCellEditor
+                              field={field}
+                              onSave={handleFieldSave}
+                            />
+                          </td>
+                        )
+                      })}
+                      {/* Empty cell for Add Column button column */}
+                      <td className="px-6 py-4 min-w-[200px] bg-gray-50 border-r border-gray-200"></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-gray-50 border-l-2 border-gray-300">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => navigate(`/tasks/${task.id}`)}
+                            className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => deleteMutation.mutate(task.id)}
+                            className="text-red-600 hover:text-red-700 font-medium transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                        </tr>
                       )
                     })}
-                    {/* Empty cell for Add Column button column */}
-                    <td className="px-6 py-4 min-w-[200px] bg-gray-50 border-r border-gray-200"></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-gray-50 border-l-2 border-gray-300">
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => navigate(`/tasks/${task.id}`)}
-                          className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => deleteMutation.mutate(task.id)}
-                          className="text-red-600 hover:text-red-700 font-medium transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                      </tr>
-                    ))}
                   </>
                 ))
               )}

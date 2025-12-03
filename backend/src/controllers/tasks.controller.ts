@@ -26,6 +26,8 @@ export const getTasks = async (req: Request, res: Response) => {
   const status = req.query.status as string | undefined;
   const contentType = req.query.contentType as string | undefined;
   const listId = req.query.listId as string | undefined;
+  const include = req.query.include as string | undefined;
+  const includePublications = include?.split(',').includes('publications') || false;
 
   const where: any = {};
   if (status) where.status = status;
@@ -40,6 +42,34 @@ export const getTasks = async (req: Request, res: Response) => {
     }
   }
 
+  const includeOptions: any = {
+    list: {
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        color: true,
+      },
+    },
+    fields: {
+      orderBy: { orderIndex: 'asc' },
+    },
+    results: {
+      orderBy: { createdAt: 'desc' },
+    },
+  };
+
+  if (includePublications) {
+    includeOptions.publications = {
+      orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }],
+      include: {
+        results: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    };
+  }
+
   const [tasks, total] = await Promise.all([
     prisma.task.findMany({
       where,
@@ -49,22 +79,7 @@ export const getTasks = async (req: Request, res: Response) => {
         { scheduledDate: 'asc' },
         { createdAt: 'desc' },
       ],
-      include: {
-        list: {
-          select: {
-            id: true,
-            name: true,
-            icon: true,
-            color: true,
-          },
-        },
-        fields: {
-          orderBy: { orderIndex: 'asc' },
-        },
-        results: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+      include: includeOptions,
     }),
     prisma.task.count({ where }),
   ]);
@@ -82,25 +97,40 @@ export const getTasks = async (req: Request, res: Response) => {
 
 export const getTask = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const include = req.query.include as string | undefined;
+  const includePublications = include?.split(',').includes('publications') || false;
+
+  const includeOptions: any = {
+    list: {
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        color: true,
+      },
+    },
+    fields: {
+      orderBy: { orderIndex: 'asc' },
+    },
+    results: {
+      orderBy: { createdAt: 'desc' },
+    },
+  };
+
+  if (includePublications) {
+    includeOptions.publications = {
+      orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }],
+      include: {
+        results: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    };
+  }
 
   const task = await prisma.task.findUnique({
     where: { id },
-    include: {
-      list: {
-        select: {
-          id: true,
-          name: true,
-          icon: true,
-          color: true,
-        },
-      },
-      fields: {
-        orderBy: { orderIndex: 'asc' },
-      },
-      results: {
-        orderBy: { createdAt: 'desc' },
-      },
-    },
+    include: includeOptions,
   });
 
   if (!task) {

@@ -34,12 +34,16 @@ import filesRoutes from './routes/files.routes';
 import promptsRoutes from './routes/prompts.routes';
 import taskListsRoutes from './routes/task-lists.routes';
 import tableColumnsRoutes from './routes/table-columns.routes';
+import publicationsRoutes from './routes/publications.routes';
+import platformsRoutes from './routes/platforms.routes';
 
 app.use('/api/task-lists', taskListsRoutes);
 app.use('/api/table-columns', tableColumnsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/tasks/:id/fields', fieldsRoutes);
 app.use('/api/tasks/:id/results', resultsRoutes);
+app.use('/api/tasks/:id/publications', publicationsRoutes);
+app.use('/api/platforms', platformsRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/prompts', promptsRoutes);
 

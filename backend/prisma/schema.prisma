@@ -22,20 +22,21 @@ model User {
 }
 
 model Task {
-  id           String       @id @default(uuid())
-  userId       String?      @map("user_id")
-  listId       String?      @map("list_id")
-  title        String       @db.VarChar(500)
-  contentType  String       @map("content_type") @db.VarChar(50)
-  executionType String      @default("manual") @map("execution_type") @db.VarChar(50)
-  status       String       @default("draft") @db.VarChar(50)
-  scheduledDate DateTime   @map("scheduled_date")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  list         TaskList?    @relation(fields: [listId], references: [id], onDelete: SetNull)
+  id           String            @id @default(uuid())
+  userId       String?           @map("user_id")
+  listId       String?           @map("list_id")
+  title        String            @db.VarChar(500)
+  contentType  String            @map("content_type") @db.VarChar(50)
+  executionType String           @default("manual") @map("execution_type") @db.VarChar(50)
+  status       String            @default("draft") @db.VarChar(50)
+  scheduledDate DateTime         @map("scheduled_date")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+  user         User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list         TaskList?         @relation(fields: [listId], references: [id], onDelete: SetNull)
   fields       TaskField[]
   results      TaskResult[]
+  publications TaskPublication[]
 
   @@index([userId])
   @@index([status])
@@ -61,17 +62,20 @@ model TaskField {
 }
 
 model TaskResult {
-  id          String   @id @default(uuid())
-  taskId      String   @map("task_id")
-  resultUrl   String?  @map("result_url") @db.VarChar(1000)
-  downloadUrl String?  @map("download_url") @db.VarChar(1000)
-  assetPath   String?  @map("asset_path") @db.VarChar(1000)
-  assetUrl    String?  @map("asset_url") @db.VarChar(1000)
-  source      String   @default("manual") @db.VarChar(50)
-  createdAt   DateTime @default(now()) @map("created_at")
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id            String          @id @default(uuid())
+  taskId       String          @map("task_id")
+  publicationId String?        @map("publication_id")
+  resultUrl    String?         @map("result_url") @db.VarChar(1000)
+  downloadUrl  String?         @map("download_url") @db.VarChar(1000)
+  assetPath    String?         @map("asset_path") @db.VarChar(1000)
+  assetUrl     String?         @map("asset_url") @db.VarChar(1000)
+  source       String          @default("manual") @db.VarChar(50)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  task         Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  publication  TaskPublication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
+  @@index([publicationId])
   @@index([source])
   @@map("task_results")
 }
@@ -114,5 +118,42 @@ model TableColumn {
 
   @@index([orderIndex])
   @@map("table_columns")
+}
+
+model Platform {
+  id         String   @id @default(uuid())
+  code       String   @unique @db.VarChar(50)
+  name       String   @db.VarChar(100)
+  icon       String?  @db.VarChar(50)
+  color      String?  @db.VarChar(20)
+  isActive   Boolean  @default(true) @map("is_active")
+  orderIndex Int      @default(0) @map("order_index")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([orderIndex])
+  @@index([code])
+  @@map("platforms")
+}
+
+model TaskPublication {
+  id            String          @id @default(uuid())
+  taskId        String          @map("task_id")
+  platform      String          @db.VarChar(50)
+  contentType   String          @map("content_type") @db.VarChar(50)
+  executionType String          @default("manual") @map("execution_type") @db.VarChar(50)
+  status        String          @default("draft") @db.VarChar(50)
+  note          String?         @db.Text
+  content       String?         @db.Text
+  orderIndex    Int             @default(0) @map("order_index")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  task          Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  results       TaskResult[]
+
+  @@index([taskId])
+  @@index([taskId, orderIndex])
+  @@index([platform])
+  @@index([status])
+  @@map("task_publications")
 }
 

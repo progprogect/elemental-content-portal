@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import './styles/globals.css'
+import '@uiw/react-md-editor/markdown-editor.css'
 import ErrorBoundary from './components/ErrorBoundary'
 
 const queryClient = new QueryClient({

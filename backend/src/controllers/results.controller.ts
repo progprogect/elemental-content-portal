@@ -8,6 +8,7 @@ const createResultSchema = z.object({
   assetPath: z.string().optional(),
   assetUrl: z.union([z.string().url(), z.literal('')]).optional(),
   source: z.enum(['manual', 'haygen', 'nanobanana']).default('manual'),
+  publicationId: z.string().uuid().optional().nullable(),
 });
 
 export const getResults = async (req: Request, res: Response) => {
@@ -35,10 +36,21 @@ export const addResult = async (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Task not found' });
   }
 
+  // Verify publication exists and belongs to task if publicationId is provided
+  if (data.publicationId) {
+    const publication = await prisma.taskPublication.findUnique({
+      where: { id: data.publicationId },
+    });
+    if (!publication || publication.taskId !== taskId) {
+      return res.status(404).json({ error: 'Publication not found' });
+    }
+  }
+
   const result = await prisma.taskResult.create({
     data: {
       ...data,
       taskId,
+      publicationId: data.publicationId || null,
     },
   });
 
@@ -46,6 +58,17 @@ export const addResult = async (req: Request, res: Response) => {
   if (task.status === 'draft' || task.status === 'in_progress') {
     await prisma.task.update({
       where: { id: taskId },
+      data: {
+        status: 'completed',
+        executionType: data.source === 'manual' ? 'manual' : 'generated',
+      },
+    });
+  }
+
+  // Update publication status if publicationId is provided
+  if (data.publicationId) {
+    await prisma.taskPublication.update({
+      where: { id: data.publicationId },
       data: {
         status: 'completed',
         executionType: data.source === 'manual' ? 'manual' : 'generated',

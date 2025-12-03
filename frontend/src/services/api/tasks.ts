@@ -18,6 +18,7 @@ export interface Task {
   updatedAt: string
   fields: TaskField[]
   results: TaskResult[]
+  publications?: TaskPublication[]
 }
 
 export interface TaskField {
@@ -37,6 +38,7 @@ export interface TaskResult {
   assetPath?: string
   assetUrl?: string
   source: string
+  publicationId?: string | null
   createdAt: string
 }
 
@@ -91,14 +93,61 @@ export interface TasksResponse {
   }
 }
 
+export interface Platform {
+  id: string
+  code: string
+  name: string
+  icon?: string
+  color?: string
+  isActive: boolean
+  orderIndex: number
+  createdAt: string
+}
+
+export interface TaskPublication {
+  id: string
+  taskId: string
+  platform: string
+  contentType: string
+  executionType: 'manual' | 'generated'
+  status: 'draft' | 'in_progress' | 'completed' | 'failed'
+  note?: string | null
+  content?: string | null
+  orderIndex: number
+  createdAt: string
+  updatedAt: string
+  results?: TaskResult[]
+}
+
+export interface CreatePublicationData {
+  platform: string
+  contentType: string
+  executionType?: 'manual' | 'generated'
+  status?: 'draft' | 'in_progress' | 'completed' | 'failed'
+  note?: string | null
+  content?: string | null
+  orderIndex?: number
+}
+
+export interface UpdatePublicationData {
+  platform?: string
+  contentType?: string
+  executionType?: 'manual' | 'generated'
+  status?: 'draft' | 'in_progress' | 'completed' | 'failed'
+  note?: string | null
+  content?: string | null
+  orderIndex?: number
+}
+
 export const tasksApi = {
-  getTasks: async (params?: { page?: number; limit?: number; status?: string; contentType?: string; listId?: string }) => {
+  getTasks: async (params?: { page?: number; limit?: number; status?: string; contentType?: string; listId?: string; include?: string }) => {
     const response = await apiClient.get<TasksResponse>('/tasks', { params })
     return response.data
   },
 
-  getTask: async (id: string) => {
-    const response = await apiClient.get<Task>(`/tasks/${id}`)
+  getTask: async (id: string, include?: string) => {
+    const params = include ? { include } : undefined
+    const response = await apiClient.get<Task>(`/tasks/${id}`, { params })
     return response.data
   },
 
@@ -160,6 +209,7 @@ export const resultsApi = {
     assetPath?: string
     assetUrl?: string
     source?: 'manual' | 'haygen' | 'nanobanana'
+    publicationId?: string | null
   }) => {
     const response = await apiClient.post<TaskResult>(`/tasks/${taskId}/results`, data)
     return response.data
@@ -264,6 +314,34 @@ export const tableColumnsApi = {
 
   deleteColumn: async (id: string) => {
     await apiClient.delete(`/table-columns/${id}`)
+  },
+}
+
+export const platformsApi = {
+  getPlatforms: async () => {
+    const response = await apiClient.get<Platform[]>('/platforms')
+    return response.data
+  },
+}
+
+export const publicationsApi = {
+  getPublications: async (taskId: string) => {
+    const response = await apiClient.get<TaskPublication[]>(`/tasks/${taskId}/publications`)
+    return response.data
+  },
+
+  createPublication: async (taskId: string, data: CreatePublicationData) => {
+    const response = await apiClient.post<TaskPublication>(`/tasks/${taskId}/publications`, data)
+    return response.data
+  },
+
+  updatePublication: async (taskId: string, publicationId: string, data: UpdatePublicationData) => {
+    const response = await apiClient.put<TaskPublication>(`/tasks/${taskId}/publications/${publicationId}`, data)
+    return response.data
+  },
+
+  deletePublication: async (taskId: string, publicationId: string) => {
+    await apiClient.delete(`/tasks/${taskId}/publications/${publicationId}`)
   },
 }
 
