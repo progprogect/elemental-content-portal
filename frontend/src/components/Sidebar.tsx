@@ -64,11 +64,8 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
         <div className="p-4 flex items-center justify-between">
           {!isCollapsed ? (
             <>
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex items-center flex-1 min-w-0">
                 <img src={logo} alt="Logo" className="h-8 w-auto flex-shrink-0" />
-                <h1 className="text-lg font-semibold text-gray-900 truncate">
-                  Elemental
-                </h1>
               </div>
               <button
                 onClick={onToggleCollapse}
