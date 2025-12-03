@@ -550,11 +550,31 @@ export default function TaskForm() {
                                 )}
                                 {field.fieldType === 'file' && field.fieldValue?.url && (
                                   <div className="mt-2">
-                                    <MediaPreview
-                                      url={field.fieldValue.url}
-                                      filename={field.fieldValue.filename}
-                                      className="w-full h-32"
-                                    />
+                                    <div className="relative">
+                                      <MediaPreview
+                                        url={field.fieldValue.url}
+                                        filename={field.fieldValue.filename}
+                                        className="w-full h-48"
+                                      />
+                                      <div className="absolute top-2 right-2 flex gap-2 z-10">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setEditingField(field)
+                                            setIsFieldEditorOpen(true)
+                                          }}
+                                          className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-primary-600 hover:text-primary-700 text-xs font-medium rounded shadow-sm transition-all"
+                                          title="Edit field"
+                                        >
+                                          Edit
+                                        </button>
+                                      </div>
+                                    </div>
+                                    {field.fieldValue?.filename && (
+                                      <p className="mt-1 text-xs text-gray-500 truncate">
+                                        {field.fieldValue.filename}
+                                      </p>
+                                    )}
                                   </div>
                                 )}
                                 {(field.fieldType === 'text' || field.fieldType === 'url') && (
@@ -573,16 +593,18 @@ export default function TaskForm() {
                                   />
                                 )}
                               </div>
-                              <button
-                                onClick={() => {
-                                  setEditingField(field)
-                                  setIsFieldEditorOpen(true)
-                                }}
-                                className="ml-3 text-primary-600 hover:text-primary-700 text-sm"
-                                title="Edit field"
-                              >
-                                Edit
-                              </button>
+                              {field.fieldType !== 'file' && (
+                                <button
+                                  onClick={() => {
+                                    setEditingField(field)
+                                    setIsFieldEditorOpen(true)
+                                  }}
+                                  className="ml-3 text-primary-600 hover:text-primary-700 text-sm"
+                                  title="Edit field"
+                                >
+                                  Edit
+                                </button>
+                              )}
                             </div>
                           ))}
                       </div>
@@ -615,14 +637,45 @@ export default function TaskForm() {
                       )}
                       {field.fieldType === 'file' && field.fieldValue?.url && (
                         <div className="mt-2">
+                          <div className="relative">
                           <MediaPreview
                             url={field.fieldValue.url}
                             filename={field.fieldValue.filename}
-                            className="w-full h-32"
-                          />
+                              className="w-full h-48"
+                            />
+                            <div className="absolute top-2 right-2 flex gap-2 z-10">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingField(field)
+                                  setIsFieldEditorOpen(true)
+                                }}
+                                className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-primary-600 hover:text-primary-700 text-xs font-medium rounded shadow-sm transition-all"
+                                title="Edit field"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleFieldDelete(field.id)
+                                }}
+                                className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-red-600 hover:text-red-700 text-xs font-medium rounded shadow-sm transition-all"
+                                title="Delete field"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                          {field.fieldValue?.filename && (
+                            <p className="mt-1 text-xs text-gray-500 truncate">
+                              {field.fieldValue.filename}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
+                    {field.fieldType !== 'file' && (
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -640,6 +693,7 @@ export default function TaskForm() {
                         Delete
                       </button>
                     </div>
+                    )}
                   </div>
                           ))}
                       </div>
