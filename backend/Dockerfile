@@ -6,8 +6,8 @@ FROM base AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
-COPY prisma ./prisma/
+COPY backend/package.json backend/package-lock.json* ./
+COPY backend/prisma ./prisma/
 
 # Install dependencies (postinstall will automatically run prisma generate)
 # Use npm ci if package-lock.json exists, otherwise use npm install
@@ -18,7 +18,10 @@ FROM base AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY backend/package.json ./
+COPY backend/prisma ./prisma/
+COPY backend/src ./src/
+COPY backend/tsconfig.json ./
 
 # Build TypeScript
 RUN npm run build
