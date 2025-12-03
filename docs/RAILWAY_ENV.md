@@ -14,29 +14,49 @@ NODE_ENV=production
 # Database (Railway автоматически создаст PostgreSQL и предоставит DATABASE_URL)
 DATABASE_URL=<автоматически из Railway PostgreSQL>
 
-# Storage Provider
-STORAGE_PROVIDER=r2
+# Storage Provider (cloudinary, r2, or s3)
+STORAGE_PROVIDER=cloudinary
 
-# Cloudflare R2 Configuration
-R2_ACCOUNT_ID=your_cloudflare_account_id
-R2_ACCESS_KEY_ID=your_r2_access_key_id
-R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
-R2_BUCKET_NAME=your_bucket_name
-R2_PUBLIC_URL=https://your-bucket.r2.dev
+# Cloudinary Configuration (рекомендуется)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_FOLDER=elemental-portal  # опционально, папка для файлов
+
+# Cloudflare R2 Configuration (альтернатива)
+# R2_ACCOUNT_ID=your_cloudflare_account_id
+# R2_ACCESS_KEY_ID=your_r2_access_key_id
+# R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+# R2_BUCKET_NAME=your_bucket_name
+# R2_PUBLIC_URL=https://your-bucket.r2.dev
 
 # CORS - URL вашего Frontend (Railway или другой хостинг)
 FRONTEND_URL=https://your-frontend-domain.com
 ```
 
-### Опциональные переменные (для будущей миграции на AWS S3)
+### Альтернативные провайдеры
 
+**Cloudflare R2:**
 ```env
-# AWS S3 (если планируете использовать вместо R2)
+STORAGE_PROVIDER=r2
+R2_ACCOUNT_ID=your_account_id
+R2_ACCESS_KEY_ID=your_access_key
+R2_SECRET_ACCESS_KEY=your_secret_key
+R2_BUCKET_NAME=your_bucket_name
+R2_PUBLIC_URL=https://your-bucket.r2.dev
+```
+
+**AWS S3 (для будущей миграции):**
+```env
+STORAGE_PROVIDER=s3
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 S3_BUCKET_NAME=your_s3_bucket_name
 ```
+
+**Переключение между провайдерами:**
+Просто измените `STORAGE_PROVIDER` и соответствующие переменные окружения. Код автоматически переключится на нужный адаптер.
 
 ## Frontend Variables
 
