@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config();
 
@@ -15,19 +16,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Elemental Content Creation Portal API',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      tasks: '/api/tasks',
-      files: '/api/files',
-      prompts: '/api/prompts',
-    }
-  });
-});
+// Serve static files from React app (in production)
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../public')));
+}
 
 // Health check
 app.get('/health', (req, res) => {
@@ -47,20 +39,34 @@ app.use('/api/tasks/:id/results', resultsRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/prompts', promptsRoutes);
 
-// 404 handler for undefined routes
-app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Not found',
-    message: `Route ${req.method} ${req.path} not found`,
-    availableEndpoints: {
-      root: 'GET /',
-      health: 'GET /health',
-      tasks: 'GET /api/tasks',
-      files: 'POST /api/files/upload',
-      prompts: 'GET /api/prompts/:taskId',
+// Serve React app for all non-API routes (in production)
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    // Don't serve React app for API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ 
+        error: 'Not found',
+        message: `Route ${req.method} ${req.path} not found`,
+      });
     }
+    res.sendFile(path.join(__dirname, '../public/index.html'));
   });
-});
+} else {
+  // 404 handler for undefined routes (development)
+  app.use((req, res) => {
+    res.status(404).json({ 
+      error: 'Not found',
+      message: `Route ${req.method} ${req.path} not found`,
+      availableEndpoints: {
+        root: 'GET /',
+        health: 'GET /health',
+        tasks: 'GET /api/tasks',
+        files: 'POST /api/files/upload',
+        prompts: 'GET /api/prompts/:taskId',
+      }
+    });
+  });
+}
 
 // Error handling middleware
 import { errorHandler } from './middleware/error-handler';

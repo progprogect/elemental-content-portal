@@ -29,6 +29,16 @@ COPY backend/tsconfig.json ./
 # Build TypeScript
 RUN npm run build
 
+# Build Frontend
+FROM base AS frontend-builder
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+COPY frontend/ ./
+RUN npm run build
+
 # Production image
 FROM base AS runner
 WORKDIR /app
@@ -40,6 +50,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
+COPY --from=frontend-builder /app/frontend/dist ./public
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
