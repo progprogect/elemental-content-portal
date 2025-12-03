@@ -1,8 +1,8 @@
 # Use Node.js LTS version
 FROM node:20-alpine AS base
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl1.1-compat
+# Install OpenSSL and libc6-compat for Prisma
+RUN apk add --no-cache openssl libc6-compat
 
 # Install dependencies only when needed
 FROM base AS deps
