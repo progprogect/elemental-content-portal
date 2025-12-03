@@ -1,6 +1,5 @@
 import { ReactNode, useState, useEffect } from 'react'
 import { Bars3Icon } from '@heroicons/react/24/outline'
-import logo from '../assets/logo.jpeg'
 import Sidebar from './Sidebar'
 
 interface LayoutProps {
@@ -42,7 +41,6 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <Bars3Icon className="h-6 w-6" />
               </button>
-              <img src={logo} alt="Logo" className="h-10 w-auto" />
               <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
                 Elemental Content Creation Portal
               </h1>

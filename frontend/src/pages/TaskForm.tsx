@@ -375,11 +375,11 @@ export default function TaskForm() {
 
           {taskLists && (
             <Select
-              label="Проект"
+              label="Project"
               value={listId || ''}
               onChange={(e) => setListId(e.target.value || null)}
               options={[
-                { value: '', label: 'Без проекта' },
+                { value: '', label: 'No Project' },
                 ...taskLists.map(list => ({
                   value: list.id,
                   label: `${list.icon || ''} ${list.name}`.trim(),

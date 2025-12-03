@@ -120,3 +120,4 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
   )
 }
 
+

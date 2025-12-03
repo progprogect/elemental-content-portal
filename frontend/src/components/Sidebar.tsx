@@ -6,6 +6,7 @@ import { Bars3Icon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
+import logo from '../assets/logo.jpeg'
 
 interface SidebarProps {
   isCollapsed: boolean
@@ -59,90 +60,108 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
       <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${
         isCollapsed ? 'w-16' : 'w-64'
       } ${isMobileOpen ? 'fixed inset-y-0 left-0 z-50 shadow-lg' : 'hidden md:flex'} flex-col h-screen`}>
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          {!isCollapsed && (
-            <h2 className="text-lg font-semibold text-gray-900">Проекты</h2>
+        {/* Logo Header */}
+        <div className="p-4 flex items-center justify-between">
+          {!isCollapsed ? (
+            <>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <img src={logo} alt="Logo" className="h-8 w-auto flex-shrink-0" />
+                <h1 className="text-lg font-semibold text-gray-900 truncate">
+                  Elemental
+                </h1>
+              </div>
+              <button
+                onClick={onToggleCollapse}
+                className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors flex-shrink-0"
+                aria-label="Collapse sidebar"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </>
+          ) : (
+            <div className="w-full flex flex-col items-center gap-2">
+              <img src={logo} alt="Logo" className="h-8 w-auto" />
+              <button
+                onClick={onToggleCollapse}
+                className="p-1 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
+                aria-label="Expand sidebar"
+              >
+                <Bars3Icon className="h-4 w-4" />
+              </button>
+            </div>
           )}
-          <button
-            onClick={onToggleCollapse}
-            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <Bars3Icon className="h-5 w-5" />
-            ) : (
-              <XMarkIcon className="h-5 w-5" />
-            )}
-          </button>
         </div>
 
-        {/* Lists */}
-        <nav className="flex-1 overflow-y-auto p-2">
-          {isLoading ? (
-            <div className="p-4">
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto">
+          {/* Projects Section */}
+          <div className="px-2 py-2">
+            {!isCollapsed && (
+              <h2 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                Projects
+              </h2>
+            )}
+            {isLoading ? (
+              <div className="px-3 py-2">
+                <div className="animate-pulse space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
               </div>
-            </div>
-          ) : lists && lists.length > 0 ? (
-            <ul className="space-y-1">
-              {lists.map((list) => {
-                const isActive = currentListId === list.id
-                const taskCount = getTotalTaskCount(list)
+            ) : lists && lists.length > 0 ? (
+              <ul className="space-y-1">
+                {lists.map((list) => {
+                  const isActive = currentListId === list.id
+                  const taskCount = getTotalTaskCount(list)
 
-                return (
-                  <li key={list.id}>
-                    <button
-                      onClick={() => handleListClick(list.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {list.icon && <span className="text-lg">{list.icon}</span>}
-                      {!isCollapsed && (
-                        <>
-                          <span className="flex-1 text-left truncate">{list.name}</span>
-                          {taskCount > 0 && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
-                            }`}>
-                              {taskCount}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            !isCollapsed && (
-              <p className="text-sm text-gray-500 px-3 py-2">Нет проектов</p>
-            )
-          )}
+                  return (
+                    <li key={list.id}>
+                      <button
+                        onClick={() => handleListClick(list.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {list.icon && <span className="text-lg flex-shrink-0">{list.icon}</span>}
+                        {!isCollapsed && (
+                          <>
+                            <span className="flex-1 text-left truncate">{list.name}</span>
+                            {taskCount > 0 && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+                              }`}>
+                                {taskCount}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              !isCollapsed && (
+                <p className="text-sm text-gray-500 px-3 py-2">No projects</p>
+              )
+            )}
+          </div>
         </nav>
 
         {/* Create Button */}
-        {!isCollapsed && (
-          <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200">
+          {!isCollapsed ? (
             <Button
               variant="primary"
               onClick={() => setIsCreateModalOpen(true)}
               className="w-full"
             >
               <PlusIcon className="h-4 w-4 mr-2 inline" />
-              Новый проект
+              New Project
             </Button>
-          </div>
-        )}
-
-        {isCollapsed && (
-          <div className="p-4 border-t border-gray-200">
+          ) : (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="w-full p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
@@ -150,8 +169,8 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
             >
               <PlusIcon className="h-5 w-5 mx-auto" />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
 
       {/* Mobile overlay */}
@@ -169,7 +188,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
           setIsCreateModalOpen(false)
           setNewListName('')
         }}
-        title="Создать новый проект"
+        title="Create New Project"
         footer={
           <>
             <Button
@@ -179,7 +198,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
                 setNewListName('')
               }}
             >
-              Отмена
+              Cancel
             </Button>
             <Button
               variant="primary"
@@ -187,16 +206,16 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
               disabled={!newListName.trim() || createListMutation.isPending}
               className="ml-3"
             >
-              Создать
+              Create
             </Button>
           </>
         }
       >
         <Input
-          label="Название проекта"
+          label="Project Name"
           value={newListName}
           onChange={(e) => setNewListName(e.target.value)}
-          placeholder="Например: Соцсети, Обучение"
+          placeholder="e.g., Social Media, Learning"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && newListName.trim()) {
               handleCreateList()
