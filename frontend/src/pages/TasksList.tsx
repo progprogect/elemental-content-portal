@@ -164,7 +164,7 @@ export default function TasksList() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden md:block card overflow-x-auto p-0">
+      <div className="hidden md:block card p-0">
         <div className="overflow-x-auto">
           <table className="min-w-full" style={{ minWidth: 'max-content' }}>
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -198,7 +198,7 @@ export default function TasksList() {
             <tbody className="bg-white divide-y divide-gray-100">
               {tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={4 + (columns?.length || 0) + 2} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={4 + (columns?.length || 0) + 2 + 1} className="px-6 py-4 text-center text-gray-500">
                     No tasks found
                   </td>
                 </tr>
@@ -251,6 +251,8 @@ export default function TasksList() {
                         </td>
                       )
                     })}
+                    {/* Empty cell for Add Column button column */}
+                    <td className="px-6 py-4 min-w-[200px] bg-gray-50 border-r border-gray-200"></td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-gray-50 border-l-2 border-gray-300">
                       <div className="flex items-center justify-end gap-3">
                         <button
