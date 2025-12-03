@@ -7,6 +7,7 @@ import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Input from '../components/ui/Input'
 import FileUpload from '../components/FileUpload'
+import MediaPreview from '../components/MediaPreview'
 
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>()
@@ -95,7 +96,19 @@ export default function TaskDetail() {
   }
 
   if (isLoading || !task) {
-    return <div className="text-center py-8">Loading...</div>
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="h-10 skeleton w-64"></div>
+        <div className="card">
+          <div className="h-6 skeleton w-32 mb-4"></div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 skeleton"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -163,14 +176,13 @@ export default function TaskDetail() {
                       </div>
                     )}
                     {field.fieldType === 'file' && field.fieldValue?.url && (
-                      <a
-                        href={field.fieldValue.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-primary-600 hover:underline mt-1"
-                      >
-                        {field.fieldValue.filename || 'View file'}
-                      </a>
+                      <div className="mt-2">
+                        <MediaPreview
+                          url={field.fieldValue.url}
+                          filename={field.fieldValue.filename}
+                          className="w-full h-48"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -365,49 +377,15 @@ export default function TaskDetail() {
 }
 
 function ResultCard({ result, onDelete }: { result: TaskResult; onDelete: () => void }) {
+  const mediaUrl = result.assetUrl || result.downloadUrl || result.resultUrl
+  
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
-          <div className="text-sm text-gray-500 mb-2">
+          <div className="text-sm text-gray-500">
             Source: {result.source} • {new Date(result.createdAt).toLocaleString()}
           </div>
-          {result.resultUrl && (
-            <div className="mb-2">
-              <a
-                href={result.resultUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:underline"
-              >
-                View Result
-              </a>
-            </div>
-          )}
-          {result.downloadUrl && (
-            <div className="mb-2">
-              <a
-                href={result.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:underline"
-              >
-                Download
-              </a>
-            </div>
-          )}
-          {result.assetUrl && (
-            <div className="mb-2">
-              <a
-                href={result.assetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:underline"
-              >
-                View Asset
-              </a>
-            </div>
-          )}
         </div>
         <button
           onClick={onDelete}
@@ -416,6 +394,39 @@ function ResultCard({ result, onDelete }: { result: TaskResult; onDelete: () => 
           Delete
         </button>
       </div>
+      {mediaUrl && (
+        <div className="mb-2">
+          <MediaPreview
+            url={mediaUrl}
+            filename={result.assetPath}
+            className="w-full h-64"
+          />
+        </div>
+      )}
+      {result.resultUrl && !mediaUrl && (
+        <div className="mb-2">
+          <a
+            href={result.resultUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary-600 hover:underline text-sm"
+          >
+            View Result
+          </a>
+        </div>
+      )}
+      {result.downloadUrl && !mediaUrl && (
+        <div className="mb-2">
+          <a
+            href={result.downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary-600 hover:underline text-sm"
+          >
+            Download
+          </a>
+        </div>
+      )}
     </div>
   )
 }

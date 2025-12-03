@@ -6,6 +6,7 @@ const createTaskSchema = z.object({
   title: z.string().min(1).max(500),
   contentType: z.string().min(1).max(50),
   executionType: z.enum(['manual', 'generated']).optional().default('manual'),
+  listId: z.string().uuid().optional().nullable(),
 });
 
 const updateTaskSchema = z.object({
@@ -13,6 +14,7 @@ const updateTaskSchema = z.object({
   contentType: z.string().min(1).max(50).optional(),
   status: z.enum(['draft', 'in_progress', 'completed', 'failed']).optional(),
   executionType: z.enum(['manual', 'generated']).optional(),
+  listId: z.string().uuid().optional().nullable(),
 });
 
 export const getTasks = async (req: Request, res: Response) => {
@@ -21,10 +23,20 @@ export const getTasks = async (req: Request, res: Response) => {
   const skip = (page - 1) * limit;
   const status = req.query.status as string | undefined;
   const contentType = req.query.contentType as string | undefined;
+  const listId = req.query.listId as string | undefined;
 
   const where: any = {};
   if (status) where.status = status;
   if (contentType) where.contentType = contentType;
+  if (listId) {
+    // If listId is provided, filter by it
+    // If listId is 'null' or 'unassigned', filter for tasks without list
+    if (listId === 'null' || listId === 'unassigned') {
+      where.listId = null;
+    } else {
+      where.listId = listId;
+    }
+  }
 
   const [tasks, total] = await Promise.all([
     prisma.task.findMany({
@@ -33,6 +45,14 @@ export const getTasks = async (req: Request, res: Response) => {
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
+        list: {
+          select: {
+            id: true,
+            name: true,
+            icon: true,
+            color: true,
+          },
+        },
         fields: {
           orderBy: { orderIndex: 'asc' },
         },
@@ -61,6 +81,14 @@ export const getTask = async (req: Request, res: Response) => {
   const task = await prisma.task.findUnique({
     where: { id },
     include: {
+      list: {
+        select: {
+          id: true,
+          name: true,
+          icon: true,
+          color: true,
+        },
+      },
       fields: {
         orderBy: { orderIndex: 'asc' },
       },

@@ -6,6 +6,13 @@ export interface Task {
   contentType: string
   executionType: 'manual' | 'generated'
   status: 'draft' | 'in_progress' | 'completed' | 'failed'
+  listId?: string | null
+  list?: {
+    id: string
+    name: string
+    icon?: string
+    color?: string
+  }
   createdAt: string
   updatedAt: string
   fields: TaskField[]
@@ -36,6 +43,7 @@ export interface CreateTaskData {
   title: string
   contentType: string
   executionType?: 'manual' | 'generated'
+  listId?: string | null
 }
 
 export interface UpdateTaskData {
@@ -43,6 +51,31 @@ export interface UpdateTaskData {
   contentType?: string
   status?: 'draft' | 'in_progress' | 'completed' | 'failed'
   executionType?: 'manual' | 'generated'
+  listId?: string | null
+}
+
+export interface TaskList {
+  id: string
+  name: string
+  icon?: string
+  color?: string
+  orderIndex: number
+  taskCount?: number
+  stats?: {
+    draft: number
+    in_progress: number
+    completed: number
+    failed: number
+  }
+}
+
+export interface FieldTemplate {
+  id: string
+  fieldName: string
+  fieldType: 'text' | 'file' | 'url' | 'checkbox'
+  defaultValue?: any
+  icon?: string
+  orderIndex: number
 }
 
 export interface TasksResponse {
@@ -56,7 +89,7 @@ export interface TasksResponse {
 }
 
 export const tasksApi = {
-  getTasks: async (params?: { page?: number; limit?: number; status?: string; contentType?: string }) => {
+  getTasks: async (params?: { page?: number; limit?: number; status?: string; contentType?: string; listId?: string }) => {
     const response = await apiClient.get<TasksResponse>('/tasks', { params })
     return response.data
   },
@@ -158,6 +191,73 @@ export const promptsApi = {
       prompt: string
       assets: Array<{ type: string; url: string; filename: string }>
     }>(`/prompts/tasks/${taskId}/generate`)
+    return response.data
+  },
+}
+
+export const taskListsApi = {
+  getLists: async () => {
+    const response = await apiClient.get<TaskList[]>('/task-lists')
+    return response.data
+  },
+
+  getListStats: async (id: string) => {
+    const response = await apiClient.get<{
+      draft: number
+      in_progress: number
+      completed: number
+      failed: number
+    }>(`/task-lists/${id}/stats`)
+    return response.data
+  },
+
+  createList: async (data: { name: string; icon?: string; color?: string }) => {
+    const response = await apiClient.post<TaskList>('/task-lists', data)
+    return response.data
+  },
+
+  updateList: async (id: string, data: { name?: string; icon?: string; color?: string; orderIndex?: number }) => {
+    const response = await apiClient.put<TaskList>(`/task-lists/${id}`, data)
+    return response.data
+  },
+
+  deleteList: async (id: string) => {
+    await apiClient.delete(`/task-lists/${id}`)
+  },
+}
+
+export const fieldTemplatesApi = {
+  getTemplates: async () => {
+    const response = await apiClient.get<FieldTemplate[]>('/field-templates')
+    return response.data
+  },
+
+  createTemplate: async (data: {
+    fieldName: string
+    fieldType: 'text' | 'file' | 'url' | 'checkbox'
+    defaultValue?: any
+    icon?: string
+  }) => {
+    const response = await apiClient.post<FieldTemplate>('/field-templates', data)
+    return response.data
+  },
+
+  updateTemplate: async (id: string, data: {
+    fieldName?: string
+    fieldType?: 'text' | 'file' | 'url' | 'checkbox'
+    defaultValue?: any
+    icon?: string
+  }) => {
+    const response = await apiClient.put<FieldTemplate>(`/field-templates/${id}`, data)
+    return response.data
+  },
+
+  deleteTemplate: async (id: string) => {
+    await apiClient.delete(`/field-templates/${id}`)
+  },
+
+  addFieldFromTemplate: async (taskId: string, templateId: string) => {
+    const response = await apiClient.post<TaskField>(`/tasks/${taskId}/fields/from-template`, { templateId })
     return response.data
   },
 }

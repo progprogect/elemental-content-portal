@@ -3,34 +3,88 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --notion-gray-50: #f7f6f3;
+    --notion-gray-100: #f1f1ef;
+    --notion-gray-200: #e9e9e7;
+    --notion-gray-300: #e3e2e0;
+    --notion-gray-400: #d4d4d1;
+    --notion-gray-500: #9b9a97;
+    --notion-gray-600: #787774;
+    --notion-gray-700: #64605c;
+    --notion-gray-800: #37352f;
+    --notion-gray-900: #2e2e2c;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-gray-50 text-gray-900 font-sans antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  * {
+    @apply transition-colors duration-150;
   }
 }
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-150;
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700;
+    @apply bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300;
   }
   
   .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700;
+    @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
   }
   
   .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white;
   }
   
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+  }
+
+  /* Notion-like animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.2s ease-out;
+  }
+
+  /* Skeleton loader */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
   }
 }
 

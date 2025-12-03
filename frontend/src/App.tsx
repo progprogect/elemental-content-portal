@@ -10,6 +10,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<TasksList />} />
+          <Route path="/lists/:listId" element={<TasksList />} />
           <Route path="/tasks/new" element={<TaskForm />} />
           <Route path="/tasks/:id/edit" element={<TaskForm />} />
           <Route path="/tasks/:id" element={<TaskDetail />} />

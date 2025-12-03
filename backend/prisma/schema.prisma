@@ -24,6 +24,7 @@ model User {
 model Task {
   id           String       @id @default(uuid())
   userId       String?      @map("user_id")
+  listId       String?      @map("list_id")
   title        String       @db.VarChar(500)
   contentType  String       @map("content_type") @db.VarChar(50)
   executionType String      @default("manual") @map("execution_type") @db.VarChar(50)
@@ -31,12 +32,14 @@ model Task {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
   user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list         TaskList?    @relation(fields: [listId], references: [id], onDelete: SetNull)
   fields       TaskField[]
   results      TaskResult[]
 
   @@index([userId])
   @@index([status])
   @@index([executionType])
+  @@index([listId])
   @@map("tasks")
 }
 
@@ -81,5 +84,33 @@ model ContentTypeConfig {
   createdAt     DateTime @default(now()) @map("created_at")
 
   @@map("content_type_configs")
+}
+
+model TaskList {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(255)
+  icon        String?  @db.VarChar(50)
+  color       String?  @db.VarChar(20)
+  orderIndex  Int      @default(0) @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  tasks       Task[]
+
+  @@index([orderIndex])
+  @@map("task_lists")
+}
+
+model FieldTemplate {
+  id          String   @id @default(uuid())
+  fieldName   String   @map("field_name") @db.VarChar(255)
+  fieldType   String   @map("field_type") @db.VarChar(50)
+  defaultValue Json?   @map("default_value")
+  icon        String?  @db.VarChar(50)
+  orderIndex  Int      @default(0) @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([orderIndex])
+  @@map("field_templates")
 }
 

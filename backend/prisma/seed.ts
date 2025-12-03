@@ -62,6 +62,49 @@ Background: {background}`,
     image: imageConfig,
     talkingHead: talkingHeadConfig,
   });
+
+  // Task Lists (Projects)
+  const socialMediaList = await prisma.taskList.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000001' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Соцсети',
+      icon: '📱',
+      color: '#3B82F6',
+      orderIndex: 0,
+    },
+  });
+
+  const learningList = await prisma.taskList.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000002' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000002',
+      name: 'Обучение',
+      icon: '📚',
+      color: '#10B981',
+      orderIndex: 1,
+    },
+  });
+
+  const noProjectList = await prisma.taskList.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000003' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000003',
+      name: 'Без проекта',
+      icon: '📋',
+      color: '#6B7280',
+      orderIndex: 2,
+    },
+  });
+
+  console.log('Seeded task lists:', {
+    socialMedia: socialMediaList,
+    learning: learningList,
+    noProject: noProjectList,
+  });
 }
 
 main()

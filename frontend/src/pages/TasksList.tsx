@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import { tasksApi } from '../services/api/tasks'
+import { useNavigate, useParams } from 'react-router-dom'
+import { tasksApi, taskListsApi } from '../services/api/tasks'
 import Button from '../components/ui/Button'
 import Select from '../components/ui/Select'
 
@@ -23,18 +23,28 @@ const STATUS_OPTIONS = [
 
 export default function TasksList() {
   const navigate = useNavigate()
+  const { listId } = useParams<{ listId?: string }>()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
   const [contentTypeFilter, setContentTypeFilter] = useState('')
+  const [showStatusFilter, setShowStatusFilter] = useState(false)
+
+  // Get current list info
+  const { data: currentList } = useQuery({
+    queryKey: ['task-list', listId],
+    queryFn: () => taskListsApi.getLists().then(lists => lists.find(l => l.id === listId)),
+    enabled: !!listId,
+  })
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['tasks', page, statusFilter, contentTypeFilter],
+    queryKey: ['tasks', page, statusFilter, contentTypeFilter, listId],
     queryFn: () => tasksApi.getTasks({
       page,
       limit: 20,
       status: statusFilter || undefined,
       contentType: contentTypeFilter || undefined,
+      listId: listId || undefined,
     }),
   })
 
@@ -46,7 +56,18 @@ export default function TasksList() {
   })
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading...</div>
+    return (
+      <div className="space-y-4">
+        <div className="h-8 skeleton w-48"></div>
+        <div className="card">
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 skeleton"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
@@ -56,26 +77,65 @@ export default function TasksList() {
   const tasks = data?.tasks || []
   const pagination = data?.pagination
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [listId, statusFilter, contentTypeFilter])
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Tasks</h2>
+        <div>
+          <h2 className="text-2xl font-bold">
+            {currentList ? (
+              <>
+                {currentList.icon && <span className="mr-2">{currentList.icon}</span>}
+                {currentList.name}
+              </>
+            ) : listId === 'null' || listId === 'unassigned' ? (
+              'Без проекта'
+            ) : (
+              'Все задачи'
+            )}
+          </h2>
+          {currentList && currentList.stats && (
+            <div className="mt-2 flex gap-4 text-sm text-gray-500">
+              <span>Всего: {currentList.taskCount || 0}</span>
+              {currentList.stats.draft > 0 && <span>Черновики: {currentList.stats.draft}</span>}
+              {currentList.stats.in_progress > 0 && <span>В работе: {currentList.stats.in_progress}</span>}
+              {currentList.stats.completed > 0 && <span>Завершено: {currentList.stats.completed}</span>}
+            </div>
+          )}
+        </div>
         <Button onClick={() => navigate('/tasks/new')}>
           + New Task
         </Button>
       </div>
 
       <div className="card mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-700">Фильтры</h3>
+          {listId && (
+            <button
+              onClick={() => setShowStatusFilter(!showStatusFilter)}
+              className="text-sm text-primary-600 hover:text-primary-700"
+            >
+              {showStatusFilter ? 'Скрыть фильтр по статусу' : 'Показать фильтр по статусу'}
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            label="Filter by Status"
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value)
-              setPage(1)
-            }}
-          />
+          {(showStatusFilter || !listId) && (
+            <Select
+              label="Filter by Status"
+              options={STATUS_OPTIONS}
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value)
+                setPage(1)
+              }}
+            />
+          )}
           <Select
             label="Filter by Content Type"
             options={[
@@ -125,6 +185,11 @@ export default function TasksList() {
                 <tr key={task.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                    {task.list && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        {task.list.icon} {task.list.name}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{task.contentType}</div>
@@ -171,7 +236,14 @@ export default function TasksList() {
           tasks.map((task) => (
             <div key={task.id} className="card">
               <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-medium text-gray-900">{task.title}</h3>
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-gray-900">{task.title}</h3>
+                  {task.list && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      {task.list.icon} {task.list.name}
+                    </div>
+                  )}
+                </div>
                 <span className={`px-2 text-xs leading-5 font-semibold rounded-full ${
                   task.status === 'completed' ? 'bg-green-100 text-green-800' :
                   task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
