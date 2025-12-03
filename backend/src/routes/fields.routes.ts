@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import * as fieldsController from '../controllers/fields.controller';
-import * as fieldTemplatesController from '../controllers/field-templates.controller';
 import { validate } from '../middleware/validation';
 import { asyncHandler } from '../utils/async-handler';
 import { z } from 'zod';
@@ -23,9 +22,6 @@ router.delete('/:fieldId', asyncHandler(fieldsController.deleteField));
 router.patch('/reorder', validate(z.object({
   fieldIds: z.array(z.string().uuid()),
 })), asyncHandler(fieldsController.reorderFields));
-router.post('/from-template', validate(z.object({
-  templateId: z.string().uuid(),
-})), asyncHandler(fieldTemplatesController.addFieldFromTemplate));
 
 export default router;
 

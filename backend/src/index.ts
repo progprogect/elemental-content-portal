@@ -33,10 +33,10 @@ import resultsRoutes from './routes/results.routes';
 import filesRoutes from './routes/files.routes';
 import promptsRoutes from './routes/prompts.routes';
 import taskListsRoutes from './routes/task-lists.routes';
-import fieldTemplatesRoutes from './routes/field-templates.routes';
+import tableColumnsRoutes from './routes/table-columns.routes';
 
 app.use('/api/task-lists', taskListsRoutes);
-app.use('/api/field-templates', fieldTemplatesRoutes);
+app.use('/api/table-columns', tableColumnsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/tasks/:id/fields', fieldsRoutes);
 app.use('/api/tasks/:id/results', resultsRoutes);

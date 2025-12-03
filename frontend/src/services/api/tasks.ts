@@ -69,7 +69,7 @@ export interface TaskList {
   }
 }
 
-export interface FieldTemplate {
+export interface TableColumn {
   id: string
   fieldName: string
   fieldType: 'text' | 'file' | 'url' | 'checkbox'
@@ -226,39 +226,41 @@ export const taskListsApi = {
   },
 }
 
-export const fieldTemplatesApi = {
-  getTemplates: async () => {
-    const response = await apiClient.get<FieldTemplate[]>('/field-templates')
+export const tableColumnsApi = {
+  getColumns: async () => {
+    const response = await apiClient.get<TableColumn[]>('/table-columns')
     return response.data
   },
 
-  createTemplate: async (data: {
+  getColumn: async (id: string) => {
+    const response = await apiClient.get<TableColumn>(`/table-columns/${id}`)
+    return response.data
+  },
+
+  createColumn: async (data: {
     fieldName: string
     fieldType: 'text' | 'file' | 'url' | 'checkbox'
     defaultValue?: any
     icon?: string
+    orderIndex?: number
   }) => {
-    const response = await apiClient.post<FieldTemplate>('/field-templates', data)
+    const response = await apiClient.post<TableColumn>('/table-columns', data)
     return response.data
   },
 
-  updateTemplate: async (id: string, data: {
+  updateColumn: async (id: string, data: {
     fieldName?: string
     fieldType?: 'text' | 'file' | 'url' | 'checkbox'
     defaultValue?: any
     icon?: string
+    orderIndex?: number
   }) => {
-    const response = await apiClient.put<FieldTemplate>(`/field-templates/${id}`, data)
+    const response = await apiClient.put<TableColumn>(`/table-columns/${id}`, data)
     return response.data
   },
 
-  deleteTemplate: async (id: string) => {
-    await apiClient.delete(`/field-templates/${id}`)
-  },
-
-  addFieldFromTemplate: async (taskId: string, templateId: string) => {
-    const response = await apiClient.post<TaskField>(`/tasks/${taskId}/fields/from-template`, { templateId })
-    return response.data
+  deleteColumn: async (id: string) => {
+    await apiClient.delete(`/table-columns/${id}`)
   },
 }
 

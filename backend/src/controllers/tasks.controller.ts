@@ -119,6 +119,50 @@ export const createTask = async (req: Request, res: Response) => {
     },
   });
 
+  // Automatically create fields for all existing table columns
+  const tableColumns = await prisma.tableColumn.findMany({
+    orderBy: { orderIndex: 'asc' },
+  });
+
+  if (tableColumns.length > 0) {
+    const fieldsToCreate = tableColumns.map((column, index) => {
+      // Prepare field value based on column type and default value
+      let fieldValue: any;
+      if (column.defaultValue) {
+        fieldValue = column.defaultValue;
+      } else if (column.fieldType === 'checkbox') {
+        fieldValue = { checked: false };
+      } else {
+        fieldValue = { value: '' };
+      }
+
+      return {
+        taskId: task.id,
+        fieldName: column.fieldName,
+        fieldType: column.fieldType,
+        fieldValue,
+        orderIndex: index,
+      };
+    });
+
+    await prisma.taskField.createMany({
+      data: fieldsToCreate,
+    });
+
+    // Reload task with newly created fields
+    const updatedTask = await prisma.task.findUnique({
+      where: { id: task.id },
+      include: {
+        fields: {
+          orderBy: { orderIndex: 'asc' },
+        },
+        results: true,
+      },
+    });
+
+    return res.status(201).json(updatedTask);
+  }
+
   res.status(201).json(task);
 };
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, fieldsApi, taskListsApi, fieldTemplatesApi, TaskField } from '../services/api/tasks'
+import { tasksApi, fieldsApi, taskListsApi, TaskField } from '../services/api/tasks'
 import { useErrorHandler } from '../hooks/useErrorHandler'
 import { getErrorMessage } from '../utils/error-handler'
 import Input from '../components/ui/Input'
@@ -9,7 +9,6 @@ import Select from '../components/ui/Select'
 import Button from '../components/ui/Button'
 import FieldEditor from '../components/FieldEditor'
 import FileUpload from '../components/FileUpload'
-import FieldTemplatesManager from '../components/FieldTemplatesManager'
 import MediaPreview from '../components/MediaPreview'
 
 const CONTENT_TYPES = [
@@ -31,7 +30,6 @@ export default function TaskForm() {
   const [contentType, setContentType] = useState('video')
   const [listId, setListId] = useState<string | null>(null)
   const [fields, setFields] = useState<TaskField[]>([])
-  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [isFieldEditorOpen, setIsFieldEditorOpen] = useState(false)
   const [editingField, setEditingField] = useState<TaskField | undefined>()
   const { error, errorDetails, handleError, clearError } = useErrorHandler()
@@ -44,15 +42,10 @@ export default function TaskForm() {
     }
   }, [location.state, isEdit])
 
-  // Get task lists and field templates
+  // Get task lists
   const { data: taskLists } = useQuery({
     queryKey: ['task-lists'],
     queryFn: taskListsApi.getLists,
-  })
-
-  const { data: fieldTemplates } = useQuery({
-    queryKey: ['field-templates'],
-    queryFn: fieldTemplatesApi.getTemplates,
   })
 
   const { data: task, isLoading } = useQuery({
@@ -155,21 +148,10 @@ export default function TaskForm() {
           listId: listId || null,
         })
         
-        // Add fields from templates first
-        if (newTask.id && selectedTemplates.length > 0) {
-          for (const templateId of selectedTemplates) {
-            try {
-              await fieldTemplatesApi.addFieldFromTemplate(newTask.id, templateId)
-            } catch (error) {
-              console.error(`Failed to add field from template:`, error)
-            }
-          }
-          // Refresh task to get new fields
-          queryClient.invalidateQueries({ queryKey: ['task', newTask.id] })
-        }
-        
+        // Fields are automatically created on backend for all table columns
+        // Additional fields can be added manually if needed
         if (newTask.id && fields.length > 0) {
-          // Add fields to new task with error handling
+          // Add additional fields to new task with error handling
           const failedFields: Array<{ field: TaskField; error: string }> = []
           
           for (const field of fields) {
@@ -388,45 +370,6 @@ export default function TaskForm() {
             />
           )}
 
-          {/* Field Templates Section */}
-          {!isEdit && fieldTemplates && fieldTemplates.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Шаблоны полей
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {fieldTemplates.map((template) => (
-                  <label
-                    key={template.id}
-                    className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTemplates.includes(template.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTemplates([...selectedTemplates, template.id])
-                        } else {
-                          setSelectedTemplates(selectedTemplates.filter(id => id !== template.id))
-                        }
-                      }}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">
-                      {template.icon && <span className="mr-1">{template.icon}</span>}
-                      {template.fieldName}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {selectedTemplates.length > 0 && (
-                <p className="mt-2 text-sm text-gray-500">
-                  Выбрано шаблонов: {selectedTemplates.length}
-                </p>
-              )}
-            </div>
-          )}
-
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-gray-700">Fields</label>
@@ -527,8 +470,6 @@ export default function TaskForm() {
         onSave={handleFieldSave}
         field={editingField}
       />
-
-      <FieldTemplatesManager />
     </div>
   )
 }

@@ -100,7 +100,7 @@ model TaskList {
   @@map("task_lists")
 }
 
-model FieldTemplate {
+model TableColumn {
   id          String   @id @default(uuid())
   fieldName   String   @map("field_name") @db.VarChar(255)
   fieldType   String   @map("field_type") @db.VarChar(50)
@@ -111,6 +111,6 @@ model FieldTemplate {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([orderIndex])
-  @@map("field_templates")
+  @@map("table_columns")
 }
 
