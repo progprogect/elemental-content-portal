@@ -18,6 +18,8 @@ export interface TaskField {
   fieldType: 'text' | 'file' | 'url' | 'checkbox'
   fieldValue: any
   orderIndex: number
+  taskId?: string
+  createdAt?: string
 }
 
 export interface TaskResult {

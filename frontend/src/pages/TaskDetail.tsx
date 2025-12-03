@@ -31,23 +31,6 @@ export default function TaskDetail() {
     enabled: !!id && isPromptModalOpen,
   })
 
-  // Listen for results from extension
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.data.type === 'HAYGEN_RESULT' && event.data.payload.taskId === id) {
-        const result = event.data.payload
-        await addResultMutation.mutateAsync({
-          resultUrl: result.resultUrl,
-          downloadUrl: result.downloadUrl,
-          source: 'haygen',
-        })
-      }
-    }
-
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [id, addResultMutation])
-
   const deleteMutation = useMutation({
     mutationFn: tasksApi.deleteTask,
     onSuccess: () => {
@@ -79,6 +62,23 @@ export default function TaskDetail() {
       queryClient.invalidateQueries({ queryKey: ['task', id] })
     },
   })
+
+  // Listen for results from extension
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data.type === 'HAYGEN_RESULT' && event.data.payload.taskId === id) {
+        const result = event.data.payload
+        await addResultMutation.mutateAsync({
+          resultUrl: result.resultUrl,
+          downloadUrl: result.downloadUrl,
+          source: 'haygen',
+        })
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [id, addResultMutation])
 
   const handleAddResult = () => {
     addResultMutation.mutate({

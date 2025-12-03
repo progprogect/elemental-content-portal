@@ -47,7 +47,7 @@ export default function TaskForm() {
 
   const createMutation = useMutation({
     mutationFn: tasksApi.createTask,
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
       clearError()
     },
@@ -185,7 +185,7 @@ export default function TaskForm() {
         orderIndex: fields.length,
         taskId: '',
         createdAt: new Date().toISOString(),
-      }])
+      } as TaskField])
       return
     }
 
@@ -244,7 +244,7 @@ export default function TaskForm() {
         orderIndex: fields.length,
         taskId: '',
         createdAt: new Date().toISOString(),
-      }])
+      } as TaskField])
       return
     }
 

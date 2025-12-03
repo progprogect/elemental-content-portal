@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import { filesApi } from '../services/api/tasks'
 import { getErrorMessage } from '../utils/error-handler'
-import Button from './ui/Button'
 
 interface FileUploadProps {
   onUploadComplete: (file: { filename: string; path: string; url: string; size: number }) => void
