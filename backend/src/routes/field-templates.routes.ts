@@ -26,5 +26,3 @@ router.delete('/:id', asyncHandler(fieldTemplatesController.deleteFieldTemplate)
 
 export default router;
 
-export default router;
-
