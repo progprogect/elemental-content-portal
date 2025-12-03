@@ -164,21 +164,21 @@ export default function TasksList() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden md:block card overflow-x-auto">
+      <div className="hidden md:block card overflow-x-auto p-0">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: 'max-content' }}>
-            <thead className="bg-gray-50">
+          <table className="min-w-full" style={{ minWidth: 'max-content' }}>
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[250px]">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 min-w-[250px] border-r border-gray-200">
                   Title
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[150px]">
                   Content Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[120px]">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[140px]">
                   Created
                 </th>
                 {columns?.map((column) => (
@@ -190,12 +190,12 @@ export default function TasksList() {
                   />
                 ))}
                 <TableColumnManager onColumnChange={() => queryClient.invalidateQueries({ queryKey: ['table-columns'] })} />
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-100 border-l-2 border-gray-300 z-10 min-w-[120px]">
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[120px] bg-gray-100 border-l-2 border-gray-300">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {tasks.length === 0 ? (
                 <tr>
                   <td colSpan={4 + (columns?.length || 0) + 2} className="px-6 py-4 text-center text-gray-500">
@@ -204,20 +204,24 @@ export default function TasksList() {
                 </tr>
               ) : (
                 tasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10">
+                  <tr 
+                    key={task.id} 
+                    className="hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200">
                       <div className="text-sm font-medium text-gray-900">{task.title}</div>
                       {task.list && (
-                        <div className="text-xs text-gray-400 mt-1">
-                          {task.list.icon} {task.list.name}
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                          {task.list.icon && <span>{task.list.icon}</span>}
+                          <span>{task.list.name}</span>
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{task.contentType}</div>
+                      <div className="text-sm text-gray-700 font-medium">{task.contentType}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         task.status === 'completed' ? 'bg-green-100 text-green-800' :
                         task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
                         task.status === 'failed' ? 'bg-red-100 text-red-800' :
@@ -226,20 +230,20 @@ export default function TasksList() {
                         {task.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {new Date(task.createdAt).toLocaleDateString()}
                     </td>
                     {columns?.map((column) => {
                       const field = getFieldForColumn(task, column.fieldName)
                       if (!field) {
                         return (
-                          <td key={column.id} className="px-2 py-2 min-w-[200px] max-w-[400px]">
-                            <div className="px-2 py-1 text-sm text-gray-400">-</div>
+                          <td key={column.id} className="px-6 py-4 min-w-[200px] max-w-[400px]">
+                            <div className="text-sm text-gray-400">-</div>
                           </td>
                         )
                       }
                       return (
-                        <td key={column.id} className="px-2 py-2 min-w-[200px] max-w-[400px]">
+                        <td key={column.id} className="px-6 py-4 min-w-[200px] max-w-[400px]">
                           <TableCellEditor
                             field={field}
                             onSave={handleFieldSave}
@@ -247,19 +251,21 @@ export default function TasksList() {
                         </td>
                       )
                     })}
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-gray-50 border-l-2 border-gray-300 z-10">
-                      <button
-                        onClick={() => navigate(`/tasks/${task.id}`)}
-                        className="text-primary-600 hover:text-primary-900 mr-4"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => deleteMutation.mutate(task.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-gray-50 border-l-2 border-gray-300">
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => navigate(`/tasks/${task.id}`)}
+                          className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => deleteMutation.mutate(task.id)}
+                          className="text-red-600 hover:text-red-700 font-medium transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
