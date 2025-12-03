@@ -66,9 +66,9 @@ export default function TasksList() {
                 {currentList.name}
               </>
             ) : listId === 'null' || listId === 'unassigned' ? (
-              'Без проекта'
+              'No Project'
             ) : (
-              'Все задачи'
+              'All Tasks'
             )}
           </h2>
           {currentList && currentList.stats && (
