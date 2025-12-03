@@ -412,8 +412,8 @@ export default function TaskForm() {
                   contentType: pub.contentType || contentType,
                   executionType: pub.executionType || 'manual',
                   status: pub.status || 'draft',
-                  note: pub.note || null,
-                  content: pub.content || null,
+                  note: ('note' in pub ? pub.note : null) || null,
+                  content: ('content' in pub ? pub.content : null) || null,
                   orderIndex: pub.orderIndex !== undefined ? pub.orderIndex : i,
                 },
               })
@@ -933,7 +933,7 @@ export default function TaskForm() {
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {selectedPlatforms.map((platformCode, index) => {
+                    {selectedPlatforms.map((platformCode) => {
                       const platform = platforms.find(p => p.code === platformCode)
                       const publication = publications.find(p => p.platform === platformCode)
                       return (
@@ -1013,10 +1013,18 @@ export default function TaskForm() {
                   data,
                 })
               } else {
+                if (!data.platform) {
+                  throw new Error('Platform is required')
+                }
                 await createPublicationMutation.mutateAsync({
                   taskId: id,
                   data: {
-                    ...data,
+                    platform: data.platform,
+                    contentType: data.contentType || contentType,
+                    executionType: data.executionType || 'manual',
+                    status: data.status || 'draft',
+                    note: data.note || null,
+                    content: data.content || null,
                     orderIndex: publications.length,
                   },
                 })

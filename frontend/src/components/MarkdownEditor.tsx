@@ -58,7 +58,7 @@ export default function MarkdownEditor({
             onChange={onChange}
             preview="edit"
             hideToolbar={false}
-            visibleDragBar={false}
+            visibleDragbar={false}
             textareaProps={{
               placeholder,
               style: { fontSize: 14 },

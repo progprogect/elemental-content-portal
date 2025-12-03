@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Task, Platform } from '../services/api/tasks'
 import PublicationCard from './PublicationCard'
-import Button from './ui/Button'
 
 interface ExpandableTaskRowProps {
   task: Task

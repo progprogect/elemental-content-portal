@@ -392,7 +392,17 @@ export default function TaskDetail() {
                 data,
               })
             } else {
-              await createPublicationMutation.mutateAsync(data)
+              if (!data.platform) {
+                throw new Error('Platform is required')
+              }
+              await createPublicationMutation.mutateAsync({
+                platform: data.platform,
+                contentType: data.contentType || 'video',
+                executionType: data.executionType || 'manual',
+                status: data.status || 'draft',
+                note: data.note || null,
+                content: data.content || null,
+              })
             }
           }}
           publication={editingPublication}
