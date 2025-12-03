@@ -55,6 +55,14 @@ export default function TasksList() {
     },
   })
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [listId, statusFilter, contentTypeFilter])
+
+  const tasks = data?.tasks || []
+  const pagination = data?.pagination
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -73,14 +81,6 @@ export default function TasksList() {
   if (error) {
     return <div className="text-center py-8 text-red-600">Error loading tasks</div>
   }
-
-  const tasks = data?.tasks || []
-  const pagination = data?.pagination
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1)
-  }, [listId, statusFilter, contentTypeFilter])
 
   return (
     <div>

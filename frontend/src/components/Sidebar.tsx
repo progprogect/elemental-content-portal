@@ -54,21 +54,6 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
     return list.taskCount || 0
   }
 
-  if (isLoading) {
-    return (
-      <div className={`bg-white border-r border-gray-200 transition-all duration-300 ${
-        isCollapsed ? 'w-16' : 'w-64'
-      } ${isMobileOpen ? 'fixed inset-y-0 left-0 z-50' : 'hidden md:flex'} flex-col`}>
-        <div className="p-4">
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
       <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${
@@ -94,7 +79,14 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
 
         {/* Lists */}
         <nav className="flex-1 overflow-y-auto p-2">
-          {lists && lists.length > 0 ? (
+          {isLoading ? (
+            <div className="p-4">
+              <div className="animate-pulse space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </div>
+          ) : lists && lists.length > 0 ? (
             <ul className="space-y-1">
               {lists.map((list) => {
                 const isActive = currentListId === list.id
