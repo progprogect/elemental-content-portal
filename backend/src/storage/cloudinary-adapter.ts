@@ -42,7 +42,7 @@ export class CloudinaryAdapter implements StorageAdapter {
 
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
-        (error, result) => {
+        (error: Error | undefined, result: any) => {
           if (error) {
             reject(error);
             return;
@@ -69,7 +69,7 @@ export class CloudinaryAdapter implements StorageAdapter {
     return new Promise((resolve, reject) => {
       // Extract resource type from path if needed
       // Cloudinary needs resource_type for deletion
-      cloudinary.uploader.destroy(path, { invalidate: true }, (error, result) => {
+      cloudinary.uploader.destroy(path, { invalidate: true }, (error: Error | undefined, result: any) => {
         if (error) {
           reject(error);
           return;
@@ -86,7 +86,7 @@ export class CloudinaryAdapter implements StorageAdapter {
 
   async download(path: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      cloudinary.api.resource(path, (error, result) => {
+      cloudinary.api.resource(path, (error: Error | undefined, result: any) => {
         if (error) {
           reject(error);
           return;

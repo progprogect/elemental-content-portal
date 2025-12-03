@@ -42,8 +42,11 @@ export const addField = async (req: Request, res: Response) => {
 
   const field = await prisma.taskField.create({
     data: {
-      ...data,
       taskId,
+      fieldName: data.fieldName,
+      fieldType: data.fieldType,
+      fieldValue: data.fieldValue ?? {},
+      orderIndex: data.orderIndex ?? 0,
     },
   });
 
