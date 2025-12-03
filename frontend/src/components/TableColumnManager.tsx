@@ -8,11 +8,9 @@ import FieldEditor from './FieldEditor'
 
 interface TableColumnManagerProps {
   onColumnChange?: () => void
-  onEditColumn?: (column: TableColumn) => void
-  onDeleteColumn?: (column: TableColumn) => void
 }
 
-export default function TableColumnManager({ onColumnChange, onEditColumn, onDeleteColumn }: TableColumnManagerProps) {
+export default function TableColumnManager({ onColumnChange }: TableColumnManagerProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [editingColumn, setEditingColumn] = useState<TableColumn | undefined>()
   const [deleteConfirmColumn, setDeleteConfirmColumn] = useState<TableColumn | null>(null)
@@ -31,23 +29,6 @@ export default function TableColumnManager({ onColumnChange, onEditColumn, onDel
   const handleCreateColumn = () => {
     setEditingColumn(undefined)
     setIsEditorOpen(true)
-  }
-
-  const handleEditColumn = (column: TableColumn) => {
-    if (onEditColumn) {
-      onEditColumn(column)
-    } else {
-      setEditingColumn(column)
-      setIsEditorOpen(true)
-    }
-  }
-
-  const handleDeleteColumn = (column: TableColumn) => {
-    if (onDeleteColumn) {
-      onDeleteColumn(column)
-    } else {
-      setDeleteConfirmColumn(column)
-    }
   }
 
   const confirmDelete = () => {
