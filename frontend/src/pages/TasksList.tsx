@@ -1,34 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { tasksApi, taskListsApi } from '../services/api/tasks'
 import Button from '../components/ui/Button'
-import Select from '../components/ui/Select'
-
-const CONTENT_TYPES = [
-  { value: 'video', label: 'Video' },
-  { value: 'image', label: 'Image' },
-  { value: 'talking_head', label: 'Talking Head' },
-  { value: 'text', label: 'Text' },
-  { value: 'presentation', label: 'Presentation' },
-]
-
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'failed', label: 'Failed' },
-]
 
 export default function TasksList() {
   const navigate = useNavigate()
   const { listId } = useParams<{ listId?: string }>()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [contentTypeFilter, setContentTypeFilter] = useState('')
-  const [showStatusFilter, setShowStatusFilter] = useState(false)
 
   // Get current list info
   const { data: currentList } = useQuery({
@@ -38,12 +18,10 @@ export default function TasksList() {
   })
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['tasks', page, statusFilter, contentTypeFilter, listId],
+    queryKey: ['tasks', page, listId],
     queryFn: () => tasksApi.getTasks({
       page,
       limit: 20,
-      status: statusFilter || undefined,
-      contentType: contentTypeFilter || undefined,
       listId: listId || undefined,
     }),
   })
@@ -54,11 +32,6 @@ export default function TasksList() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
     },
   })
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1)
-  }, [listId, statusFilter, contentTypeFilter])
 
   const tasks = data?.tasks || []
   const pagination = data?.pagination
@@ -110,45 +83,6 @@ export default function TasksList() {
         <Button onClick={() => navigate('/tasks/new')}>
           + New Task
         </Button>
-      </div>
-
-      <div className="card mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-700">Фильтры</h3>
-          {listId && (
-            <button
-              onClick={() => setShowStatusFilter(!showStatusFilter)}
-              className="text-sm text-primary-600 hover:text-primary-700"
-            >
-              {showStatusFilter ? 'Скрыть фильтр по статусу' : 'Показать фильтр по статусу'}
-            </button>
-          )}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(showStatusFilter || !listId) && (
-            <Select
-              label="Filter by Status"
-              options={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value)
-                setPage(1)
-              }}
-            />
-          )}
-          <Select
-            label="Filter by Content Type"
-            options={[
-              { value: '', label: 'All Types' },
-              ...CONTENT_TYPES,
-            ]}
-            value={contentTypeFilter}
-            onChange={(e) => {
-              setContentTypeFilter(e.target.value)
-              setPage(1)
-            }}
-          />
-        </div>
       </div>
 
       {/* Desktop Table */}
