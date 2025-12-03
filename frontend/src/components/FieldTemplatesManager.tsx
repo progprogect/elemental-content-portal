@@ -4,8 +4,6 @@ import { fieldTemplatesApi, FieldTemplate } from '../services/api/tasks'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
-import Input from './ui/Input'
-import Select from './ui/Select'
 import FieldEditor from './FieldEditor'
 
 export default function FieldTemplatesManager() {
@@ -152,4 +150,5 @@ export default function FieldTemplatesManager() {
     </>
   )
 }
+
 

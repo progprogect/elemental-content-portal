@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, fieldsApi, taskListsApi, fieldTemplatesApi, TaskField, FieldTemplate } from '../services/api/tasks'
+import { tasksApi, fieldsApi, taskListsApi, fieldTemplatesApi, TaskField } from '../services/api/tasks'
 import { useErrorHandler } from '../hooks/useErrorHandler'
 import { getErrorMessage } from '../utils/error-handler'
 import Input from '../components/ui/Input'
