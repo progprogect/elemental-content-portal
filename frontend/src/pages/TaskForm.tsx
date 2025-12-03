@@ -73,29 +73,71 @@ export default function TaskForm() {
 
   // Initialize fields from table columns for new tasks
   useEffect(() => {
-    if (!isEdit && tableColumns && tableColumns.length > 0 && !columnsInitialized.current) {
-      const initialFields: TaskField[] = tableColumns.map((column, index) => {
-        let fieldValue: any;
-        if (column.defaultValue) {
-          fieldValue = column.defaultValue;
-        } else if (column.fieldType === 'checkbox') {
-          fieldValue = { checked: false };
-        } else {
-          fieldValue = { value: '' };
-        }
+    if (!isEdit && tableColumns && tableColumns.length > 0) {
+      setFields(currentFields => {
+        // Get existing column field IDs
+        const existingColumnIds = currentFields
+          .filter(f => f.id.startsWith('column-'))
+          .map(f => f.id.replace('column-', ''))
+        
+        // Find new columns that don't have fields yet
+        const newColumns = tableColumns.filter(
+          column => !existingColumnIds.includes(column.id)
+        )
+        
+        // If there are new columns, add them to fields
+        if (newColumns.length > 0) {
+          const newFields: TaskField[] = newColumns.map((column, index) => {
+            let fieldValue: any;
+            if (column.defaultValue) {
+              fieldValue = column.defaultValue;
+            } else if (column.fieldType === 'checkbox') {
+              fieldValue = { checked: false };
+            } else {
+              fieldValue = { value: '' };
+            }
 
-        return {
-          id: `column-${column.id}`,
-          fieldName: column.fieldName,
-          fieldType: column.fieldType,
-          fieldValue,
-          orderIndex: index,
-          taskId: '',
-          createdAt: new Date().toISOString(),
-        } as TaskField;
+            return {
+              id: `column-${column.id}`,
+              fieldName: column.fieldName,
+              fieldType: column.fieldType,
+              fieldValue,
+              orderIndex: currentFields.length + index,
+              taskId: '',
+              createdAt: new Date().toISOString(),
+            } as TaskField;
+          });
+          return [...currentFields, ...newFields];
+        }
+        
+        // If no fields exist yet, initialize all columns
+        if (currentFields.length === 0 && !columnsInitialized.current) {
+          const initialFields: TaskField[] = tableColumns.map((column, index) => {
+            let fieldValue: any;
+            if (column.defaultValue) {
+              fieldValue = column.defaultValue;
+            } else if (column.fieldType === 'checkbox') {
+              fieldValue = { checked: false };
+            } else {
+              fieldValue = { value: '' };
+            }
+
+            return {
+              id: `column-${column.id}`,
+              fieldName: column.fieldName,
+              fieldType: column.fieldType,
+              fieldValue,
+              orderIndex: index,
+              taskId: '',
+              createdAt: new Date().toISOString(),
+            } as TaskField;
+          });
+          columnsInitialized.current = true;
+          return initialFields;
+        }
+        
+        return currentFields;
       });
-      setFields(initialFields);
-      columnsInitialized.current = true;
     }
   }, [tableColumns, isEdit])
 

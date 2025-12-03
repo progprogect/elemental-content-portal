@@ -29,7 +29,7 @@ export default function TableColumnHeader({ column, onEdit, onDelete }: TableCol
   }, [isMenuOpen])
 
   return (
-    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 relative group min-w-[150px] max-w-[300px]">
+    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 relative group min-w-[200px] max-w-[400px]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {column.icon && <span>{column.icon}</span>}

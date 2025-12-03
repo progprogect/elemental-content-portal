@@ -169,16 +169,16 @@ export default function TasksList() {
           <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: 'max-content' }}>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[200px]">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[250px]">
                   Title
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
                   Content Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                   Created
                 </th>
                 {columns?.map((column) => (
@@ -233,13 +233,13 @@ export default function TasksList() {
                       const field = getFieldForColumn(task, column.fieldName)
                       if (!field) {
                         return (
-                          <td key={column.id} className="px-2 py-2 min-w-[150px] max-w-[300px]">
+                          <td key={column.id} className="px-2 py-2 min-w-[200px] max-w-[400px]">
                             <div className="px-2 py-1 text-sm text-gray-400">-</div>
                           </td>
                         )
                       }
                       return (
-                        <td key={column.id} className="px-2 py-2 min-w-[150px] max-w-[300px]">
+                        <td key={column.id} className="px-2 py-2 min-w-[200px] max-w-[400px]">
                           <TableCellEditor
                             field={field}
                             onSave={handleFieldSave}

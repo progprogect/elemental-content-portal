@@ -65,7 +65,7 @@ export default function TableColumnManager({ onColumnChange }: TableColumnManage
   return (
     <>
       {/* Add Column Button Header */}
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[150px]">
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[200px]">
         <button
           onClick={handleCreateColumn}
           className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
