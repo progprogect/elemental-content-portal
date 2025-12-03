@@ -41,7 +41,7 @@ app.use('/api/prompts', promptsRoutes);
 
 // Serve React app for all non-API routes (in production)
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
+  app.get('*', (req, res, next) => {
     // Don't serve React app for API routes
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ 
@@ -49,7 +49,11 @@ if (process.env.NODE_ENV === 'production') {
         message: `Route ${req.method} ${req.path} not found`,
       });
     }
-    res.sendFile(path.join(__dirname, '../public/index.html'));
+    res.sendFile(path.join(__dirname, '../public/index.html'), (err) => {
+      if (err) {
+        next(err);
+      }
+    });
   });
 } else {
   // 404 handler for undefined routes (development)
