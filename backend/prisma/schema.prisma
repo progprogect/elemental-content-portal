@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tasks     Task[]
+
+  @@map("users")
+}
+
+model Task {
+  id           String       @id @default(uuid())
+  userId       String?      @map("user_id")
+  title        String       @db.VarChar(500)
+  contentType  String       @map("content_type") @db.VarChar(50)
+  executionType String      @default("manual") @map("execution_type") @db.VarChar(50)
+  status       String       @default("draft") @db.VarChar(50)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fields       TaskField[]
+  results      TaskResult[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([executionType])
+  @@map("tasks")
+}
+
+model TaskField {
+  id         String   @id @default(uuid())
+  taskId     String   @map("task_id")
+  fieldName  String   @map("field_name") @db.VarChar(255)
+  fieldType  String   @map("field_type") @db.VarChar(50)
+  fieldValue Json     @map("field_value")
+  orderIndex Int      @default(0) @map("order_index")
+  createdAt  DateTime @default(now()) @map("created_at")
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([taskId, orderIndex])
+  @@map("task_fields")
+}
+
+model TaskResult {
+  id          String   @id @default(uuid())
+  taskId      String   @map("task_id")
+  resultUrl   String?  @map("result_url") @db.VarChar(1000)
+  downloadUrl String?  @map("download_url") @db.VarChar(1000)
+  assetPath   String?  @map("asset_path") @db.VarChar(1000)
+  assetUrl    String?  @map("asset_url") @db.VarChar(1000)
+  source      String   @default("manual") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([source])
+  @@map("task_results")
+}
+
+model ContentTypeConfig {
+  id            String   @id @default(uuid())
+  contentType   String   @unique @map("content_type") @db.VarChar(50)
+  generatorService String? @map("generator_service") @db.VarChar(100)
+  generatorType String?  @map("generator_type") @db.VarChar(100)
+  promptTemplate String? @map("prompt_template") @db.Text
+  requiredFields Json?   @map("required_fields")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("content_type_configs")
+}
+
