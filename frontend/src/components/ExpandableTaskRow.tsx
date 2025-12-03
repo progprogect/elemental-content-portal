@@ -56,14 +56,13 @@ export default function ExpandableTaskRow({
                 </svg>
               </button>
             )}
-            <div className="text-sm font-medium text-gray-900">{task.title}</div>
+            <button
+              onClick={onTaskView}
+              className="text-sm font-medium text-gray-900 hover:text-primary-600 hover:underline cursor-pointer text-left"
+            >
+              {task.title}
+            </button>
           </div>
-          {task.list && (
-            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-              {task.list.icon && <span>{task.list.icon}</span>}
-              <span>{task.list.name}</span>
-            </div>
-          )}
           {publications.length > 0 && (
             <div className="text-xs text-gray-400 mt-1">
               {publications.length} {publications.length === 1 ? 'publication' : 'publications'}
@@ -95,20 +94,12 @@ export default function ExpandableTaskRow({
         {/* Empty cell for Add Column button */}
         <td className="px-6 py-4 min-w-[200px] bg-gray-50 border-r border-gray-200"></td>
         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-gray-50 border-l-2 border-gray-300">
-          <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={onTaskView}
-              className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
-            >
-              View
-            </button>
-            <button
-              onClick={onTaskDelete}
-              className="text-red-600 hover:text-red-700 font-medium transition-colors"
-            >
-              Delete
-            </button>
-          </div>
+          <button
+            onClick={onTaskDelete}
+            className="text-red-600 hover:text-red-700 font-medium transition-colors"
+          >
+            Delete
+          </button>
         </td>
       </tr>
       {isExpanded && publications.length > 0 && (

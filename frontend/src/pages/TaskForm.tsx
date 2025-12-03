@@ -13,6 +13,7 @@ import MediaPreview from '../components/MediaPreview'
 import PlatformSelector from '../components/PlatformSelector'
 import PublicationEditor from '../components/PublicationEditor'
 import PublicationCard from '../components/PublicationCard'
+import InlinePublicationEditor from '../components/InlinePublicationEditor'
 
 const CONTENT_TYPES = [
   { value: 'video', label: 'Video' },
@@ -38,6 +39,7 @@ export default function TaskForm() {
   const [editingField, setEditingField] = useState<TaskField | undefined>()
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
   const [publications, setPublications] = useState<TaskPublication[]>([])
+  const [expandedPublications, setExpandedPublications] = useState<Set<string>>(new Set())
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>()
   const [editingPlatformCode, setEditingPlatformCode] = useState<string | undefined>()
@@ -85,6 +87,10 @@ export default function TaskForm() {
       setFields(task.fields || [])
       setPublications(task.publications || [])
       setSelectedPlatforms((task.publications || []).map(p => p.platform))
+      // Expand first publication by default
+      if (task.publications && task.publications.length > 0) {
+        setExpandedPublications(new Set([task.publications[0].id]))
+      }
       // Convert ISO date to YYYY-MM-DD format for date input
       if (task.scheduledDate) {
         try {
@@ -101,6 +107,29 @@ export default function TaskForm() {
       }
     }
   }, [task])
+
+  // Sync publications with selectedPlatforms - remove publications for deselected platforms
+  useEffect(() => {
+    if (!isEdit) {
+      setPublications(currentPublications => {
+        // Remove publications for platforms that are no longer selected
+        const publicationsToKeep = currentPublications.filter(p => selectedPlatforms.includes(p.platform))
+        if (publicationsToKeep.length !== currentPublications.length) {
+          // Clean up expandedPublications for removed platforms
+          setExpandedPublications(currentExpanded => {
+            const newExpanded = new Set(currentExpanded)
+            currentPublications.forEach(p => {
+              if (!selectedPlatforms.includes(p.platform)) {
+                newExpanded.delete(p.id)
+              }
+            })
+            return newExpanded
+          })
+        }
+        return publicationsToKeep
+      })
+    }
+  }, [selectedPlatforms, isEdit])
 
   // Initialize fields from table columns for new tasks
   useEffect(() => {
@@ -873,97 +902,128 @@ export default function TaskForm() {
                 </div>
               )}
 
-              {/* Existing Publications */}
-              {isEdit && publications.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="text-sm font-medium text-gray-700">Publications</h4>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setEditingPublication(undefined)
-                        setEditingPlatformCode(undefined)
-                        setIsPublicationEditorOpen(true)
-                      }}
-                    >
-                      + Add Publication
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {publications.map((publication) => {
-                      const platform = platforms.find(p => p.code === publication.platform)
-                      return (
-                        <PublicationCard
-                          key={publication.id}
-                          publication={publication}
-                          platform={platform}
-                          onEdit={() => {
-                            setEditingPublication(publication)
-                            setEditingPlatformCode(publication.platform)
-                            setIsPublicationEditorOpen(true)
-                          }}
-                          onDelete={() => {
-                            if (id && window.confirm(`Delete publication for ${platform?.name || publication.platform}?`)) {
-                              deletePublicationMutation.mutate({ taskId: id, publicationId: publication.id })
-                            }
-                          }}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* New Publications Preview (for new tasks) */}
-              {!isEdit && selectedPlatforms.length > 0 && (
+              {/* Publications - Inline Editors */}
+              {((isEdit && publications.length > 0) || (!isEdit && selectedPlatforms.length > 0)) && (
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="text-sm font-medium text-gray-700">
-                      Publications ({selectedPlatforms.length})
+                      {isEdit ? 'Publications' : `Publications (${selectedPlatforms.length})`}
                     </h4>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setEditingPublication(undefined)
-                        setEditingPlatformCode(undefined)
-                        setIsPublicationEditorOpen(true)
-                      }}
-                    >
-                      + Add Publication Details
-                    </Button>
+                    {isEdit && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setEditingPublication(undefined)
+                          setEditingPlatformCode(undefined)
+                          setIsPublicationEditorOpen(true)
+                        }}
+                      >
+                        + Add Publication
+                      </Button>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    {selectedPlatforms.map((platformCode) => {
-                      const platform = platforms.find(p => p.code === platformCode)
-                      const publication = publications.find(p => p.platform === platformCode)
-                      return (
-                        <div key={platformCode} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{platform?.icon || '📱'}</span>
-                              <span className="font-medium text-sm text-gray-900">{platform?.name || platformCode}</span>
-                              <span className="text-xs text-gray-500">• {contentType}</span>
-                            </div>
-                            <button
-                              onClick={() => {
-                                setEditingPublication(publication)
-                                setEditingPlatformCode(platformCode)
-                                setIsPublicationEditorOpen(true)
-                              }}
-                              className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                            >
-                              {publication ? 'Edit' : 'Configure'}
-                            </button>
-                          </div>
-                          {publication && (
-                            <div className="mt-2 text-xs text-gray-600">
-                              {publication.note && <div>Note: {publication.note.substring(0, 50)}...</div>}
-                              {publication.content && <div>Content: {publication.content.substring(0, 50)}...</div>}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
+                  <div className="space-y-3">
+                    {isEdit ? (
+                      // Existing publications for edit mode
+                      publications.map((publication) => {
+                        const platform = platforms.find(p => p.code === publication.platform)
+                        if (!platform) return null
+                        const isExpanded = expandedPublications.has(publication.id)
+                        return (
+                          <InlinePublicationEditor
+                            key={publication.id}
+                            platform={platform}
+                            publication={publication}
+                            defaultContentType={contentType}
+                            isExpanded={isExpanded}
+                            onToggle={() => {
+                              const newExpanded = new Set(expandedPublications)
+                              if (isExpanded) {
+                                newExpanded.delete(publication.id)
+                              } else {
+                                newExpanded.add(publication.id)
+                              }
+                              setExpandedPublications(newExpanded)
+                            }}
+                            onUpdate={async (data) => {
+                              if (id) {
+                                await updatePublicationMutation.mutateAsync({
+                                  taskId: id,
+                                  publicationId: publication.id,
+                                  data,
+                                })
+                              }
+                            }}
+                            onDelete={() => {
+                              if (id && window.confirm(`Delete publication for ${platform.name}?`)) {
+                                deletePublicationMutation.mutate({ taskId: id, publicationId: publication.id })
+                              }
+                            }}
+                            canDelete={true}
+                          />
+                        )
+                      })
+                    ) : (
+                      // New publications for create mode
+                      selectedPlatforms.map((platformCode) => {
+                        const platform = platforms.find(p => p.code === platformCode)
+                        if (!platform) return null
+                        const publication = publications.find(p => p.platform === platformCode)
+                        const isExpanded = expandedPublications.has(platformCode)
+                        return (
+                          <InlinePublicationEditor
+                            key={platformCode}
+                            platform={platform}
+                            publication={publication}
+                            defaultContentType={contentType}
+                            isExpanded={isExpanded}
+                            onToggle={() => {
+                              const newExpanded = new Set(expandedPublications)
+                              if (isExpanded) {
+                                newExpanded.delete(platformCode)
+                              } else {
+                                newExpanded.add(platformCode)
+                              }
+                              setExpandedPublications(newExpanded)
+                            }}
+                            onUpdate={(data) => {
+                              if (publication) {
+                                // Update existing publication in state
+                                setPublications(publications.map(p => 
+                                  p.id === publication.id ? { ...p, ...data } as TaskPublication : p
+                                ))
+                              } else {
+                                // Create new publication in state
+                                const newPublication: TaskPublication = {
+                                  id: `temp-${Date.now()}`,
+                                  taskId: '',
+                                  platform: platformCode,
+                                  contentType: data.contentType || contentType,
+                                  executionType: data.executionType || 'manual',
+                                  status: data.status || 'draft',
+                                  note: data.note || null,
+                                  content: data.content || null,
+                                  orderIndex: publications.length,
+                                  createdAt: new Date().toISOString(),
+                                  updatedAt: new Date().toISOString(),
+                                }
+                                setPublications([...publications, newPublication])
+                              }
+                            }}
+                            onDelete={() => {
+                              if (publication) {
+                                setPublications(publications.filter(p => p.id !== publication.id))
+                              }
+                              setSelectedPlatforms(selectedPlatforms.filter(code => code !== platformCode))
+                              const newExpanded = new Set(expandedPublications)
+                              newExpanded.delete(platformCode)
+                              setExpandedPublications(newExpanded)
+                            }}
+                            canDelete={true}
+                          />
+                        )
+                      })
+                    )}
                   </div>
                 </div>
               )}

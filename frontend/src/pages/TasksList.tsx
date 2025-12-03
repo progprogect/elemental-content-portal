@@ -330,13 +330,12 @@ export default function TasksList() {
                             {formatDate(task.scheduledDate)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                            {task.list && (
-                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                {task.list.icon && <span>{task.list.icon}</span>}
-                                <span>{task.list.name}</span>
-                              </div>
-                            )}
+                            <button
+                              onClick={() => navigate(`/tasks/${task.id}`)}
+                              className="text-sm font-medium text-gray-900 hover:text-primary-600 hover:underline cursor-pointer text-left"
+                            >
+                              {task.title}
+                            </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-700 font-medium">{task.contentType}</div>
@@ -375,20 +374,12 @@ export default function TasksList() {
                       {/* Empty cell for Add Column button column */}
                       <td className="px-6 py-4 min-w-[200px] bg-gray-50 border-r border-gray-200"></td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-gray-50 border-l-2 border-gray-300">
-                        <div className="flex items-center justify-end gap-3">
-                          <button
-                            onClick={() => navigate(`/tasks/${task.id}`)}
-                            className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => deleteMutation.mutate(task.id)}
-                            className="text-red-600 hover:text-red-700 font-medium transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => deleteMutation.mutate(task.id)}
+                          className="text-red-600 hover:text-red-700 font-medium transition-colors"
+                        >
+                          Delete
+                        </button>
                       </td>
                         </tr>
                       )

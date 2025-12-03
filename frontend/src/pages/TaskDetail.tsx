@@ -36,6 +36,7 @@ export default function TaskDetail() {
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>(undefined)
+  const [resultPublicationId, setResultPublicationId] = useState<string | undefined>(undefined)
   const [resultUrl, setResultUrl] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
   const [uploadedFile, setUploadedFile] = useState<{ path: string; url: string } | null>(null)
@@ -88,10 +89,12 @@ export default function TaskDetail() {
       assetPath?: string
       assetUrl?: string
       source?: 'manual' | 'haygen' | 'nanobanana'
+      publicationId?: string | null
     }) => resultsApi.addResult(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', id] })
       setIsResultModalOpen(false)
+      setResultPublicationId(undefined)
       setResultUrl('')
       setDownloadUrl('')
       setUploadedFile(null)
@@ -140,6 +143,7 @@ export default function TaskDetail() {
           resultUrl: result.resultUrl,
           downloadUrl: result.downloadUrl,
           source: 'haygen',
+          publicationId: undefined, // Extension results are task-level
         })
       }
     }
@@ -155,6 +159,7 @@ export default function TaskDetail() {
       assetPath: uploadedFile?.path,
       assetUrl: uploadedFile?.url,
       source: 'manual',
+      publicationId: resultPublicationId || null,
     })
   }
 
@@ -211,20 +216,17 @@ export default function TaskDetail() {
       </div>
 
       {/* Fields */}
-      <div className="card mb-6">
-        <h3 className="text-lg font-semibold mb-4">Fields</h3>
-        {task.fields.length === 0 ? (
-          <p className="text-gray-500">No fields added</p>
-        ) : (
-          <div className="space-y-3">
-            {task.fields.map((field) => (
-              <div key={field.id} className="p-3 bg-gray-50 rounded-lg">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-medium">{field.fieldName}</div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      Type: {field.fieldType}
-                    </div>
+      {task.fields.length > 0 && (
+        <div className="card mb-6">
+          {task.fields.length === 0 ? (
+            <p className="text-gray-500">No fields added</p>
+          ) : (
+            <div className="space-y-3">
+              {task.fields.map((field) => (
+                <div key={field.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="font-medium">{field.fieldName}</div>
                     {field.fieldType === 'text' && (
                       <div className="text-sm text-gray-700 mt-1">
                         {field.fieldValue?.value || 'No value'}
@@ -259,8 +261,9 @@ export default function TaskDetail() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Publications */}
       {platforms && (
@@ -278,12 +281,12 @@ export default function TaskDetail() {
             </Button>
           </div>
           {task.publications && task.publications.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {task.publications.map((publication) => {
                 const platform = platforms.find(p => p.code === publication.platform)
                 const publicationResults = task.results?.filter(r => r.publicationId === publication.id) || []
                 return (
-                  <div key={publication.id}>
+                  <div key={publication.id} className="border border-gray-200 rounded-lg p-4 bg-white">
                     <PublicationCard
                       publication={publication}
                       platform={platform}
@@ -297,9 +300,51 @@ export default function TaskDetail() {
                         }
                       }}
                     />
+                    
+                    {/* Actions for this publication */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          variant="primary"
+                          className="text-sm px-3 py-1.5"
+                          onClick={async () => {
+                            if (isInstalled && promptData) {
+                              const success = await prepareHaygenGeneration(
+                                id!,
+                                promptData.prompt,
+                                promptData.assets
+                              )
+                              if (success) {
+                                window.open('https://haygen.com/create', '_blank')
+                              } else {
+                                setIsPromptModalOpen(true)
+                              }
+                            } else {
+                              setIsPromptModalOpen(true)
+                            }
+                          }}
+                        >
+                          🎬 Generate Content
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="text-sm px-3 py-1.5"
+                          onClick={() => {
+                            setResultPublicationId(publication.id)
+                            setIsResultModalOpen(true)
+                          }}
+                        >
+                          ➕ Add Result
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Results for this publication */}
                     {publicationResults.length > 0 && (
-                      <div className="mt-2 ml-4 pl-4 border-l-2 border-gray-200">
-                        <p className="text-xs font-medium text-gray-500 mb-2">Results for this publication:</p>
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-sm font-medium text-gray-700 mb-3">
+                          Results ({publicationResults.length})
+                        </p>
                         <div className="space-y-2">
                           {publicationResults.map((result) => (
                             <ResultCard
@@ -318,62 +363,6 @@ export default function TaskDetail() {
           ) : (
             <p className="text-gray-500">No publications added yet</p>
           )}
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="card mb-6">
-        <h3 className="text-lg font-semibold mb-4">Actions</h3>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="primary"
-            onClick={async () => {
-              if (isInstalled && promptData) {
-                // Prepare extension with data
-                const success = await prepareHaygenGeneration(
-                  id!,
-                  promptData.prompt,
-                  promptData.assets
-                )
-                if (success) {
-                  // Open Haygen
-                  window.open('https://haygen.com/create', '_blank')
-                } else {
-                  // Fallback: show prompt modal
-                  setIsPromptModalOpen(true)
-                }
-              } else {
-                // Show prompt modal if extension not installed
-                setIsPromptModalOpen(true)
-              }
-            }}
-          >
-            Generate Content
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setIsResultModalOpen(true)}
-          >
-            Add Result Manually
-          </Button>
-        </div>
-      </div>
-
-      {/* Results (for task, not publications) */}
-      {task.results && task.results.filter(r => !r.publicationId).length > 0 && (
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-4">Task Results</h3>
-          <div className="space-y-3">
-            {task.results
-              .filter(r => !r.publicationId)
-              .map((result) => (
-                <ResultCard
-                  key={result.id}
-                  result={result}
-                  onDelete={() => deleteResultMutation.mutate(result.id)}
-                />
-              ))}
-          </div>
         </div>
       )}
 
@@ -426,6 +415,7 @@ export default function TaskDetail() {
               variant="secondary"
               onClick={() => {
                 setIsResultModalOpen(false)
+                setResultPublicationId(undefined)
                 setResultUrl('')
                 setDownloadUrl('')
                 setUploadedFile(null)
