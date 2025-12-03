@@ -7,6 +7,7 @@ const createTaskSchema = z.object({
   contentType: z.string().min(1).max(50),
   executionType: z.enum(['manual', 'generated']).optional().default('manual'),
   listId: z.string().uuid().optional().nullable(),
+  scheduledDate: z.string().datetime(),
 });
 
 const updateTaskSchema = z.object({
@@ -15,6 +16,7 @@ const updateTaskSchema = z.object({
   status: z.enum(['draft', 'in_progress', 'completed', 'failed']).optional(),
   executionType: z.enum(['manual', 'generated']).optional(),
   listId: z.string().uuid().optional().nullable(),
+  scheduledDate: z.string().datetime().optional(),
 });
 
 export const getTasks = async (req: Request, res: Response) => {
@@ -43,7 +45,10 @@ export const getTasks = async (req: Request, res: Response) => {
       where,
       skip,
       take: limit,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { scheduledDate: 'asc' },
+        { createdAt: 'desc' },
+      ],
       include: {
         list: {
           select: {
@@ -108,9 +113,12 @@ export const getTask = async (req: Request, res: Response) => {
 export const createTask = async (req: Request, res: Response) => {
   const data = createTaskSchema.parse(req.body);
 
+  const { scheduledDate, ...restData } = data;
+
   const task = await prisma.task.create({
     data: {
-      ...data,
+      ...restData,
+      scheduledDate: new Date(scheduledDate),
       userId: null, // No auth for MVP
     },
     include: {
@@ -170,9 +178,14 @@ export const updateTask = async (req: Request, res: Response) => {
   const { id } = req.params;
   const data = updateTaskSchema.parse(req.body);
 
+  const updateData: any = { ...data };
+  if (data.scheduledDate) {
+    updateData.scheduledDate = new Date(data.scheduledDate);
+  }
+
   const task = await prisma.task.update({
     where: { id },
-    data,
+    data: updateData,
     include: {
       fields: {
         orderBy: { orderIndex: 'asc' },

@@ -6,6 +6,7 @@ export interface Task {
   contentType: string
   executionType: 'manual' | 'generated'
   status: 'draft' | 'in_progress' | 'completed' | 'failed'
+  scheduledDate: string
   listId?: string | null
   list?: {
     id: string
@@ -44,6 +45,7 @@ export interface CreateTaskData {
   contentType: string
   executionType?: 'manual' | 'generated'
   listId?: string | null
+  scheduledDate: string
 }
 
 export interface UpdateTaskData {
@@ -52,6 +54,7 @@ export interface UpdateTaskData {
   status?: 'draft' | 'in_progress' | 'completed' | 'failed'
   executionType?: 'manual' | 'generated'
   listId?: string | null
+  scheduledDate?: string
 }
 
 export interface TaskList {

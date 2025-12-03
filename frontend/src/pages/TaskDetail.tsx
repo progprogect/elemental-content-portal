@@ -9,6 +9,22 @@ import Input from '../components/ui/Input'
 import FileUpload from '../components/FileUpload'
 import MediaPreview from '../components/MediaPreview'
 
+// Utility function to format date for display
+function formatDateLong(dateString: string): string {
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return 'Invalid date'
+    }
+    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' })
+    const dateFormatted = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    return `${dayOfWeek}, ${dateFormatted}`
+  } catch (error) {
+    console.warn('Error formatting date:', dateString, error)
+    return 'Invalid date'
+  }
+}
+
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -116,7 +132,7 @@ export default function TaskDetail() {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-2xl font-bold">{task.title}</h2>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2 items-center">
             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
               task.status === 'completed' ? 'bg-green-100 text-green-800' :
               task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
@@ -127,6 +143,9 @@ export default function TaskDetail() {
             </span>
             <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
               {task.contentType}
+            </span>
+            <span className="text-sm text-gray-600">
+              Scheduled: {formatDateLong(task.scheduledDate)}
             </span>
           </div>
         </div>

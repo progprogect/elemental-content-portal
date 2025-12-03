@@ -1,13 +1,73 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
-import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, TableColumn } from '../services/api/tasks'
+import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, TableColumn, Task } from '../services/api/tasks'
 import Button from '../components/ui/Button'
 import TableColumnManager from '../components/TableColumnManager'
 import TableColumnHeader from '../components/TableColumnHeader'
 import TableCellEditor from '../components/TableCellEditor'
 import Modal from '../components/ui/Modal'
 import FieldEditor from '../components/FieldEditor'
+
+// Utility function to group tasks by month
+function groupTasksByMonth(tasks: Task[]): Array<{ monthKey: string; monthLabel: string; tasks: Task[] }> {
+  const groups: Record<string, Task[]> = {}
+  
+  tasks.forEach(task => {
+    try {
+      const date = new Date(task.scheduledDate)
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid scheduledDate for task ${task.id}: ${task.scheduledDate}`)
+        return
+      }
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      
+      if (!groups[monthKey]) {
+        groups[monthKey] = []
+      }
+      groups[monthKey].push(task)
+    } catch (error) {
+      console.warn(`Error processing scheduledDate for task ${task.id}:`, error)
+    }
+  })
+  
+  // Sort months chronologically (earliest first)
+  const sortedMonths = Object.keys(groups).sort()
+  
+  return sortedMonths.map(monthKey => {
+    const date = new Date(monthKey + '-01')
+    const monthLabel = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    // Tasks are already sorted by scheduledDate from backend, but ensure they're sorted
+    const sortedTasks = groups[monthKey].sort((a, b) => {
+      try {
+        return new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
+      } catch {
+        return 0
+      }
+    })
+    return {
+      monthKey,
+      monthLabel,
+      tasks: sortedTasks,
+    }
+  })
+}
+
+// Utility function to format date for display
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return 'Invalid date'
+    }
+    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' })
+    const dateFormatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return `${dayOfWeek}, ${dateFormatted}`
+  } catch (error) {
+    console.warn('Error formatting date:', dateString, error)
+    return 'Invalid date'
+  }
+}
 
 export default function TasksList() {
   const navigate = useNavigate()
@@ -113,6 +173,7 @@ export default function TasksList() {
 
   const tasks = data?.tasks || []
   const pagination = data?.pagination
+  const groupedTasks = groupTasksByMonth(tasks)
 
   if (isLoading) {
     return (
@@ -169,7 +230,10 @@ export default function TasksList() {
           <table className="min-w-full" style={{ minWidth: 'max-content' }}>
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 min-w-[250px] border-r border-gray-200">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 min-w-[180px] border-r border-gray-200">
+                  Scheduled Date
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[250px]">
                   Title
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[150px]">
@@ -198,41 +262,59 @@ export default function TasksList() {
             <tbody className="bg-white divide-y divide-gray-100">
               {tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={4 + (columns?.length || 0) + 2 + 1} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={5 + (columns?.length || 0) + 2 + 1} className="px-6 py-4 text-center text-gray-500">
                     No tasks found
                   </td>
                 </tr>
               ) : (
-                tasks.map((task) => (
-                  <tr 
-                    key={task.id} 
-                    className="hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200">
-                      <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                      {task.list && (
-                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                          {task.list.icon && <span>{task.list.icon}</span>}
-                          <span>{task.list.name}</span>
+                groupedTasks.map((group) => (
+                  <>
+                    {/* Month Header Row */}
+                    <tr key={`month-${group.monthKey}`} className="bg-gray-100 border-t-2 border-gray-300">
+                      <td 
+                        colSpan={5 + (columns?.length || 0) + 2 + 1} 
+                        className="px-6 py-3 sticky left-0 bg-gray-100 z-10 border-r border-gray-200"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-gray-900">{group.monthLabel}</span>
+                          <span className="text-xs text-gray-500">({group.tasks.length} {group.tasks.length === 1 ? 'task' : 'tasks'})</span>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-700 font-medium">{task.contentType}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        task.status === 'failed' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {task.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {new Date(task.createdAt).toLocaleDateString()}
-                    </td>
+                      </td>
+                    </tr>
+                    {/* Tasks for this month */}
+                    {group.tasks.map((task) => (
+                      <tr 
+                        key={task.id} 
+                        className="hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200 text-sm text-gray-600">
+                          {formatDate(task.scheduledDate)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                          {task.list && (
+                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              {task.list.icon && <span>{task.list.icon}</span>}
+                              <span>{task.list.name}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-700 font-medium">{task.contentType}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                            task.status === 'failed' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {task.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(task.createdAt).toLocaleDateString()}
+                        </td>
                     {columns?.map((column) => {
                       const field = getFieldForColumn(task, column.fieldName)
                       if (!field) {
@@ -269,7 +351,9 @@ export default function TasksList() {
                         </button>
                       </div>
                     </td>
-                  </tr>
+                      </tr>
+                    ))}
+                  </>
                 ))
               )}
             </tbody>
@@ -282,44 +366,58 @@ export default function TasksList() {
         {tasks.length === 0 ? (
           <div className="card text-center text-gray-500">No tasks found</div>
         ) : (
-          tasks.map((task) => (
-            <div key={task.id} className="card">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900">{task.title}</h3>
-                  {task.list && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      {task.list.icon} {task.list.name}
-                    </div>
-                  )}
+          groupedTasks.map((group) => (
+            <div key={`month-${group.monthKey}`}>
+              {/* Month Header */}
+              <div className="mb-3 px-4 py-2 bg-gray-100 rounded-lg border-l-4 border-primary-500">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900">{group.monthLabel}</span>
+                  <span className="text-xs text-gray-500">({group.tasks.length} {group.tasks.length === 1 ? 'task' : 'tasks'})</span>
                 </div>
-                <span className={`px-2 text-xs leading-5 font-semibold rounded-full ${
-                  task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                  task.status === 'failed' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {task.status}
-                </span>
               </div>
-              <div className="text-sm text-gray-500 mb-4">
-                {task.contentType} • {new Date(task.createdAt).toLocaleDateString()}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  className="flex-1"
-                  onClick={() => navigate(`/tasks/${task.id}`)}
-                >
-                  View
-                </Button>
-                <Button
-                  variant="danger"
-                  className="flex-1"
-                  onClick={() => deleteMutation.mutate(task.id)}
-                >
-                  Delete
-                </Button>
+              {/* Tasks for this month */}
+              <div className="space-y-4">
+                {group.tasks.map((task) => (
+                  <div key={task.id} className="card">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-gray-900">{task.title}</h3>
+                        {task.list && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            {task.list.icon} {task.list.name}
+                          </div>
+                        )}
+                      </div>
+                      <span className={`px-2 text-xs leading-5 font-semibold rounded-full ${
+                        task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                        task.status === 'failed' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {task.status}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-500 mb-4">
+                      {task.contentType} • Scheduled: {formatDate(task.scheduledDate)} • Created: {new Date(task.createdAt).toLocaleDateString()}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        className="flex-1"
+                        onClick={() => navigate(`/tasks/${task.id}`)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="danger"
+                        className="flex-1"
+                        onClick={() => deleteMutation.mutate(task.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))

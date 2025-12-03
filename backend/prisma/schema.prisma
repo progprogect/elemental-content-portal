@@ -29,6 +29,7 @@ model Task {
   contentType  String       @map("content_type") @db.VarChar(50)
   executionType String      @default("manual") @map("execution_type") @db.VarChar(50)
   status       String       @default("draft") @db.VarChar(50)
+  scheduledDate DateTime   @map("scheduled_date")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
   user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -40,6 +41,7 @@ model Task {
   @@index([status])
   @@index([executionType])
   @@index([listId])
+  @@index([scheduledDate])
   @@map("tasks")
 }
 

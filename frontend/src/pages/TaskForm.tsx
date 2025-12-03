@@ -28,6 +28,7 @@ export default function TaskForm() {
 
   const [title, setTitle] = useState('')
   const [contentType, setContentType] = useState('video')
+  const [scheduledDate, setScheduledDate] = useState('')
   const [listId, setListId] = useState<string | null>(null)
   const [fields, setFields] = useState<TaskField[]>([])
   const [isFieldEditorOpen, setIsFieldEditorOpen] = useState(false)
@@ -68,6 +69,20 @@ export default function TaskForm() {
       setContentType(task.contentType)
       setListId(task.listId || null)
       setFields(task.fields || [])
+      // Convert ISO date to YYYY-MM-DD format for date input
+      if (task.scheduledDate) {
+        try {
+          const date = new Date(task.scheduledDate)
+          if (!isNaN(date.getTime())) {
+            const year = date.getFullYear()
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            setScheduledDate(`${year}-${month}-${day}`)
+          }
+        } catch (error) {
+          console.warn('Error parsing scheduledDate:', task.scheduledDate, error)
+        }
+      }
     }
   }, [task])
 
@@ -218,19 +233,29 @@ export default function TaskForm() {
       return
     }
 
+    if (!scheduledDate) {
+      handleError(new Error('Scheduled date is required'), 'Please select a scheduled date')
+      return
+    }
+
     clearError()
+
+    // Convert YYYY-MM-DD to ISO datetime string (using local timezone to avoid timezone issues)
+    const [year, month, day] = scheduledDate.split('-')
+    const scheduledDateISO = new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toISOString()
 
     try {
       if (isEdit && id) {
         await updateMutation.mutateAsync({
           id,
-          data: { title, contentType, listId },
+          data: { title, contentType, listId, scheduledDate: scheduledDateISO },
         })
       } else {
         const newTask = await createMutation.mutateAsync({
           title,
           contentType,
           listId: listId || null,
+          scheduledDate: scheduledDateISO,
         })
         
         // Fields are automatically created on backend for all table columns
@@ -471,6 +496,18 @@ export default function TaskForm() {
             value={contentType}
             onChange={(e) => setContentType(e.target.value)}
             options={CONTENT_TYPES}
+          />
+
+          <Input
+            label="Scheduled Date"
+            type="date"
+            value={scheduledDate}
+            onChange={(e) => {
+              setScheduledDate(e.target.value)
+              clearError()
+            }}
+            required
+            error={error && !scheduledDate ? 'Scheduled date is required' : undefined}
           />
 
           {taskLists && (
