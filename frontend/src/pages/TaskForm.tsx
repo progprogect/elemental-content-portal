@@ -12,7 +12,6 @@ import FileUpload from '../components/FileUpload'
 import MediaPreview from '../components/MediaPreview'
 import PlatformSelector from '../components/PlatformSelector'
 import PublicationEditor from '../components/PublicationEditor'
-import PublicationCard from '../components/PublicationCard'
 import InlinePublicationEditor from '../components/InlinePublicationEditor'
 
 const CONTENT_TYPES = [
