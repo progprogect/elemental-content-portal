@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, resultsApi, promptsApi, platformsApi, publicationsApi, TaskResult, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
+import { tasksApi, resultsApi, promptsApi, platformsApi, publicationsApi, fieldsApi, TaskResult, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
 import { useExtension } from '../hooks/useExtension'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -10,6 +10,7 @@ import FileUpload from '../components/FileUpload'
 import MediaPreview from '../components/MediaPreview'
 import PublicationCard from '../components/PublicationCard'
 import PublicationEditor from '../components/PublicationEditor'
+import TableCellEditor from '../components/TableCellEditor'
 
 // Utility function to format date for display
 function formatDateLong(dateString: string): string {
@@ -218,50 +219,41 @@ export default function TaskDetail() {
       {/* Fields */}
       {task.fields.length > 0 && (
         <div className="card mb-6">
-          {task.fields.length === 0 ? (
-            <p className="text-gray-500">No fields added</p>
-          ) : (
-            <div className="space-y-3">
-              {task.fields.map((field) => (
-                <div key={field.id} className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="font-medium">{field.fieldName}</div>
-                    {field.fieldType === 'text' && (
-                      <div className="text-sm text-gray-700 mt-1">
-                        {field.fieldValue?.value || 'No value'}
+          <div className="space-y-3">
+            {task.fields.map((field) => (
+              <div key={field.id} className="p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-gray-700 mb-2">{field.fieldName}</div>
+                    {field.fieldType === 'file' ? (
+                      <div>
+                        {field.fieldValue?.url && (
+                          <MediaPreview
+                            url={field.fieldValue.url}
+                            filename={field.fieldValue.filename}
+                            className="w-full h-48"
+                          />
+                        )}
                       </div>
-                    )}
-                    {field.fieldType === 'url' && field.fieldValue?.value && (
-                      <a
-                        href={field.fieldValue.value}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-primary-600 hover:underline mt-1"
-                      >
-                        {field.fieldValue.value}
-                      </a>
-                    )}
-                    {field.fieldType === 'checkbox' && (
-                      <div className="text-sm text-gray-700 mt-1">
-                        {field.fieldValue?.checked ? '✓ Checked' : '☐ Unchecked'}
-                      </div>
-                    )}
-                    {field.fieldType === 'file' && field.fieldValue?.url && (
-                      <div className="mt-2">
-                        <MediaPreview
-                          url={field.fieldValue.url}
-                          filename={field.fieldValue.filename}
-                          className="w-full h-48"
-                        />
-                      </div>
+                    ) : (
+                      <TableCellEditor
+                        field={field}
+                        onSave={async (fieldId, value) => {
+                          try {
+                            await fieldsApi.updateField(id!, fieldId, { fieldValue: value })
+                            queryClient.invalidateQueries({ queryKey: ['task', id] })
+                          } catch (error) {
+                            console.error('Failed to update field:', error)
+                            throw error
+                          }
+                        }}
+                      />
                     )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-          )}
         </div>
       )}
 

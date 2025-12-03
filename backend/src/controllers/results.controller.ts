@@ -54,17 +54,6 @@ export const addResult = async (req: Request, res: Response) => {
     },
   });
 
-  // Update task status if needed
-  if (task.status === 'draft' || task.status === 'in_progress') {
-    await prisma.task.update({
-      where: { id: taskId },
-      data: {
-        status: 'completed',
-        executionType: data.source === 'manual' ? 'manual' : 'generated',
-      },
-    });
-  }
-
   // Update publication status if publicationId is provided
   if (data.publicationId) {
     await prisma.taskPublication.update({
@@ -74,6 +63,24 @@ export const addResult = async (req: Request, res: Response) => {
         executionType: data.source === 'manual' ? 'manual' : 'generated',
       },
     });
+
+    // Check if all publications are completed to update task status
+    const allPublications = await prisma.taskPublication.findMany({
+      where: { taskId },
+    });
+
+    if (allPublications.length > 0) {
+      const allCompleted = allPublications.every(p => p.status === 'completed');
+      if (allCompleted) {
+        await prisma.task.update({
+          where: { id: taskId },
+          data: {
+            status: 'completed',
+            executionType: data.source === 'manual' ? 'manual' : 'generated',
+          },
+        });
+      }
+    }
   }
 
   res.status(201).json(result);

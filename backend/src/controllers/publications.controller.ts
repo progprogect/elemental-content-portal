@@ -2,6 +2,41 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
 
+// Helper function to update task status based on publication statuses
+async function updateTaskStatusFromPublications(taskId: string) {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  const publications = await prisma.taskPublication.findMany({
+    where: { taskId },
+  });
+
+  if (publications.length === 0) {
+    // No publications - keep task status as is
+    return;
+  }
+
+  const allCompleted = publications.every(p => p.status === 'completed');
+  const hasInProgress = publications.some(p => p.status === 'in_progress');
+  const hasFailed = publications.some(p => p.status === 'failed');
+
+  let newStatus = task.status;
+  if (allCompleted && publications.length > 0) {
+    newStatus = 'completed';
+  } else if (hasFailed) {
+    newStatus = 'failed';
+  } else if (hasInProgress || publications.some(p => p.status === 'draft')) {
+    newStatus = 'in_progress';
+  }
+
+  if (newStatus !== task.status) {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: newStatus },
+    });
+  }
+}
+
 const createPublicationSchema = z.object({
   platform: z.string().min(1).max(50),
   contentType: z.string().min(1).max(50),
@@ -132,6 +167,9 @@ export const updatePublication = async (req: Request, res: Response) => {
     },
   });
 
+  // Update task status based on all publication statuses
+  await updateTaskStatusFromPublications(taskId);
+
   res.json(updatedPublication);
 };
 
@@ -153,6 +191,9 @@ export const deletePublication = async (req: Request, res: Response) => {
   await prisma.taskPublication.delete({
     where: { id: publicationId },
   });
+
+  // Update task status based on remaining publication statuses
+  await updateTaskStatusFromPublications(taskId);
 
   res.status(204).send();
 };

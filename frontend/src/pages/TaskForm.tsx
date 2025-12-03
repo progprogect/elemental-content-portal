@@ -13,6 +13,7 @@ import MediaPreview from '../components/MediaPreview'
 import PlatformSelector from '../components/PlatformSelector'
 import PublicationEditor from '../components/PublicationEditor'
 import InlinePublicationEditor from '../components/InlinePublicationEditor'
+import TableCellEditor from '../components/TableCellEditor'
 
 const CONTENT_TYPES = [
   { value: 'video', label: 'Video' },
@@ -688,94 +689,43 @@ export default function TaskForm() {
                         {fields
                           .filter(f => f.id.startsWith('column-'))
                           .map((field) => (
-                            <div key={field.id} className="flex items-start justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <div className="flex-1">
+                            <div key={field.id} className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                   {tableColumns?.find(c => c.fieldName === field.fieldName)?.icon && (
                                     <span>{tableColumns.find(c => c.fieldName === field.fieldName)?.icon}</span>
                                   )}
                                   <span className="font-medium text-gray-900">{field.fieldName}</span>
-                                  <span className="text-xs text-gray-500">({field.fieldType})</span>
                                 </div>
-                                {field.fieldType !== 'file' && field.fieldType !== 'checkbox' && (
-                                  <div className="text-sm text-gray-700 mt-1">
-                                    {field.fieldValue?.value || <span className="text-gray-400">No value</span>}
-                                  </div>
-                                )}
-                                {field.fieldType === 'checkbox' && (
-                                  <div className="text-sm text-gray-700 mt-1">
-                                    <input
-                                      type="checkbox"
-                                      checked={field.fieldValue?.checked || false}
-                                      onChange={(e) => {
-                                        setFields(fields.map(f => 
-                                          f.id === field.id 
-                                            ? { ...f, fieldValue: { checked: e.target.checked } }
-                                            : f
-                                        ))
-                                      }}
-                                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                                    />
-                                    <span className="ml-2">{field.fieldValue?.checked ? 'Checked' : 'Unchecked'}</span>
-                                  </div>
-                                )}
-                                {field.fieldType === 'file' && field.fieldValue?.url && (
-                                  <div className="mt-2">
-                                    <div className="relative">
+                                {field.fieldType === 'file' ? (
+                                  <div>
+                                    {field.fieldValue?.url && (
                                       <MediaPreview
                                         url={field.fieldValue.url}
                                         filename={field.fieldValue.filename}
                                         className="w-full h-48"
                                       />
-                                      <div className="absolute top-2 right-2 flex gap-2 z-10">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setEditingField(field)
-                                            setIsFieldEditorOpen(true)
-                                          }}
-                                          className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-primary-600 hover:text-primary-700 text-xs font-medium rounded shadow-sm transition-all"
-                                          title="Edit field"
-                                        >
-                                          Edit
-                                        </button>
-                                      </div>
-                                    </div>
-                                    {field.fieldValue?.filename && (
-                                      <p className="mt-1 text-xs text-gray-500 truncate">
-                                        {field.fieldValue.filename}
-                                      </p>
                                     )}
                                   </div>
-                                )}
-                                {(field.fieldType === 'text' || field.fieldType === 'url') && (
-                                  <input
-                                    type={field.fieldType === 'url' ? 'url' : 'text'}
-                                    value={field.fieldValue?.value || ''}
-                                    onChange={(e) => {
-                                      setFields(fields.map(f => 
-                                        f.id === field.id 
-                                          ? { ...f, fieldValue: { value: e.target.value } }
-                                          : f
-                                      ))
+                                ) : (
+                                  <TableCellEditor
+                                    field={field}
+                                    onSave={async (fieldId, value) => {
+                                      if (isEdit && id) {
+                                        await updateFieldMutation.mutateAsync({
+                                          taskId: id,
+                                          fieldId,
+                                          data: { fieldValue: value },
+                                        })
+                                      } else {
+                                        setFields(fields.map(f => 
+                                          f.id === fieldId ? { ...f, fieldValue: value } : f
+                                        ))
+                                      }
                                     }}
-                                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
-                                    placeholder={`Enter ${field.fieldName.toLowerCase()}`}
                                   />
                                 )}
                               </div>
-                              {field.fieldType !== 'file' && (
-                                <button
-                                  onClick={() => {
-                                    setEditingField(field)
-                                    setIsFieldEditorOpen(true)
-                                  }}
-                                  className="ml-3 text-primary-600 hover:text-primary-700 text-sm"
-                                  title="Edit field"
-                                >
-                                  Edit
-                                </button>
-                              )}
                             </div>
                           ))}
                       </div>
@@ -785,87 +735,79 @@ export default function TaskForm() {
                   {/* Additional fields */}
                   {fields.filter(f => !f.id.startsWith('column-')).length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                        Additional Fields
-                      </p>
                       <div className="space-y-2">
                         {fields
                           .filter(f => !f.id.startsWith('column-'))
                           .map((field) => (
-                  <div key={field.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <span className="font-medium">{field.fieldName}</span>
-                      <span className="ml-2 text-sm text-gray-500">({field.fieldType})</span>
-                      {field.fieldType !== 'file' && field.fieldType !== 'checkbox' && (
-                        <div className="text-sm text-gray-600 mt-1">
-                          {field.fieldValue?.value || 'No value'}
-                        </div>
-                      )}
-                      {field.fieldType === 'checkbox' && (
-                        <div className="text-sm text-gray-600 mt-1">
-                          {field.fieldValue?.checked ? 'Checked' : 'Unchecked'}
-                        </div>
-                      )}
-                      {field.fieldType === 'file' && field.fieldValue?.url && (
-                        <div className="mt-2">
-                          <div className="relative">
-                          <MediaPreview
-                            url={field.fieldValue.url}
-                            filename={field.fieldValue.filename}
-                              className="w-full h-48"
-                            />
-                            <div className="absolute top-2 right-2 flex gap-2 z-10">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setEditingField(field)
-                                  setIsFieldEditorOpen(true)
-                                }}
-                                className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-primary-600 hover:text-primary-700 text-xs font-medium rounded shadow-sm transition-all"
-                                title="Edit field"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleFieldDelete(field.id)
-                                }}
-                                className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-red-600 hover:text-red-700 text-xs font-medium rounded shadow-sm transition-all"
-                                title="Delete field"
-                              >
-                                Delete
-                              </button>
+                            <div key={field.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm text-gray-700 mb-2">{field.fieldName}</div>
+                                {field.fieldType === 'file' ? (
+                                  <div>
+                                    {field.fieldValue?.url && (
+                                      <div className="relative">
+                                        <MediaPreview
+                                          url={field.fieldValue.url}
+                                          filename={field.fieldValue.filename}
+                                          className="w-full h-48"
+                                        />
+                                        <div className="absolute top-2 right-2 flex gap-2 z-10">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setEditingField(field)
+                                              setIsFieldEditorOpen(true)
+                                            }}
+                                            className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-primary-600 hover:text-primary-700 text-xs font-medium rounded shadow-sm transition-all"
+                                            title="Edit field"
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleFieldDelete(field.id)
+                                            }}
+                                            className="px-2 py-1 bg-white bg-opacity-90 hover:bg-opacity-100 text-red-600 hover:text-red-700 text-xs font-medium rounded shadow-sm transition-all"
+                                            title="Delete field"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1">
+                                      <TableCellEditor
+                                        field={field}
+                                        onSave={async (fieldId, value) => {
+                                          if (isEdit && id) {
+                                            await updateFieldMutation.mutateAsync({
+                                              taskId: id,
+                                              fieldId,
+                                              data: { fieldValue: value },
+                                            })
+                                          } else {
+                                            setFields(fields.map(f => 
+                                              f.id === fieldId ? { ...f, fieldValue: value } : f
+                                            ))
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => handleFieldDelete(field.id)}
+                                      className="text-red-600 hover:text-red-700 text-sm px-2 py-1"
+                                      title="Delete field"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          {field.fieldValue?.filename && (
-                            <p className="mt-1 text-xs text-gray-500 truncate">
-                              {field.fieldValue.filename}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {field.fieldType !== 'file' && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingField(field)
-                          setIsFieldEditorOpen(true)
-                        }}
-                        className="text-primary-600 hover:text-primary-700 text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleFieldDelete(field.id)}
-                        className="text-red-600 hover:text-red-700 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    )}
-                  </div>
                           ))}
                       </div>
                     </div>
