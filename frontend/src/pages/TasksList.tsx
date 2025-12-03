@@ -190,7 +190,7 @@ export default function TasksList() {
                   />
                 ))}
                 <TableColumnManager onColumnChange={() => queryClient.invalidateQueries({ queryKey: ['table-columns'] })} />
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 min-w-[120px]">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-100 border-l-2 border-gray-300 z-10 min-w-[120px]">
                   Actions
                 </th>
               </tr>
@@ -247,7 +247,7 @@ export default function TasksList() {
                         </td>
                       )
                     })}
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-gray-50 border-l-2 border-gray-300 z-10">
                       <button
                         onClick={() => navigate(`/tasks/${task.id}`)}
                         className="text-primary-600 hover:text-primary-900 mr-4"
