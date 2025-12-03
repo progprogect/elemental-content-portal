@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, fieldsApi, taskListsApi, TaskField } from '../services/api/tasks'
+import { tasksApi, fieldsApi, taskListsApi, tableColumnsApi, TaskField } from '../services/api/tasks'
 import { useErrorHandler } from '../hooks/useErrorHandler'
 import { getErrorMessage } from '../utils/error-handler'
 import Input from '../components/ui/Input'
@@ -33,6 +33,7 @@ export default function TaskForm() {
   const [isFieldEditorOpen, setIsFieldEditorOpen] = useState(false)
   const [editingField, setEditingField] = useState<TaskField | undefined>()
   const { error, errorDetails, handleError, clearError } = useErrorHandler()
+  const columnsInitialized = useRef(false)
 
   // Get listId from URL if coming from a list page
   useEffect(() => {
@@ -46,6 +47,13 @@ export default function TaskForm() {
   const { data: taskLists } = useQuery({
     queryKey: ['task-lists'],
     queryFn: taskListsApi.getLists,
+  })
+
+  // Get table columns for new tasks
+  const { data: tableColumns } = useQuery({
+    queryKey: ['table-columns'],
+    queryFn: tableColumnsApi.getColumns,
+    enabled: !isEdit, // Only load for new tasks
   })
 
   const { data: task, isLoading } = useQuery({
@@ -62,6 +70,41 @@ export default function TaskForm() {
       setFields(task.fields || [])
     }
   }, [task])
+
+  // Initialize fields from table columns for new tasks
+  useEffect(() => {
+    if (!isEdit && tableColumns && tableColumns.length > 0 && !columnsInitialized.current) {
+      const initialFields: TaskField[] = tableColumns.map((column, index) => {
+        let fieldValue: any;
+        if (column.defaultValue) {
+          fieldValue = column.defaultValue;
+        } else if (column.fieldType === 'checkbox') {
+          fieldValue = { checked: false };
+        } else {
+          fieldValue = { value: '' };
+        }
+
+        return {
+          id: `column-${column.id}`,
+          fieldName: column.fieldName,
+          fieldType: column.fieldType,
+          fieldValue,
+          orderIndex: index,
+          taskId: '',
+          createdAt: new Date().toISOString(),
+        } as TaskField;
+      });
+      setFields(initialFields);
+      columnsInitialized.current = true;
+    }
+  }, [tableColumns, isEdit])
+
+  // Reset initialization flag when switching between edit/new mode
+  useEffect(() => {
+    if (isEdit) {
+      columnsInitialized.current = false;
+    }
+  }, [isEdit])
 
   const createMutation = useMutation({
     mutationFn: tasksApi.createTask,
@@ -149,12 +192,45 @@ export default function TaskForm() {
         })
         
         // Fields are automatically created on backend for all table columns
-        // Additional fields can be added manually if needed
+        // Update field values if user modified them in the form
         if (newTask.id && fields.length > 0) {
-          // Add additional fields to new task with error handling
+          // Reload task to get all fields created by backend
+          const updatedTask = await tasksApi.getTask(newTask.id)
+          
+          // Update fields that were modified in the form
+          const columnFields = fields.filter(f => f.id.startsWith('column-'))
           const failedFields: Array<{ field: TaskField; error: string }> = []
           
-          for (const field of fields) {
+          for (const formField of columnFields) {
+            // Find corresponding field in the created task
+            const taskField = updatedTask.fields.find(
+              f => f.fieldName === formField.fieldName
+            )
+            
+            if (taskField) {
+              // Check if value was modified from default
+              const formValue = JSON.stringify(formField.fieldValue)
+              const taskValue = JSON.stringify(taskField.fieldValue)
+              
+              if (formValue !== taskValue) {
+                try {
+                  await updateFieldMutation.mutateAsync({
+                    taskId: newTask.id,
+                    fieldId: taskField.id,
+                    data: { fieldValue: formField.fieldValue },
+                  })
+                } catch (fieldError) {
+                  const errorMessage = getErrorMessage(fieldError)
+                  failedFields.push({ field: formField, error: errorMessage })
+                  console.error(`Failed to update field "${formField.fieldName}":`, fieldError)
+                }
+              }
+            }
+          }
+          
+          // Add any additional non-column fields
+          const additionalFields = fields.filter(f => !f.id.startsWith('column-'))
+          for (const field of additionalFields) {
             try {
               await addFieldMutation.mutateAsync({
                 taskId: newTask.id,
@@ -175,10 +251,10 @@ export default function TaskForm() {
           if (failedFields.length > 0) {
             const failedNames = failedFields.map(f => f.field.fieldName).join(', ')
             handleError(
-              new Error(`Failed to add some fields: ${failedNames}`),
-              `Task created successfully, but ${failedFields.length} field(s) could not be added: ${failedNames}. You can add them manually.`
+              new Error(`Failed to update/add some fields: ${failedNames}`),
+              `Task created successfully, but ${failedFields.length} field(s) could not be updated: ${failedNames}. You can edit them manually.`
             )
-            // Still navigate to task page so user can add fields manually
+            // Still navigate to task page so user can edit fields manually
             navigate(`/tasks/${newTask.id}`)
             return
           }
@@ -388,7 +464,99 @@ export default function TaskForm() {
               {fields.length === 0 ? (
                 <p className="text-sm text-gray-500">No fields added yet</p>
               ) : (
-                fields.map((field) => (
+                <>
+                  {/* Table column fields */}
+                  {fields.filter(f => f.id.startsWith('column-')).length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                        Table Columns
+                      </p>
+                      <div className="space-y-2">
+                        {fields
+                          .filter(f => f.id.startsWith('column-'))
+                          .map((field) => (
+                            <div key={field.id} className="flex items-start justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  {tableColumns?.find(c => c.fieldName === field.fieldName)?.icon && (
+                                    <span>{tableColumns.find(c => c.fieldName === field.fieldName)?.icon}</span>
+                                  )}
+                                  <span className="font-medium text-gray-900">{field.fieldName}</span>
+                                  <span className="text-xs text-gray-500">({field.fieldType})</span>
+                                </div>
+                                {field.fieldType !== 'file' && field.fieldType !== 'checkbox' && (
+                                  <div className="text-sm text-gray-700 mt-1">
+                                    {field.fieldValue?.value || <span className="text-gray-400">No value</span>}
+                                  </div>
+                                )}
+                                {field.fieldType === 'checkbox' && (
+                                  <div className="text-sm text-gray-700 mt-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={field.fieldValue?.checked || false}
+                                      onChange={(e) => {
+                                        setFields(fields.map(f => 
+                                          f.id === field.id 
+                                            ? { ...f, fieldValue: { checked: e.target.checked } }
+                                            : f
+                                        ))
+                                      }}
+                                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                    />
+                                    <span className="ml-2">{field.fieldValue?.checked ? 'Checked' : 'Unchecked'}</span>
+                                  </div>
+                                )}
+                                {field.fieldType === 'file' && field.fieldValue?.url && (
+                                  <div className="mt-2">
+                                    <MediaPreview
+                                      url={field.fieldValue.url}
+                                      filename={field.fieldValue.filename}
+                                      className="w-full h-32"
+                                    />
+                                  </div>
+                                )}
+                                {(field.fieldType === 'text' || field.fieldType === 'url') && (
+                                  <input
+                                    type={field.fieldType === 'url' ? 'url' : 'text'}
+                                    value={field.fieldValue?.value || ''}
+                                    onChange={(e) => {
+                                      setFields(fields.map(f => 
+                                        f.id === field.id 
+                                          ? { ...f, fieldValue: { value: e.target.value } }
+                                          : f
+                                      ))
+                                    }}
+                                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                                    placeholder={`Enter ${field.fieldName.toLowerCase()}`}
+                                  />
+                                )}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setEditingField(field)
+                                  setIsFieldEditorOpen(true)
+                                }}
+                                className="ml-3 text-primary-600 hover:text-primary-700 text-sm"
+                                title="Edit field"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Additional fields */}
+                  {fields.filter(f => !f.id.startsWith('column-')).length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                        Additional Fields
+                      </p>
+                      <div className="space-y-2">
+                        {fields
+                          .filter(f => !f.id.startsWith('column-'))
+                          .map((field) => (
                   <div key={field.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
                       <span className="font-medium">{field.fieldName}</span>
@@ -431,7 +599,11 @@ export default function TaskForm() {
                       </button>
                     </div>
                   </div>
-                ))
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
