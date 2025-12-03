@@ -15,6 +15,20 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Elemental Content Creation Portal API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      tasks: '/api/tasks',
+      files: '/api/files',
+      prompts: '/api/prompts',
+    }
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -32,6 +46,21 @@ app.use('/api/tasks/:id/fields', fieldsRoutes);
 app.use('/api/tasks/:id/results', resultsRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/prompts', promptsRoutes);
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Not found',
+    message: `Route ${req.method} ${req.path} not found`,
+    availableEndpoints: {
+      root: 'GET /',
+      health: 'GET /health',
+      tasks: 'GET /api/tasks',
+      files: 'POST /api/files/upload',
+      prompts: 'GET /api/prompts/:taskId',
+    }
+  });
+});
 
 // Error handling middleware
 import { errorHandler } from './middleware/error-handler';
