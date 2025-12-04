@@ -48,7 +48,7 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
   }
 
   if (message.type === 'HAYGEN_PREPARE') {
-    const payload = message.payload as { taskId: string; publicationId?: string }
+    const payload = message.payload as { taskId: string; publicationId?: string; apiBaseUrl?: string }
     
     console.log('[Elemental Extension Background] HAYGEN_PREPARE received:', payload)
     
@@ -58,17 +58,29 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
       return true
     }
     
-    // Store only taskId and publicationId - extension will fetch data from API
+    // Store taskId, publicationId, and API URL - extension will fetch data from API
     const storageKey = `haygen_task_${payload.taskId}_${payload.publicationId || ''}`
     console.log('[Elemental Extension Background] Storing task IDs with key:', storageKey)
     
+    // Store API URL if provided
+    const storageData: any = {
+      taskId: payload.taskId,
+      publicationId: payload.publicationId,
+    }
+    
+    if (payload.apiBaseUrl) {
+      storageData.apiBaseUrl = payload.apiBaseUrl
+      // Also store API URL globally for future use
+      chrome.storage.local.set({ api_base_url: payload.apiBaseUrl })
+    }
+    
     chrome.storage.local.set({
-      [storageKey]: payload,
+      [storageKey]: storageData,
       // Also store by taskId for backward compatibility
-      [`haygen_task_${payload.taskId}`]: payload,
+      [`haygen_task_${payload.taskId}`]: storageData,
     }).then(() => {
       console.log('[Elemental Extension Background] Task IDs stored successfully:', storageKey)
-      console.log('[Elemental Extension Background] Stored data:', payload)
+      console.log('[Elemental Extension Background] Stored data:', storageData)
     }).catch((error) => {
       console.error('[Elemental Extension Background] Failed to store data:', error)
     })

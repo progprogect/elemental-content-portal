@@ -49,8 +49,20 @@ async function initializeAutomation() {
   }
 }
 
-// API base URL - можно вынести в конфиг или получать из storage
-const API_BASE_URL = 'http://localhost:3000' // или process.env.API_URL
+// Get API base URL from storage or use default
+async function getApiBaseUrl(): Promise<string> {
+  try {
+    const result = await chrome.storage.local.get('api_base_url')
+    if (result.api_base_url) {
+      return result.api_base_url
+    }
+  } catch (e) {
+    console.warn('[Haygen] Failed to get API URL from storage:', e)
+  }
+  
+  // Default to localhost:3000 for development
+  return 'http://localhost:3000'
+}
 
 // Process stored task data - now fetches from API
 async function processStoredData() {
@@ -76,6 +88,11 @@ async function processStoredData() {
         if (data && data.taskId) {
           taskId = data.taskId
           publicationId = data.publicationId || null
+          // If API URL is stored with this task, use it
+          if (data.apiBaseUrl) {
+            await chrome.storage.local.set({ api_base_url: data.apiBaseUrl })
+            console.log('[Haygen] API URL stored:', data.apiBaseUrl)
+          }
           console.log('[Haygen] Found task IDs:', { taskId, publicationId })
           break
         }
@@ -94,6 +111,11 @@ async function processStoredData() {
             if (data && data.taskId) {
               taskId = data.taskId
               publicationId = data.publicationId || null
+              // If API URL is stored with this task, use it
+              if (data.apiBaseUrl) {
+                await chrome.storage.local.set({ api_base_url: data.apiBaseUrl })
+                console.log('[Haygen] API URL stored from sessionStorage:', data.apiBaseUrl)
+              }
               console.log('[Haygen] Found task IDs in sessionStorage:', { taskId, publicationId })
               break
             }
@@ -120,9 +142,10 @@ async function processStoredData() {
 
     let promptData: HaygenTaskData
     try {
+      const apiBaseUrl = await getApiBaseUrl()
       const apiUrl = publicationId
-        ? `${API_BASE_URL}/api/prompts/tasks/${taskId}/publications/${publicationId}/generate`
-        : `${API_BASE_URL}/api/prompts/tasks/${taskId}/generate`
+        ? `${apiBaseUrl}/api/prompts/tasks/${taskId}/publications/${publicationId}/generate`
+        : `${apiBaseUrl}/api/prompts/tasks/${taskId}/generate`
       
       console.log('[Haygen] Fetching from API:', apiUrl)
       const response = await fetch(apiUrl)

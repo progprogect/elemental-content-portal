@@ -127,6 +127,9 @@ export function useExtension() {
     publicationId: string
   ): Promise<boolean> => {
     try {
+      // Get API base URL from current location
+      const apiBaseUrl = window.location.origin
+      
       // Only save taskId and publicationId - extension will fetch data from API
       const payload = {
         taskId,
@@ -137,14 +140,20 @@ export function useExtension() {
       try {
         await sendMessage({
           type: 'HAYGEN_PREPARE',
-          payload,
+          payload: {
+            ...payload,
+            apiBaseUrl, // Also send API URL so extension knows where to fetch from
+          },
         })
         console.log('[Portal] Task IDs saved via extension')
       } catch (error) {
         console.warn('[Portal] Extension not available, using sessionStorage:', error)
         // Fallback: save to sessionStorage for extension to read
         const storageKey = `haygen_task_${taskId}_${publicationId}`
-        sessionStorage.setItem(storageKey, JSON.stringify(payload))
+        sessionStorage.setItem(storageKey, JSON.stringify({
+          ...payload,
+          apiBaseUrl,
+        }))
         console.log('[Portal] Task IDs saved to sessionStorage')
       }
 
