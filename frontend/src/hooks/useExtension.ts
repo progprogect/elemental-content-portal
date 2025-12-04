@@ -28,34 +28,52 @@ export function useExtension() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // Check if extension is installed by sending postMessage
-    // Content script portal.ts will respond if extension is loaded
-    const checkExtension = async () => {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const timeoutId = setTimeout(() => reject(new Error('Timeout')), 2000)
-          
-          const listener = (event: MessageEvent) => {
-            if (event.data && event.data.type === 'PING_RESPONSE') {
-              window.removeEventListener('message', listener)
-              clearTimeout(timeoutId)
-              resolve()
-            }
-          }
-          
-          window.addEventListener('message', listener)
-          window.postMessage({ type: 'PING' }, '*')
-        })
+    // Check if extension is installed by listening for ready signal or sending PING
+    let extensionDetected = false
+    
+    // First, listen for ready signal from extension
+    const readyListener = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'EXTENSION_READY') {
+        console.log('[Portal] Extension ready signal received')
+        window.removeEventListener('message', readyListener)
+        extensionDetected = true
         setIsInstalled(true)
-        console.log('[Portal] Extension detected')
-      } catch (error) {
-        // Extension not installed or not responding
-        console.log('[Portal] Extension not detected, using sessionStorage fallback')
-        setIsInstalled(false)
+        console.log('[Portal] Extension detected via ready signal')
       }
     }
-
-    checkExtension()
+    
+    window.addEventListener('message', readyListener)
+    
+    // Also try sending PING after a short delay
+    const pingTimeout = setTimeout(() => {
+      const pingListener = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'PING_RESPONSE') {
+          console.log('[Portal] PING_RESPONSE received')
+          window.removeEventListener('message', pingListener)
+          extensionDetected = true
+          setIsInstalled(true)
+          console.log('[Portal] Extension detected via PING')
+        }
+      }
+      
+      window.addEventListener('message', pingListener)
+      console.log('[Portal] Sending PING to extension')
+      window.postMessage({ type: 'PING' }, '*')
+      
+      // Cleanup after timeout
+      setTimeout(() => {
+        window.removeEventListener('message', pingListener)
+        if (!extensionDetected) {
+          console.log('[Portal] Extension not detected, using sessionStorage fallback')
+          setIsInstalled(false)
+        }
+      }, 2000)
+    }, 500)
+    
+    return () => {
+      window.removeEventListener('message', readyListener)
+      clearTimeout(pingTimeout)
+    }
   }, [])
 
   const sendMessage = async (

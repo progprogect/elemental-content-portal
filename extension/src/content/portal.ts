@@ -3,17 +3,31 @@
 
 console.log('[Elemental Extension] Portal content script loaded')
 
+// Listen for ALL messages to debug
+window.addEventListener('message', (event: MessageEvent) => {
+  // Log all messages for debugging
+  if (event.data && event.data.type) {
+    console.log('[Elemental Extension] Received message:', event.data.type, event.data, 'source:', event.source === window ? 'same window' : 'other')
+  }
+})
+
 // Listen for messages from portal page
 window.addEventListener('message', (event: MessageEvent) => {
   // Only process messages from same window (not iframes)
-  if (event.source !== window) return
+  if (event.source !== window) {
+    console.log('[Elemental Extension] Ignoring message from iframe')
+    return
+  }
   
   const message = event.data
-  if (!message || !message.type) return
+  if (!message || !message.type) {
+    console.log('[Elemental Extension] Ignoring message without type')
+    return
+  }
 
   // Log all messages for debugging
   if (message.type.includes('HAYGEN') || message.type === 'PING') {
-    console.log('[Elemental Extension] Received message from portal:', message.type, message)
+    console.log('[Elemental Extension] Processing message from portal:', message.type, message)
   }
 
   // Handle PING separately - respond immediately
@@ -26,6 +40,7 @@ window.addEventListener('message', (event: MessageEvent) => {
       },
       '*'
     )
+    console.log('[Elemental Extension] PING_RESPONSE sent')
     return
   }
 
@@ -59,4 +74,14 @@ window.addEventListener('message', (event: MessageEvent) => {
     })
   }
 })
+
+// Also send a ready signal immediately
+console.log('[Elemental Extension] Sending ready signal')
+window.postMessage(
+  {
+    type: 'EXTENSION_READY',
+    payload: { success: true },
+  },
+  '*'
+)
 
