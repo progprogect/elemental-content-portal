@@ -1,7 +1,6 @@
 import { PromptSettings, PromptSettingsField } from '../types/prompt-settings'
 import PromptFieldWithPresets from './PromptFieldWithPresets'
 import Select from './ui/Select'
-import Input from './ui/Input'
 import { getPresetsForField } from '../config/prompt-presets'
 
 interface PromptSettingsStepProps {

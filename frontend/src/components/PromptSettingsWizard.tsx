@@ -86,11 +86,11 @@ export default function PromptSettingsWizard({
         // For strings, check if trimmed value is not empty
         if (typeof value === 'string') {
           if (value.trim() !== '') {
-            filteredSettings[key as keyof PromptSettings] = value
+            ;(filteredSettings as any)[key] = value
           }
         } else {
           // For booleans and other types, include as is
-          filteredSettings[key as keyof PromptSettings] = value
+          ;(filteredSettings as any)[key] = value
         }
       }
     })
