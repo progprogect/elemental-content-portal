@@ -49,47 +49,65 @@ async function initializeAutomation() {
   }
 }
 
-// Process stored task data from background script
+// Process stored task data from background script or sessionStorage
 async function processStoredData() {
   try {
-    // Get all stored task data
-    const storage = await chrome.storage.local.get(null)
-    
-    // Find task data for current tab
-    const taskKeys = Object.keys(storage).filter(key => key.startsWith('haygen_task_'))
-    
-    if (taskKeys.length === 0) {
-      // No task data, just start monitoring for manual saves
-      return
-    }
-
-    // Get the most recent task data
-    // Prefer task with publicationId
     let taskData: HaygenTaskData | null = null
     let taskKey: string | null = null
 
-    for (const key of taskKeys) {
-      const data = storage[key]
-      if (data && data.taskId && data.publicationId) {
-        taskData = data as HaygenTaskData
-        taskKey = key
-        break
-      }
-    }
-
-    // Fallback to task without publicationId
-    if (!taskData) {
+    // First try chrome.storage (from extension)
+    const storage = await chrome.storage.local.get(null)
+    const taskKeys = Object.keys(storage).filter(key => key.startsWith('haygen_task_'))
+    
+    if (taskKeys.length > 0) {
+      // Get the most recent task data
+      // Prefer task with publicationId
       for (const key of taskKeys) {
         const data = storage[key]
-        if (data && data.taskId) {
+        if (data && data.taskId && data.publicationId) {
           taskData = data as HaygenTaskData
           taskKey = key
           break
         }
       }
+
+      // Fallback to task without publicationId
+      if (!taskData) {
+        for (const key of taskKeys) {
+          const data = storage[key]
+          if (data && data.taskId) {
+            taskData = data as HaygenTaskData
+            taskKey = key
+            break
+          }
+        }
+      }
     }
 
-    if (!taskData || !taskKey) {
+    // Fallback: try sessionStorage (from portal)
+    if (!taskData) {
+      console.log('[Haygen] No data in chrome.storage, checking sessionStorage')
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && key.startsWith('haygen_task_')) {
+          try {
+            const data = JSON.parse(sessionStorage.getItem(key) || '{}')
+            if (data && data.taskId && data.publicationId) {
+              taskData = data as HaygenTaskData
+              taskKey = key
+              console.log('[Haygen] Found data in sessionStorage:', key)
+              break
+            }
+          } catch (e) {
+            console.warn('[Haygen] Failed to parse sessionStorage item:', key, e)
+          }
+        }
+      }
+    }
+    
+    if (!taskData) {
+      // No task data, just start monitoring for manual saves
+      console.log('[Haygen] No task data found')
       return
     }
 
