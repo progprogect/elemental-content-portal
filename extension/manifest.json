@@ -23,6 +23,12 @@
       "matches": ["https://*.haygen.com/*", "https://app.heygen.com/*"],
       "js": ["src/content/haygen.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://localhost:*/*", "https://*/*"],
+      "js": ["src/content/portal.js"],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "action": {
