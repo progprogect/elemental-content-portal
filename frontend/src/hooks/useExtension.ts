@@ -5,11 +5,6 @@ interface ExtensionMessage {
   payload?: any
 }
 
-interface HaygenPreparePayload {
-  taskId: string
-  publicationId: string
-}
-
 // Chrome extension types
 declare global {
   interface Window {
