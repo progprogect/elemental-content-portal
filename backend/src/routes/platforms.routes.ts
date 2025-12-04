@@ -8,3 +8,4 @@ router.get('/', asyncHandler(platformsController.getPlatforms));
 
 export default router;
 
+

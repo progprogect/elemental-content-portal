@@ -10,3 +10,4 @@ export const getPlatforms = async (req: Request, res: Response) => {
   res.json(platforms);
 };
 
+

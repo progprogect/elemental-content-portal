@@ -10,3 +10,4 @@ ALTER TABLE "tasks" ALTER COLUMN "scheduled_date" SET NOT NULL;
 -- CreateIndex
 CREATE INDEX "tasks_scheduled_date_idx" ON "tasks"("scheduled_date");
 
+

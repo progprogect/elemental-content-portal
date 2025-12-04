@@ -5,11 +5,14 @@
   "description": "Integration with Haygen AI Content Creator for Elemental Content Creation Portal",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "clipboardWrite",
+    "activeTab"
   ],
   "host_permissions": [
     "https://*.haygen.com/*",
-    "http://localhost:*/*"
+    "http://localhost:*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "src/background/index.js"

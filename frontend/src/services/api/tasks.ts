@@ -246,6 +246,13 @@ export const promptsApi = {
     }>(`/prompts/tasks/${taskId}/generate`)
     return response.data
   },
+  generatePromptForPublication: async (taskId: string, publicationId: string) => {
+    const response = await apiClient.get<{
+      prompt: string
+      assets: Array<{ type: string; url: string; filename: string }>
+    }>(`/prompts/tasks/${taskId}/publications/${publicationId}/generate`)
+    return response.data
+  },
 }
 
 export const taskListsApi = {

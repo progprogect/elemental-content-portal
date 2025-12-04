@@ -38,6 +38,7 @@ export default function TaskDetail() {
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>(undefined)
   const [resultPublicationId, setResultPublicationId] = useState<string | undefined>(undefined)
+  const [generatingPublicationId, setGeneratingPublicationId] = useState<string | undefined>(undefined)
   const [resultUrl, setResultUrl] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
   const [uploadedFile, setUploadedFile] = useState<{ path: string; url: string } | null>(null)
@@ -69,10 +70,16 @@ export default function TaskDetail() {
     }
   }, [location.state, task])
 
+  // Prompt data for specific publication
   const { data: promptData, isLoading: isLoadingPrompt } = useQuery({
-    queryKey: ['prompt', id],
-    queryFn: () => promptsApi.generatePrompt(id!),
-    enabled: !!id && isPromptModalOpen,
+    queryKey: ['prompt', id, generatingPublicationId],
+    queryFn: () => {
+      if (generatingPublicationId) {
+        return promptsApi.generatePromptForPublication(id!, generatingPublicationId)
+      }
+      return promptsApi.generatePrompt(id!)
+    },
+    enabled: !!id && (isPromptModalOpen || !!generatingPublicationId),
   })
 
   const deleteMutation = useMutation({
@@ -144,7 +151,7 @@ export default function TaskDetail() {
           resultUrl: result.resultUrl,
           downloadUrl: result.downloadUrl,
           source: 'haygen',
-          publicationId: undefined, // Extension results are task-level
+          publicationId: result.publicationId || null, // Use publicationId from extension
         })
       }
     }
@@ -300,21 +307,34 @@ export default function TaskDetail() {
                           variant="primary"
                           className="text-sm px-3 py-1.5"
                           onClick={async () => {
-                            if (isInstalled && promptData) {
-                              const success = await prepareHaygenGeneration(
-                                id!,
-                                promptData.prompt,
-                                promptData.assets
-                              )
-                              if (success) {
-                                window.open('https://haygen.com/create', '_blank')
+                            setGeneratingPublicationId(publication.id)
+                            try {
+                              // Generate prompt for this publication
+                              const promptData = await promptsApi.generatePromptForPublication(id!, publication.id)
+                              
+                              if (isInstalled) {
+                                const success = await prepareHaygenGeneration(
+                                  id!,
+                                  publication.id,
+                                  promptData.prompt,
+                                  promptData.assets
+                                )
+                                if (success) {
+                                  window.open('https://haygen.com/create', '_blank')
+                                } else {
+                                  setIsPromptModalOpen(true)
+                                }
                               } else {
                                 setIsPromptModalOpen(true)
                               }
-                            } else {
+                            } catch (error) {
+                              console.error('Failed to generate prompt:', error)
                               setIsPromptModalOpen(true)
+                            } finally {
+                              setGeneratingPublicationId(undefined)
                             }
                           }}
+                          disabled={isLoadingPrompt}
                         >
                           🎬 Generate Content
                         </Button>

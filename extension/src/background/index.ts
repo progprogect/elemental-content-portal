@@ -5,12 +5,29 @@ interface MessagePayload {
   payload?: any
 }
 
+interface HaygenPreparePayload {
+  taskId: string
+  publicationId: string
+  prompt: string
+  assets: Array<{ type: string; url: string; filename: string }>
+}
+
+interface HaygenResultPayload {
+  taskId: string
+  publicationId: string
+  resultUrl: string
+  downloadUrl?: string
+  status: 'success' | 'error'
+}
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendResponse) => {
   if (message.type === 'HAYGEN_RESULT') {
+    const payload = message.payload as HaygenResultPayload
+    
     // Store result data
     chrome.storage.local.set({
-      [`haygen_result_${message.payload.taskId}`]: message.payload,
+      [`haygen_result_${payload.taskId}_${payload.publicationId}`]: payload,
     })
 
     // Send message to portal if it's open
@@ -19,7 +36,7 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
         if (tab.id) {
           chrome.tabs.sendMessage(tab.id, {
             type: 'HAYGEN_RESULT',
-            payload: message.payload,
+            payload: payload,
           }).catch(() => {
             // Portal tab might not have content script, ignore error
           })
@@ -31,11 +48,19 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
   }
 
   if (message.type === 'HAYGEN_PREPARE') {
-    // Store task data for later use
+    const payload = message.payload as HaygenPreparePayload
+    
+    // Store task data with publicationId for later use
     chrome.storage.local.set({
-      [`haygen_task_${message.payload.taskId}`]: message.payload,
+      [`haygen_task_${payload.taskId}_${payload.publicationId}`]: payload,
+      // Also store by taskId for backward compatibility
+      [`haygen_task_${payload.taskId}`]: payload,
     })
 
+    sendResponse({ success: true })
+  }
+
+  if (message.type === 'PING') {
     sendResponse({ success: true })
   }
 
@@ -45,9 +70,12 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
 // Listen for messages from portal
 chrome.runtime.onMessageExternal?.addListener((message: MessagePayload, sender, sendResponse) => {
   if (message.type === 'HAYGEN_PREPARE') {
-    // Store task data
+    const payload = message.payload as HaygenPreparePayload
+    
+    // Store task data with publicationId
     chrome.storage.local.set({
-      [`haygen_task_${message.payload.taskId}`]: message.payload,
+      [`haygen_task_${payload.taskId}_${payload.publicationId}`]: payload,
+      [`haygen_task_${payload.taskId}`]: payload,
     })
 
     // Open Haygen in new tab
