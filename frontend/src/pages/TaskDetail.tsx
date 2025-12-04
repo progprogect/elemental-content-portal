@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, resultsApi, promptsApi, platformsApi, publicationsApi, fieldsApi, TaskResult, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
+import { tasksApi, resultsApi, platformsApi, publicationsApi, fieldsApi, TaskResult, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
+import { promptsApi } from '../services/api/prompts'
 import { useExtension } from '../hooks/useExtension'
+import { PromptSettings } from '../types/prompt-settings'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Input from '../components/ui/Input'
@@ -11,6 +13,7 @@ import MediaPreview from '../components/MediaPreview'
 import PublicationCard from '../components/PublicationCard'
 import PublicationEditor from '../components/PublicationEditor'
 import TableCellEditor from '../components/TableCellEditor'
+import PromptSettingsWizard from '../components/PromptSettingsWizard'
 
 // Utility function to format date for display
 function formatDateLong(dateString: string): string {
@@ -35,6 +38,7 @@ export default function TaskDetail() {
   const queryClient = useQueryClient()
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
+  const [isPromptWizardOpen, setIsPromptWizardOpen] = useState(false)
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>(undefined)
   const [resultPublicationId, setResultPublicationId] = useState<string | undefined>(undefined)
@@ -70,7 +74,7 @@ export default function TaskDetail() {
     }
   }, [location.state, task])
 
-  // Prompt data for specific publication
+  // Prompt data for specific publication (fallback modal)
   const { data: promptData, isLoading: isLoadingPrompt } = useQuery({
     queryKey: ['prompt', id, generatingPublicationId],
     queryFn: () => {
@@ -79,7 +83,7 @@ export default function TaskDetail() {
       }
       return promptsApi.generatePrompt(id!)
     },
-    enabled: !!id && (isPromptModalOpen || !!generatingPublicationId),
+    enabled: !!id && isPromptModalOpen,
   })
 
   const deleteMutation = useMutation({
@@ -306,32 +310,10 @@ export default function TaskDetail() {
                         <Button
                           variant="primary"
                           className="text-sm px-3 py-1.5"
-                          onClick={async () => {
+                          onClick={() => {
                             setGeneratingPublicationId(publication.id)
-                            try {
-                              // Save task IDs (via extension or sessionStorage)
-                              // Extension will fetch prompt data from API
-                              const success = await prepareHaygenGeneration(
-                                id!,
-                                publication.id
-                              )
-                              
-                              if (success) {
-                                // Direct redirect to Haygen
-                                // Extension will automatically fetch data from API and fill the form
-                                window.open('https://app.heygen.com/video-agent', '_blank')
-                              } else {
-                                // Fallback: show prompt modal if extension not available
-                                setIsPromptModalOpen(true)
-                              }
-                            } catch (error) {
-                              console.error('Failed to prepare Haygen generation:', error)
-                              setIsPromptModalOpen(true)
-                            } finally {
-                              setGeneratingPublicationId(undefined)
-                            }
+                            setIsPromptWizardOpen(true)
                           }}
-                          disabled={isLoadingPrompt}
                         >
                           🎬 Generate Content
                         </Button>
@@ -475,7 +457,76 @@ export default function TaskDetail() {
         </div>
       </Modal>
 
-      {/* Generate Prompt Modal */}
+      {/* Prompt Settings Wizard */}
+      {generatingPublicationId && (
+        <PromptSettingsWizard
+          isOpen={isPromptWizardOpen}
+          onClose={() => {
+            setIsPromptWizardOpen(false)
+            setGeneratingPublicationId(undefined)
+          }}
+          onContinue={async (settings: PromptSettings) => {
+            try {
+              // Generate prompt with settings
+              await promptsApi.generatePromptWithSettings(
+                id!,
+                generatingPublicationId!,
+                settings
+              )
+              
+              // Save task IDs (via extension or sessionStorage)
+              // Extension will fetch prompt data from API
+              const success = await prepareHaygenGeneration(
+                id!,
+                generatingPublicationId!
+              )
+              
+              if (success) {
+                // Direct redirect to Haygen
+                // Extension will automatically fetch data from API and fill the form
+                window.open('https://app.heygen.com/video-agent', '_blank')
+              } else {
+                // Fallback: show prompt modal if extension not available
+                setIsPromptModalOpen(true)
+              }
+            } catch (error) {
+              console.error('Failed to generate prompt with settings:', error)
+              setIsPromptModalOpen(true)
+            } finally {
+              setIsPromptWizardOpen(false)
+              setGeneratingPublicationId(undefined)
+            }
+          }}
+          onSkipAll={async () => {
+            try {
+              // Save task IDs (via extension or sessionStorage)
+              // Extension will fetch prompt data from API without settings
+              const success = await prepareHaygenGeneration(
+                id!,
+                generatingPublicationId!
+              )
+              
+              if (success) {
+                // Direct redirect to Haygen
+                // Extension will automatically fetch data from API and fill the form
+                window.open('https://app.heygen.com/video-agent', '_blank')
+              } else {
+                // Fallback: show prompt modal if extension not available
+                setIsPromptModalOpen(true)
+              }
+            } catch (error) {
+              console.error('Failed to prepare Haygen generation:', error)
+              setIsPromptModalOpen(true)
+            } finally {
+              setIsPromptWizardOpen(false)
+              setGeneratingPublicationId(undefined)
+            }
+          }}
+          contentType={task.publications?.find(p => p.id === generatingPublicationId)?.contentType}
+        />
+      )}
+
+      {/* Generate Prompt Modal (Fallback) */}
       <Modal
         isOpen={isPromptModalOpen}
         onClose={() => setIsPromptModalOpen(false)}

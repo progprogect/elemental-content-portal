@@ -1,4 +1,5 @@
 import { prisma } from '../utils/prisma';
+import { PromptSettings } from '../types/prompt-settings';
 
 export interface PromptData {
   prompt: string;
@@ -77,7 +78,8 @@ export async function generatePrompt(taskId: string): Promise<PromptData> {
 
 export async function generatePromptForPublication(
   taskId: string,
-  publicationId: string
+  publicationId: string,
+  settings?: PromptSettings
 ): Promise<PromptData> {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
@@ -169,6 +171,71 @@ export async function generatePromptForPublication(
 
   if (additionalFields) {
     prompt += `\n\nAdditional context:\n${additionalFields}`;
+  }
+
+  // Add settings to prompt if provided
+  if (settings) {
+    const settingsSections: string[] = [];
+
+    // Goal description (first, if provided)
+    if (settings.goalDescription) {
+      prompt = `${settings.goalDescription}\n\n${prompt}`;
+    }
+
+    // Video settings
+    const videoSettings: string[] = [];
+    if (settings.orientation) {
+      videoSettings.push(`- Orientation: ${settings.orientation}`);
+    }
+    if (settings.duration) {
+      videoSettings.push(`- Duration: ${settings.duration}`);
+    }
+    if (settings.movement) {
+      videoSettings.push(`- Movement: ${settings.movement}`);
+    }
+    if (settings.sceneTransitions) {
+      videoSettings.push(`- Scene Transitions: ${settings.sceneTransitions}`);
+    }
+    if (settings.background) {
+      videoSettings.push(`- Background: ${settings.background}`);
+    }
+    if (videoSettings.length > 0) {
+      settingsSections.push(`Video Settings:\n${videoSettings.join('\n')}`);
+    }
+
+    // Audio settings
+    const audioSettings: string[] = [];
+    if (settings.voice) {
+      audioSettings.push(`- Voice: ${settings.voice}`);
+    }
+    if (settings.language) {
+      audioSettings.push(`- Language: ${settings.language}`);
+    }
+    if (audioSettings.length > 0) {
+      settingsSections.push(`Audio Settings:\n${audioSettings.join('\n')}`);
+    }
+
+    // Text settings
+    const textSettings: string[] = [];
+    if (settings.hasText && settings.textContent) {
+      textSettings.push(`- On-screen text: ${settings.textContent}`);
+    }
+    if (settings.textToRead) {
+      textSettings.push(`- Text to read: ${settings.textToRead}`);
+    }
+    if (textSettings.length > 0) {
+      settingsSections.push(`Text Settings:\n${textSettings.join('\n')}`);
+    }
+
+    // Additional requirements
+    if (settings.additionalRequirements) {
+      settingsSections.push(`Additional Requirements:\n${settings.additionalRequirements}`);
+    }
+
+    // Append all settings sections to prompt
+    if (settingsSections.length > 0) {
+      prompt += `\n\n${settingsSections.join('\n\n')}`;
+    }
   }
 
   return {
