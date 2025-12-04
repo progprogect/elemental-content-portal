@@ -5,15 +5,19 @@ console.log('[Elemental Extension] Portal content script loaded')
 
 // Listen for messages from portal page
 window.addEventListener('message', (event: MessageEvent) => {
+  // Only process messages from same window (not iframes)
+  if (event.source !== window) return
+  
   const message = event.data
+  if (!message || !message.type) return
 
   // Log all messages for debugging
-  if (message && message.type && (message.type.includes('HAYGEN') || message.type === 'PING')) {
+  if (message.type.includes('HAYGEN') || message.type === 'PING') {
     console.log('[Elemental Extension] Received message from portal:', message.type, message)
   }
 
   // Handle PING separately - respond immediately
-  if (message && message.type === 'PING') {
+  if (message.type === 'PING') {
     console.log('[Elemental Extension] PING received, responding immediately')
     window.postMessage(
       {
@@ -26,7 +30,7 @@ window.addEventListener('message', (event: MessageEvent) => {
   }
 
   // Forward HAYGEN_PREPARE messages to background script
-  if (message && message.type === 'HAYGEN_PREPARE') {
+  if (message.type === 'HAYGEN_PREPARE') {
     console.log('[Elemental Extension] Forwarding to background script:', message.type, message.payload)
     
     chrome.runtime.sendMessage(message, (response) => {

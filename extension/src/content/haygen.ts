@@ -120,10 +120,9 @@ async function processStoredData() {
 
     let promptData: HaygenTaskData
     try {
-      const apiBaseUrl = await getApiBaseUrl()
       const apiUrl = publicationId
-        ? `${apiBaseUrl}/api/prompts/tasks/${taskId}/publications/${publicationId}/generate`
-        : `${apiBaseUrl}/api/prompts/tasks/${taskId}/generate`
+        ? `${API_BASE_URL}/api/prompts/tasks/${taskId}/publications/${publicationId}/generate`
+        : `${API_BASE_URL}/api/prompts/tasks/${taskId}/generate`
       
       console.log('[Haygen] Fetching from API:', apiUrl)
       const response = await fetch(apiUrl)
