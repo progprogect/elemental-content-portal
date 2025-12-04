@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "description": "Browser Extension for Elemental Content Creation Portal",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:ts && npm run build:bundle",
+    "build:ts": "tsc",
+    "build:bundle": "esbuild src/content/haygen.ts --bundle --format=esm --outfile=src/content/haygen-bundle.js --external:chrome",
     "watch": "tsc --watch"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.251",
+    "esbuild": "^0.27.1",
     "typescript": "^5.3.3"
   }
 }
-

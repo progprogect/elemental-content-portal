@@ -21,13 +21,7 @@
   "content_scripts": [
     {
       "matches": ["https://*.haygen.com/*", "https://app.heygen.com/*"],
-      "js": [
-        "src/content/notification-manager.js",
-        "src/content/haygen-prompt-filler.js",
-        "src/content/haygen-asset-loader.js",
-        "src/content/haygen-result-monitor.js",
-        "src/content/haygen.js"
-      ],
+      "js": ["src/content/haygen-bundle.js"],
       "type": "module",
       "run_at": "document_idle"
     },
