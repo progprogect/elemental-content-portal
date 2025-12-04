@@ -107,17 +107,20 @@ export function useExtension() {
       }
 
       // Fallback to postMessage for development
+      console.log('[Portal] Sending postMessage:', message.type, message)
       return new Promise((resolve, reject) => {
         window.postMessage(message, '*')
 
         let timeoutId: number | null = null
 
         const listener = (event: MessageEvent) => {
+          console.log('[Portal] Received message:', event.data)
           if (event.data.type === message.type + '_RESPONSE') {
             window.removeEventListener('message', listener)
             if (timeoutId !== null) {
               clearTimeout(timeoutId)
             }
+            console.log('[Portal] Resolving with payload:', event.data.payload)
             resolve(event.data.payload)
           }
         }
@@ -125,6 +128,7 @@ export function useExtension() {
         window.addEventListener('message', listener)
         timeoutId = window.setTimeout(() => {
           window.removeEventListener('message', listener)
+          console.error('[Portal] Timeout waiting for extension response')
           reject(new Error('Timeout waiting for extension response'))
         }, 10000)
       })
