@@ -28,45 +28,37 @@ declare global {
   }
 }
 
-// Extension ID - можно вынести в env переменную
-const EXTENSION_ID = import.meta.env.VITE_EXTENSION_ID || ''
+// Extension ID - можно вынести в env переменную (не используется, так как используем postMessage)
+// const EXTENSION_ID = import.meta.env.VITE_EXTENSION_ID || ''
 
 export function useExtension() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // Check if extension is installed
+    // Check if extension is installed by sending postMessage
+    // Content script portal.ts will respond if extension is loaded
     const checkExtension = async () => {
-      // Try to use chrome.runtime API if available
-      if (typeof window !== 'undefined' && window.chrome?.runtime) {
-        try {
-          // Try to send a ping message to check if extension is installed
-          // For locally installed extensions, we can send without extension ID
-          await new Promise<void>((resolve, reject) => {
-            const timeoutId = setTimeout(() => reject(new Error('Timeout')), 1000)
-            const targetId = EXTENSION_ID || undefined // Use undefined if no ID (works for local extensions)
-            
-            window.chrome!.runtime.sendMessage(
-              targetId as any,
-              { type: 'PING' },
-              () => {
-                clearTimeout(timeoutId)
-                if (window.chrome?.runtime.lastError) {
-                  reject(new Error(window.chrome.runtime.lastError.message))
-                } else {
-                  resolve()
-                }
-              }
-            )
-          })
-          setIsInstalled(true)
-        } catch (error) {
-          // Extension not installed or not responding
-          setIsInstalled(false)
-        }
-      } else {
-        // Fallback: assume extension is installed for development
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timeoutId = setTimeout(() => reject(new Error('Timeout')), 2000)
+          
+          const listener = (event: MessageEvent) => {
+            if (event.data && event.data.type === 'PING_RESPONSE') {
+              window.removeEventListener('message', listener)
+              clearTimeout(timeoutId)
+              resolve()
+            }
+          }
+          
+          window.addEventListener('message', listener)
+          window.postMessage({ type: 'PING' }, '*')
+        })
         setIsInstalled(true)
+        console.log('[Portal] Extension detected')
+      } catch (error) {
+        // Extension not installed or not responding
+        console.log('[Portal] Extension not detected, using sessionStorage fallback')
+        setIsInstalled(false)
       }
     }
 
