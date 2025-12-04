@@ -9,7 +9,7 @@ interface NotificationOptions {
 class NotificationManager {
   private notificationId = 'elemental-notification'
   private notification: HTMLElement | null = null
-  private hideTimeout: NodeJS.Timeout | null = null
+  private hideTimeout: number | null = null
 
   /**
    * Show a notification overlay
@@ -94,7 +94,7 @@ class NotificationManager {
 
     // Auto-hide after duration
     if (duration > 0) {
-      this.hideTimeout = setTimeout(() => {
+      this.hideTimeout = window.setTimeout(() => {
         this.hide()
       }, duration)
     }
@@ -148,8 +148,8 @@ class NotificationManager {
    * Hide notification
    */
   hide(): void {
-    if (this.hideTimeout) {
-      clearTimeout(this.hideTimeout)
+    if (this.hideTimeout !== null) {
+      window.clearTimeout(this.hideTimeout)
       this.hideTimeout = null
     }
 

@@ -16,7 +16,7 @@ class ResultMonitor {
   private observer: MutationObserver | null = null
   private isMonitoring = false
   private taskId: string | null = null
-  private publicationId: string | null = null
+  private publicationId: string = ''
   private lastCheckedLinks: { shareLink?: string; downloadLink?: string } = {}
 
   /**
@@ -61,7 +61,7 @@ class ResultMonitor {
     }
     this.isMonitoring = false
     this.taskId = null
-    this.publicationId = null
+    this.publicationId = ''
   }
 
   /**
