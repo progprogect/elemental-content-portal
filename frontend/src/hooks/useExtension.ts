@@ -12,8 +12,24 @@ interface HaygenPreparePayload {
   assets: Array<{ type: string; url: string; filename: string }>
 }
 
+// Chrome extension types
+declare global {
+  interface Window {
+    chrome?: {
+      runtime: {
+        sendMessage: (
+          extensionId: string,
+          message: any,
+          responseCallback?: (response: any) => void
+        ) => void
+        lastError?: { message: string }
+      }
+    }
+  }
+}
+
 // Extension ID - можно вынести в env переменную
-const EXTENSION_ID = process.env.VITE_EXTENSION_ID || ''
+const EXTENSION_ID = import.meta.env.VITE_EXTENSION_ID || ''
 
 export function useExtension() {
   const [isInstalled, setIsInstalled] = useState(false)
@@ -22,22 +38,23 @@ export function useExtension() {
     // Check if extension is installed
     const checkExtension = async () => {
       // Try to use chrome.runtime API if available
-      if (typeof chrome !== 'undefined' && chrome.runtime && EXTENSION_ID) {
+      if (typeof window !== 'undefined' && window.chrome?.runtime && EXTENSION_ID) {
         try {
           // Try to send a ping message to check if extension is installed
           await new Promise<void>((resolve, reject) => {
-            chrome.runtime.sendMessage(
+            const timeoutId = setTimeout(() => reject(new Error('Timeout')), 1000)
+            window.chrome!.runtime.sendMessage(
               EXTENSION_ID,
               { type: 'PING' },
-              (response) => {
-                if (chrome.runtime.lastError) {
-                  reject(chrome.runtime.lastError)
+              () => {
+                clearTimeout(timeoutId)
+                if (window.chrome?.runtime.lastError) {
+                  reject(new Error(window.chrome.runtime.lastError.message))
                 } else {
                   resolve()
                 }
               }
             )
-            setTimeout(() => reject(new Error('Timeout')), 1000)
           })
           setIsInstalled(true)
         } catch (error) {
@@ -64,14 +81,16 @@ export function useExtension() {
 
     try {
       // Try chrome.runtime API first if available
-      if (typeof chrome !== 'undefined' && chrome.runtime && EXTENSION_ID) {
+      if (typeof window !== 'undefined' && window.chrome?.runtime && EXTENSION_ID) {
         return new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(
+          const timeoutId = setTimeout(() => reject(new Error('Timeout waiting for extension response')), 10000)
+          window.chrome!.runtime.sendMessage(
             EXTENSION_ID,
             message,
-            (response) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message))
+            (response: any) => {
+              clearTimeout(timeoutId)
+              if (window.chrome?.runtime.lastError) {
+                reject(new Error(window.chrome.runtime.lastError.message))
               } else if (response && response.success) {
                 resolve(response.payload)
               } else {
@@ -79,7 +98,6 @@ export function useExtension() {
               }
             }
           )
-          setTimeout(() => reject(new Error('Timeout waiting for extension response')), 10000)
         })
       }
 
@@ -87,12 +105,12 @@ export function useExtension() {
       return new Promise((resolve, reject) => {
         window.postMessage(message, '*')
 
-        let timeoutId: NodeJS.Timeout | null = null
+        let timeoutId: number | null = null
 
         const listener = (event: MessageEvent) => {
           if (event.data.type === message.type + '_RESPONSE') {
             window.removeEventListener('message', listener)
-            if (timeoutId) {
+            if (timeoutId !== null) {
               clearTimeout(timeoutId)
             }
             resolve(event.data.payload)
@@ -100,7 +118,7 @@ export function useExtension() {
         }
 
         window.addEventListener('message', listener)
-        timeoutId = setTimeout(() => {
+        timeoutId = window.setTimeout(() => {
           window.removeEventListener('message', listener)
           reject(new Error('Timeout waiting for extension response'))
         }, 10000)
