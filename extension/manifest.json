@@ -21,14 +21,19 @@
   "content_scripts": [
     {
       "matches": ["https://*.haygen.com/*", "https://app.heygen.com/*"],
-      "js": ["src/content/haygen.js"],
+      "js": [
+        "src/content/notification-manager.js",
+        "src/content/haygen-prompt-filler.js",
+        "src/content/haygen-asset-loader.js",
+        "src/content/haygen-result-monitor.js",
+        "src/content/haygen.js"
+      ],
       "type": "module",
       "run_at": "document_idle"
     },
     {
       "matches": ["http://localhost:*/*", "https://*/*"],
       "js": ["src/content/portal.js"],
-      "type": "module",
       "run_at": "document_idle",
       "all_frames": false
     }

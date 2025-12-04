@@ -12,8 +12,21 @@ window.addEventListener('message', (event: MessageEvent) => {
     console.log('[Elemental Extension] Received message from portal:', message.type, message)
   }
 
-  // Forward HAYGEN_PREPARE and PING messages to background script
-  if (message && message.type && (message.type === 'HAYGEN_PREPARE' || message.type === 'PING')) {
+  // Handle PING separately - respond immediately
+  if (message && message.type === 'PING') {
+    console.log('[Elemental Extension] PING received, responding immediately')
+    window.postMessage(
+      {
+        type: 'PING_RESPONSE',
+        payload: { success: true },
+      },
+      '*'
+    )
+    return
+  }
+
+  // Forward HAYGEN_PREPARE messages to background script
+  if (message && message.type === 'HAYGEN_PREPARE') {
     console.log('[Elemental Extension] Forwarding to background script:', message.type, message.payload)
     
     chrome.runtime.sendMessage(message, (response) => {
@@ -40,9 +53,6 @@ window.addEventListener('message', (event: MessageEvent) => {
         )
       }
     })
-    
-    // Return true to keep channel open for async response
-    return true
   }
 })
 
