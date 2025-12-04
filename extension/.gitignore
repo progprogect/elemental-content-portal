@@ -2,5 +2,6 @@ node_modules/
 *.js
 *.js.map
 !src/popup/index.html
+!src/content/haygen-bundle.js
 icons/
 
