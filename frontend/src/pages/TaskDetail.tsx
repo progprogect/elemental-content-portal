@@ -320,7 +320,8 @@ export default function TaskDetail() {
                                   promptData.assets
                                 )
                                 if (success) {
-                                  window.open('https://haygen.com/create', '_blank')
+                                  // Extension will open Haygen automatically
+                                  // No need to open manually
                                 } else {
                                   setIsPromptModalOpen(true)
                                 }

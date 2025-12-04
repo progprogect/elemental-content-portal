@@ -11,6 +11,7 @@
   ],
   "host_permissions": [
     "https://*.haygen.com/*",
+    "https://app.heygen.com/*",
     "http://localhost:*/*",
     "https://*/*"
   ],
@@ -19,7 +20,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.haygen.com/*"],
+      "matches": ["https://*.haygen.com/*", "https://app.heygen.com/*"],
       "js": ["src/content/haygen.js"],
       "run_at": "document_idle"
     }
@@ -36,6 +37,12 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "https://*/*"
+    ]
   }
 }
 

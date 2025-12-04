@@ -15,7 +15,7 @@ interface HaygenTaskData {
 
 // Check if we're on a Haygen page
 function isHaygenPage(): boolean {
-  return window.location.hostname.includes('haygen.com')
+  return window.location.hostname.includes('haygen.com') || window.location.hostname.includes('heygen.com')
 }
 
 // Initialize automation when page loads

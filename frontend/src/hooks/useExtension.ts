@@ -38,13 +38,16 @@ export function useExtension() {
     // Check if extension is installed
     const checkExtension = async () => {
       // Try to use chrome.runtime API if available
-      if (typeof window !== 'undefined' && window.chrome?.runtime && EXTENSION_ID) {
+      if (typeof window !== 'undefined' && window.chrome?.runtime) {
         try {
           // Try to send a ping message to check if extension is installed
+          // For locally installed extensions, we can send without extension ID
           await new Promise<void>((resolve, reject) => {
             const timeoutId = setTimeout(() => reject(new Error('Timeout')), 1000)
+            const targetId = EXTENSION_ID || undefined // Use undefined if no ID (works for local extensions)
+            
             window.chrome!.runtime.sendMessage(
-              EXTENSION_ID,
+              targetId as any,
               { type: 'PING' },
               () => {
                 clearTimeout(timeoutId)
@@ -63,7 +66,6 @@ export function useExtension() {
         }
       } else {
         // Fallback: assume extension is installed for development
-        // In production, this should be properly configured
         setIsInstalled(true)
       }
     }
@@ -81,11 +83,14 @@ export function useExtension() {
 
     try {
       // Try chrome.runtime API first if available
-      if (typeof window !== 'undefined' && window.chrome?.runtime && EXTENSION_ID) {
+      // For locally installed extensions, we can send without extension ID
+      if (typeof window !== 'undefined' && window.chrome?.runtime) {
         return new Promise((resolve, reject) => {
           const timeoutId = setTimeout(() => reject(new Error('Timeout waiting for extension response')), 10000)
+          const targetId = EXTENSION_ID || undefined // Use undefined if no ID (works for local extensions)
+          
           window.chrome!.runtime.sendMessage(
-            EXTENSION_ID,
+            targetId as any,
             message,
             (response: any) => {
               clearTimeout(timeoutId)

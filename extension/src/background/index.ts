@@ -57,7 +57,13 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
       [`haygen_task_${payload.taskId}`]: payload,
     })
 
+    // Open Haygen in new tab
+    chrome.tabs.create({
+      url: 'https://app.heygen.com/video-agent',
+    })
+
     sendResponse({ success: true })
+    return true // Keep channel open
   }
 
   if (message.type === 'PING') {
@@ -80,7 +86,7 @@ chrome.runtime.onMessageExternal?.addListener((message: MessagePayload, sender, 
 
     // Open Haygen in new tab
     chrome.tabs.create({
-      url: 'https://haygen.com/create',
+      url: 'https://app.heygen.com/video-agent',
     })
 
     sendResponse({ success: true })
