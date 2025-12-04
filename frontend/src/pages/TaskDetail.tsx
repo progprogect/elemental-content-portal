@@ -42,7 +42,7 @@ export default function TaskDetail() {
   const [resultUrl, setResultUrl] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
   const [uploadedFile, setUploadedFile] = useState<{ path: string; url: string } | null>(null)
-  const { isInstalled, prepareHaygenGeneration } = useExtension()
+  const { prepareHaygenGeneration } = useExtension()
 
   const { data: task, isLoading } = useQuery({
     queryKey: ['task', id],
