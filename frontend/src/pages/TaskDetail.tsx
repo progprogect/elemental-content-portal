@@ -312,19 +312,18 @@ export default function TaskDetail() {
                               // Generate prompt for this publication
                               const promptData = await promptsApi.generatePromptForPublication(id!, publication.id)
                               
-                              if (isInstalled) {
-                                const success = await prepareHaygenGeneration(
-                                  id!,
-                                  publication.id,
-                                  promptData.prompt,
-                                  promptData.assets
-                                )
-                                if (success) {
-                                  // Extension will open Haygen automatically
-                                  // No need to open manually
-                                } else {
-                                  setIsPromptModalOpen(true)
-                                }
+                              // Save data (via extension or sessionStorage)
+                              const success = await prepareHaygenGeneration(
+                                id!,
+                                publication.id,
+                                promptData.prompt,
+                                promptData.assets
+                              )
+                              
+                              if (success) {
+                                // Direct redirect to Haygen
+                                // Extension will automatically fill the data when page loads
+                                window.open('https://app.heygen.com/video-agent', '_blank')
                               } else {
                                 setIsPromptModalOpen(true)
                               }

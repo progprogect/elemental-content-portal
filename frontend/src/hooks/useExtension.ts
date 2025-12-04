@@ -156,10 +156,21 @@ export function useExtension() {
         assets,
       }
 
-      await sendMessage({
-        type: 'HAYGEN_PREPARE',
-        payload,
-      })
+      // Try to save via extension first
+      try {
+        await sendMessage({
+          type: 'HAYGEN_PREPARE',
+          payload,
+        })
+        console.log('[Portal] Data saved via extension')
+      } catch (error) {
+        console.warn('[Portal] Extension not available, using sessionStorage:', error)
+        // Fallback: save to sessionStorage for extension to read
+        const storageKey = `haygen_task_${taskId}_${publicationId}`
+        sessionStorage.setItem(storageKey, JSON.stringify(payload))
+        console.log('[Portal] Data saved to sessionStorage')
+      }
+
       return true
     } catch (error) {
       console.error('Failed to prepare Haygen generation:', error)
