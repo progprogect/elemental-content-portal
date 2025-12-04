@@ -10,7 +10,34 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests from frontend, extension (chrome-extension://), and Haygen domains
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      /^chrome-extension:\/\/.*$/,
+      /^https?:\/\/.*\.heygen\.com$/,
+      /^https?:\/\/.*\.haygen\.com$/,
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return origin === allowed;
+      }
+      return allowed.test(origin);
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for now, can restrict later
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());

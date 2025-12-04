@@ -309,26 +309,23 @@ export default function TaskDetail() {
                           onClick={async () => {
                             setGeneratingPublicationId(publication.id)
                             try {
-                              // Generate prompt for this publication
-                              const promptData = await promptsApi.generatePromptForPublication(id!, publication.id)
-                              
-                              // Save data (via extension or sessionStorage)
+                              // Save task IDs (via extension or sessionStorage)
+                              // Extension will fetch prompt data from API
                               const success = await prepareHaygenGeneration(
                                 id!,
-                                publication.id,
-                                promptData.prompt,
-                                promptData.assets
+                                publication.id
                               )
                               
                               if (success) {
                                 // Direct redirect to Haygen
-                                // Extension will automatically fill the data when page loads
+                                // Extension will automatically fetch data from API and fill the form
                                 window.open('https://app.heygen.com/video-agent', '_blank')
                               } else {
+                                // Fallback: show prompt modal if extension not available
                                 setIsPromptModalOpen(true)
                               }
                             } catch (error) {
-                              console.error('Failed to generate prompt:', error)
+                              console.error('Failed to prepare Haygen generation:', error)
                               setIsPromptModalOpen(true)
                             } finally {
                               setGeneratingPublicationId(undefined)

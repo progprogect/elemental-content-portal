@@ -8,8 +8,6 @@ interface ExtensionMessage {
 interface HaygenPreparePayload {
   taskId: string
   publicationId: string
-  prompt: string
-  assets: Array<{ type: string; url: string; filename: string }>
 }
 
 // Chrome extension types
@@ -113,16 +111,13 @@ export function useExtension() {
 
   const prepareHaygenGeneration = async (
     taskId: string,
-    publicationId: string,
-    prompt: string,
-    assets: Array<{ type: string; url: string; filename: string }>
+    publicationId: string
   ): Promise<boolean> => {
     try {
-      const payload: HaygenPreparePayload = {
+      // Only save taskId and publicationId - extension will fetch data from API
+      const payload = {
         taskId,
         publicationId,
-        prompt,
-        assets,
       }
 
       // Try to save via extension first
@@ -131,13 +126,13 @@ export function useExtension() {
           type: 'HAYGEN_PREPARE',
           payload,
         })
-        console.log('[Portal] Data saved via extension')
+        console.log('[Portal] Task IDs saved via extension')
       } catch (error) {
         console.warn('[Portal] Extension not available, using sessionStorage:', error)
         // Fallback: save to sessionStorage for extension to read
         const storageKey = `haygen_task_${taskId}_${publicationId}`
         sessionStorage.setItem(storageKey, JSON.stringify(payload))
-        console.log('[Portal] Data saved to sessionStorage')
+        console.log('[Portal] Task IDs saved to sessionStorage')
       }
 
       return true

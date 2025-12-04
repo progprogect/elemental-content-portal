@@ -7,9 +7,7 @@ interface MessagePayload {
 
 interface HaygenPreparePayload {
   taskId: string
-  publicationId: string
-  prompt: string
-  assets: Array<{ type: string; url: string; filename: string }>
+  publicationId?: string
 }
 
 interface HaygenResultPayload {
@@ -50,7 +48,7 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
   }
 
   if (message.type === 'HAYGEN_PREPARE') {
-    const payload = message.payload as HaygenPreparePayload
+    const payload = message.payload as { taskId: string; publicationId?: string }
     
     console.log('[Elemental Extension Background] HAYGEN_PREPARE received:', payload)
     
@@ -60,23 +58,23 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
       return true
     }
     
-    // Store task data with publicationId for later use
+    // Store only taskId and publicationId - extension will fetch data from API
     const storageKey = `haygen_task_${payload.taskId}_${payload.publicationId || ''}`
-    console.log('[Elemental Extension Background] Storing data with key:', storageKey)
+    console.log('[Elemental Extension Background] Storing task IDs with key:', storageKey)
     
     chrome.storage.local.set({
       [storageKey]: payload,
       // Also store by taskId for backward compatibility
       [`haygen_task_${payload.taskId}`]: payload,
     }).then(() => {
-      console.log('[Elemental Extension Background] Data stored successfully:', storageKey)
+      console.log('[Elemental Extension Background] Task IDs stored successfully:', storageKey)
       console.log('[Elemental Extension Background] Stored data:', payload)
     }).catch((error) => {
       console.error('[Elemental Extension Background] Failed to store data:', error)
     })
 
     // Don't open tab here - frontend handles it
-    // The content script on Haygen page will read from storage
+    // The content script on Haygen page will read from storage and fetch from API
 
     sendResponse({ success: true })
     return true // Keep channel open

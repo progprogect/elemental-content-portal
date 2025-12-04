@@ -49,12 +49,15 @@ async function initializeAutomation() {
   }
 }
 
-// Process stored task data from background script or sessionStorage
+// API base URL - можно вынести в конфиг или получать из storage
+const API_BASE_URL = 'http://localhost:3000' // или process.env.API_URL
+
+// Process stored task data - now fetches from API
 async function processStoredData() {
   try {
     console.log('[Haygen] Starting to process stored data...')
-    let taskData: HaygenTaskData | null = null
-    let taskKey: string | null = null
+    let taskId: string | null = null
+    let publicationId: string | null = null
 
     // First try chrome.storage (from extension)
     console.log('[Haygen] Checking chrome.storage.local...')
@@ -70,31 +73,17 @@ async function processStoredData() {
       for (const key of taskKeys) {
         const data = storage[key]
         console.log('[Haygen] Checking key:', key, 'data:', data)
-        if (data && data.taskId && data.publicationId) {
-          taskData = data as HaygenTaskData
-          taskKey = key
-          console.log('[Haygen] Found task data with publicationId:', key)
+        if (data && data.taskId) {
+          taskId = data.taskId
+          publicationId = data.publicationId || null
+          console.log('[Haygen] Found task IDs:', { taskId, publicationId })
           break
-        }
-      }
-
-      // Fallback to task without publicationId
-      if (!taskData) {
-        console.log('[Haygen] No task with publicationId, checking tasks without publicationId...')
-        for (const key of taskKeys) {
-          const data = storage[key]
-          if (data && data.taskId) {
-            taskData = data as HaygenTaskData
-            taskKey = key
-            console.log('[Haygen] Found task data without publicationId:', key)
-            break
-          }
         }
       }
     }
 
     // Fallback: try sessionStorage (from portal)
-    if (!taskData) {
+    if (!taskId) {
       console.log('[Haygen] No data in chrome.storage, checking sessionStorage')
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
@@ -103,9 +92,9 @@ async function processStoredData() {
             const data = JSON.parse(sessionStorage.getItem(key) || '{}')
             console.log('[Haygen] Checking sessionStorage key:', key, 'data:', data)
             if (data && data.taskId) {
-              taskData = data as HaygenTaskData
-              taskKey = key
-              console.log('[Haygen] Found data in sessionStorage:', key)
+              taskId = data.taskId
+              publicationId = data.publicationId || null
+              console.log('[Haygen] Found task IDs in sessionStorage:', { taskId, publicationId })
               break
             }
           } catch (e) {
@@ -115,19 +104,47 @@ async function processStoredData() {
       }
     }
     
-    if (!taskData) {
+    if (!taskId) {
       // No task data, just start monitoring for manual saves
-      console.log('[Haygen] No task data found in storage or sessionStorage')
+      console.log('[Haygen] No task ID found in storage or sessionStorage')
       return
     }
     
-    console.log('[Haygen] Task data found:', taskData)
+    console.log('[Haygen] Task IDs found:', { taskId, publicationId })
+
+    // Fetch prompt data from API
+    notificationManager.show('Загрузка данных из API...', {
+      type: 'info',
+      duration: 2000,
+    })
+
+    let promptData: HaygenTaskData
+    try {
+      const apiBaseUrl = await getApiBaseUrl()
+      const apiUrl = publicationId
+        ? `${apiBaseUrl}/api/prompts/tasks/${taskId}/publications/${publicationId}/generate`
+        : `${apiBaseUrl}/api/prompts/tasks/${taskId}/generate`
+      
+      console.log('[Haygen] Fetching from API:', apiUrl)
+      const response = await fetch(apiUrl)
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`)
+      }
+      
+      promptData = await response.json()
+      console.log('[Haygen] Prompt data received from API:', promptData)
+    } catch (error) {
+      console.error('[Haygen] Failed to fetch from API:', error)
+      notificationManager.showError('Ошибка при загрузке данных из API. Пожалуйста, выполните действия вручную.')
+      return
+    }
 
     // Ensure publicationId exists (fallback to empty string if not present)
-    const publicationId = taskData.publicationId || ''
+    const finalPublicationId = publicationId || ''
 
     // Start result monitoring
-    resultMonitor.startMonitoring(taskData.taskId, publicationId)
+    resultMonitor.startMonitoring(taskId, finalPublicationId)
 
     // Fill prompt
     notificationManager.show('Инициализация автоматизации...', {
@@ -135,11 +152,11 @@ async function processStoredData() {
       duration: 2000,
     })
 
-    const promptFilled = await promptFiller.fillPrompt(taskData.prompt)
+    const promptFilled = await promptFiller.fillPrompt(promptData.prompt)
 
     // Load assets if any
-    if (taskData.assets && taskData.assets.length > 0) {
-      await assetLoader.loadAssets(taskData.assets)
+    if (promptData.assets && promptData.assets.length > 0) {
+      await assetLoader.loadAssets(promptData.assets)
     }
 
     // Show success message
@@ -155,9 +172,6 @@ async function processStoredData() {
       )
     }
 
-    // Clean up stored data after processing (optional)
-    // chrome.storage.local.remove(taskKey)
-
   } catch (error) {
     console.error('Error processing stored data:', error)
     notificationManager.showError('Ошибка при автоматизации. Пожалуйста, выполните действия вручную.')
@@ -167,12 +181,10 @@ async function processStoredData() {
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'HAYGEN_PREPARE') {
-    const data = message.payload as HaygenTaskData
-    
-    // Ensure publicationId exists
-    const publicationId = data.publicationId || ''
+    const data = message.payload as { taskId: string; publicationId?: string }
     
     // Store locally and process
+    const publicationId = data.publicationId || ''
     chrome.storage.local.set({
       [`haygen_task_${data.taskId}_${publicationId}`]: data,
     }).then(() => {
