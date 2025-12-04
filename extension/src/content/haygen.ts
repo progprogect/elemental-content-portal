@@ -52,32 +52,41 @@ async function initializeAutomation() {
 // Process stored task data from background script or sessionStorage
 async function processStoredData() {
   try {
+    console.log('[Haygen] Starting to process stored data...')
     let taskData: HaygenTaskData | null = null
     let taskKey: string | null = null
 
     // First try chrome.storage (from extension)
+    console.log('[Haygen] Checking chrome.storage.local...')
     const storage = await chrome.storage.local.get(null)
+    console.log('[Haygen] All storage keys:', Object.keys(storage))
+    
     const taskKeys = Object.keys(storage).filter(key => key.startsWith('haygen_task_'))
+    console.log('[Haygen] Found task keys:', taskKeys)
     
     if (taskKeys.length > 0) {
       // Get the most recent task data
       // Prefer task with publicationId
       for (const key of taskKeys) {
         const data = storage[key]
+        console.log('[Haygen] Checking key:', key, 'data:', data)
         if (data && data.taskId && data.publicationId) {
           taskData = data as HaygenTaskData
           taskKey = key
+          console.log('[Haygen] Found task data with publicationId:', key)
           break
         }
       }
 
       // Fallback to task without publicationId
       if (!taskData) {
+        console.log('[Haygen] No task with publicationId, checking tasks without publicationId...')
         for (const key of taskKeys) {
           const data = storage[key]
           if (data && data.taskId) {
             taskData = data as HaygenTaskData
             taskKey = key
+            console.log('[Haygen] Found task data without publicationId:', key)
             break
           }
         }
@@ -92,7 +101,8 @@ async function processStoredData() {
         if (key && key.startsWith('haygen_task_')) {
           try {
             const data = JSON.parse(sessionStorage.getItem(key) || '{}')
-            if (data && data.taskId && data.publicationId) {
+            console.log('[Haygen] Checking sessionStorage key:', key, 'data:', data)
+            if (data && data.taskId) {
               taskData = data as HaygenTaskData
               taskKey = key
               console.log('[Haygen] Found data in sessionStorage:', key)
@@ -107,9 +117,11 @@ async function processStoredData() {
     
     if (!taskData) {
       // No task data, just start monitoring for manual saves
-      console.log('[Haygen] No task data found')
+      console.log('[Haygen] No task data found in storage or sessionStorage')
       return
     }
+    
+    console.log('[Haygen] Task data found:', taskData)
 
     // Ensure publicationId exists (fallback to empty string if not present)
     const publicationId = taskData.publicationId || ''

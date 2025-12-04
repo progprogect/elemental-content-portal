@@ -82,31 +82,8 @@ export function useExtension() {
     }
 
     try {
-      // Try chrome.runtime API first if available
-      // For locally installed extensions, we can send without extension ID
-      if (typeof window !== 'undefined' && window.chrome?.runtime) {
-        return new Promise((resolve, reject) => {
-          const timeoutId = setTimeout(() => reject(new Error('Timeout waiting for extension response')), 10000)
-          const targetId = EXTENSION_ID || undefined // Use undefined if no ID (works for local extensions)
-          
-          window.chrome!.runtime.sendMessage(
-            targetId as any,
-            message,
-            (response: any) => {
-              clearTimeout(timeoutId)
-              if (window.chrome?.runtime.lastError) {
-                reject(new Error(window.chrome.runtime.lastError.message))
-              } else if (response && response.success) {
-                resolve(response.payload)
-              } else {
-                reject(new Error('Extension returned error'))
-              }
-            }
-          )
-        })
-      }
-
-      // Fallback to postMessage for development
+      // Always use postMessage for external pages
+      // Content script portal.ts will forward to background script
       console.log('[Portal] Sending postMessage:', message.type, message)
       return new Promise((resolve, reject) => {
         window.postMessage(message, '*')

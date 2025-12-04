@@ -54,23 +54,29 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
     
     console.log('[Elemental Extension Background] HAYGEN_PREPARE received:', payload)
     
+    if (!payload || !payload.taskId) {
+      console.error('[Elemental Extension Background] Invalid payload:', payload)
+      sendResponse({ success: false, error: 'Invalid payload' })
+      return true
+    }
+    
     // Store task data with publicationId for later use
+    const storageKey = `haygen_task_${payload.taskId}_${payload.publicationId || ''}`
+    console.log('[Elemental Extension Background] Storing data with key:', storageKey)
+    
     chrome.storage.local.set({
-      [`haygen_task_${payload.taskId}_${payload.publicationId}`]: payload,
+      [storageKey]: payload,
       // Also store by taskId for backward compatibility
       [`haygen_task_${payload.taskId}`]: payload,
     }).then(() => {
-      console.log('[Elemental Extension Background] Data stored successfully')
+      console.log('[Elemental Extension Background] Data stored successfully:', storageKey)
+      console.log('[Elemental Extension Background] Stored data:', payload)
+    }).catch((error) => {
+      console.error('[Elemental Extension Background] Failed to store data:', error)
     })
 
-    // Open Haygen in new tab
-    chrome.tabs.create({
-      url: 'https://app.heygen.com/video-agent',
-    }).then((tab) => {
-      console.log('[Elemental Extension Background] Haygen tab opened:', tab.id)
-    }).catch((error) => {
-      console.error('[Elemental Extension Background] Failed to open tab:', error)
-    })
+    // Don't open tab here - frontend handles it
+    // The content script on Haygen page will read from storage
 
     sendResponse({ success: true })
     return true // Keep channel open
@@ -83,23 +89,33 @@ chrome.runtime.onMessage.addListener((message: MessagePayload, sender, sendRespo
   return true // Keep channel open for async response
 })
 
-// Listen for messages from portal
+// Listen for messages from portal (via externally_connectable)
 chrome.runtime.onMessageExternal?.addListener((message: MessagePayload, sender, sendResponse) => {
+  console.log('[Elemental Extension Background] External message received:', message.type, message)
+  
   if (message.type === 'HAYGEN_PREPARE') {
     const payload = message.payload as HaygenPreparePayload
     
+    if (!payload || !payload.taskId) {
+      console.error('[Elemental Extension Background] Invalid external payload:', payload)
+      sendResponse({ success: false, error: 'Invalid payload' })
+      return true
+    }
+    
     // Store task data with publicationId
+    const storageKey = `haygen_task_${payload.taskId}_${payload.publicationId || ''}`
+    console.log('[Elemental Extension Background] Storing external data with key:', storageKey)
+    
     chrome.storage.local.set({
-      [`haygen_task_${payload.taskId}_${payload.publicationId}`]: payload,
+      [storageKey]: payload,
       [`haygen_task_${payload.taskId}`]: payload,
+    }).then(() => {
+      console.log('[Elemental Extension Background] External data stored successfully')
     })
 
-    // Open Haygen in new tab
-    chrome.tabs.create({
-      url: 'https://app.heygen.com/video-agent',
-    })
-
+    // Don't open tab - frontend handles it
     sendResponse({ success: true })
+    return true
   }
 
   return true
