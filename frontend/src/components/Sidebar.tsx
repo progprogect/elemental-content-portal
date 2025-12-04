@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskListsApi, TaskList } from '../services/api/tasks'
-import { Bars3Icon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
@@ -40,6 +40,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   const currentListId = location.pathname.startsWith('/lists/') 
     ? location.pathname.split('/')[2]?.split('?')[0]
     : null
+  
+  // Check if Settings page is active
+  const isSettingsActive = location.pathname === '/settings'
 
   const handleListClick = (listId: string) => {
     navigate(`/lists/${listId}`)
@@ -145,6 +148,29 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
             )}
           </div>
         </nav>
+
+        {/* Settings Section */}
+        <div className="px-2 py-2 border-t border-gray-200">
+          {!isCollapsed && (
+            <h2 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+              Settings
+            </h2>
+          )}
+          <button
+            onClick={() => {
+              navigate('/settings')
+              onMobileClose()
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isSettingsActive
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Cog6ToothIcon className="h-5 w-5 flex-shrink-0" />
+            {!isCollapsed && <span className="flex-1 text-left">Settings</span>}
+          </button>
+        </div>
 
         {/* Create Button */}
         <div className="p-4 border-t border-gray-200">
