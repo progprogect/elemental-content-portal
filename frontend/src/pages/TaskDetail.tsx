@@ -467,18 +467,19 @@ export default function TaskDetail() {
           }}
           onContinue={async (settings: PromptSettings) => {
             try {
-              // Generate prompt with settings
+              // Generate prompt with settings (to validate and cache on backend)
               await promptsApi.generatePromptWithSettings(
                 id!,
                 generatingPublicationId!,
                 settings
               )
               
-              // Save task IDs (via extension or sessionStorage)
-              // Extension will fetch prompt data from API
+              // Save task IDs and settings (via extension or sessionStorage)
+              // Extension will fetch prompt data from API using POST with settings
               const success = await prepareHaygenGeneration(
                 id!,
-                generatingPublicationId!
+                generatingPublicationId!,
+                settings
               )
               
               if (success) {

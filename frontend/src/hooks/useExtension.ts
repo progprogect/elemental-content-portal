@@ -124,16 +124,18 @@ export function useExtension() {
 
   const prepareHaygenGeneration = async (
     taskId: string,
-    publicationId: string
+    publicationId: string,
+    settings?: any
   ): Promise<boolean> => {
     try {
       // Get API base URL from current location
       const apiBaseUrl = window.location.origin
       
-      // Only save taskId and publicationId - extension will fetch data from API
+      // Save taskId, publicationId, and settings - extension will fetch data from API
       const payload = {
         taskId,
         publicationId,
+        settings, // Include settings if provided
       }
 
       // Try to save via extension first
@@ -145,7 +147,7 @@ export function useExtension() {
             apiBaseUrl, // Also send API URL so extension knows where to fetch from
           },
         })
-        console.log('[Portal] Task IDs saved via extension')
+        console.log('[Portal] Task IDs and settings saved via extension')
       } catch (error) {
         console.warn('[Portal] Extension not available, using sessionStorage:', error)
         // Fallback: save to sessionStorage for extension to read
@@ -154,7 +156,7 @@ export function useExtension() {
           ...payload,
           apiBaseUrl,
         }))
-        console.log('[Portal] Task IDs saved to sessionStorage')
+        console.log('[Portal] Task IDs and settings saved to sessionStorage')
       }
 
       return true

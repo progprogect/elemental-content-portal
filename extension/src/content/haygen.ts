@@ -13,6 +13,13 @@ interface HaygenTaskData {
   assets: Array<{ type: string; url: string; filename: string }>
 }
 
+interface StoredTaskData {
+  taskId: string
+  publicationId?: string
+  apiBaseUrl?: string
+  settings?: any
+}
+
 // Check if we're on a Haygen page
 function isHaygenPage(): boolean {
   return window.location.hostname.includes('haygen.com') || window.location.hostname.includes('heygen.com')
@@ -70,6 +77,8 @@ async function processStoredData() {
     console.log('[Haygen] Starting to process stored data...')
     let taskId: string | null = null
     let publicationId: string | null = null
+    let settings: any = null
+    let storageKey: string | null = null
 
     // First try chrome.storage (from extension)
     console.log('[Haygen] Checking chrome.storage.local...')
@@ -83,17 +92,19 @@ async function processStoredData() {
       // Get the most recent task data
       // Prefer task with publicationId
       for (const key of taskKeys) {
-        const data = storage[key]
+        const data: StoredTaskData = storage[key]
         console.log('[Haygen] Checking key:', key, 'data:', data)
         if (data && data.taskId) {
           taskId = data.taskId
           publicationId = data.publicationId || null
+          settings = data.settings || null
+          storageKey = key
           // If API URL is stored with this task, use it
           if (data.apiBaseUrl) {
             await chrome.storage.local.set({ api_base_url: data.apiBaseUrl })
             console.log('[Haygen] API URL stored:', data.apiBaseUrl)
           }
-          console.log('[Haygen] Found task IDs:', { taskId, publicationId })
+          console.log('[Haygen] Found task IDs:', { taskId, publicationId, hasSettings: !!settings })
           break
         }
       }
@@ -106,17 +117,19 @@ async function processStoredData() {
         const key = sessionStorage.key(i)
         if (key && key.startsWith('haygen_task_')) {
           try {
-            const data = JSON.parse(sessionStorage.getItem(key) || '{}')
+            const data: StoredTaskData = JSON.parse(sessionStorage.getItem(key) || '{}')
             console.log('[Haygen] Checking sessionStorage key:', key, 'data:', data)
             if (data && data.taskId) {
               taskId = data.taskId
               publicationId = data.publicationId || null
+              settings = data.settings || null
+              storageKey = key
               // If API URL is stored with this task, use it
               if (data.apiBaseUrl) {
                 await chrome.storage.local.set({ api_base_url: data.apiBaseUrl })
                 console.log('[Haygen] API URL stored from sessionStorage:', data.apiBaseUrl)
               }
-              console.log('[Haygen] Found task IDs in sessionStorage:', { taskId, publicationId })
+              console.log('[Haygen] Found task IDs in sessionStorage:', { taskId, publicationId, hasSettings: !!settings })
               break
             }
           } catch (e) {
@@ -147,8 +160,20 @@ async function processStoredData() {
         ? `${apiBaseUrl}/api/prompts/tasks/${taskId}/publications/${publicationId}/generate`
         : `${apiBaseUrl}/api/prompts/tasks/${taskId}/generate`
       
-      console.log('[Haygen] Fetching from API:', apiUrl)
-      const response = await fetch(apiUrl)
+      console.log('[Haygen] Fetching from API:', apiUrl, 'with settings:', !!settings)
+      
+      // Use POST if settings are provided, otherwise use GET for backward compatibility
+      const fetchOptions: RequestInit = settings
+        ? {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ settings }),
+          }
+        : {}
+      
+      const response = await fetch(apiUrl, fetchOptions)
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`)
@@ -192,6 +217,26 @@ async function processStoredData() {
           duration: 5000,
         }
       )
+    }
+
+    // Clear storage after successful processing to prevent re-filling on page refresh
+    if (storageKey) {
+      console.log('[Haygen] Clearing storage key:', storageKey)
+      try {
+        // Remove from chrome.storage
+        await chrome.storage.local.remove(storageKey)
+        // Also remove the backup key
+        if (taskId) {
+          await chrome.storage.local.remove(`haygen_task_${taskId}`)
+        }
+        // Remove from sessionStorage if it exists
+        if (sessionStorage.getItem(storageKey)) {
+          sessionStorage.removeItem(storageKey)
+        }
+        console.log('[Haygen] Storage cleared successfully')
+      } catch (error) {
+        console.warn('[Haygen] Failed to clear storage:', error)
+      }
     }
 
   } catch (error) {
