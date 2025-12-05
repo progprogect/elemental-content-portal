@@ -5,6 +5,7 @@ import { tasksApi, resultsApi, platformsApi, publicationsApi, fieldsApi, TaskRes
 import { promptsApi } from '../services/api/prompts'
 import { useExtension } from '../hooks/useExtension'
 import { PromptSettings } from '../types/prompt-settings'
+import { isContentTypeSupported, handleContentGeneration, getGenerationStrategy } from '../services/content-generator'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Input from '../components/ui/Input'
@@ -309,10 +310,26 @@ export default function TaskDetail() {
                       <div className="flex flex-wrap gap-3">
                         <Button
                           variant="primary"
-                          className="text-sm px-3 py-1.5"
+                          className={`text-sm px-3 py-1.5 ${!isContentTypeSupported(publication.contentType || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={!isContentTypeSupported(publication.contentType || '')}
                           onClick={() => {
-                            setGeneratingPublicationId(publication.id)
-                            setIsPromptWizardOpen(true)
+                            const contentType = publication.contentType || 'video'
+                            const strategy = getGenerationStrategy(contentType)
+                            
+                            if (strategy?.requiresWizard) {
+                              // Open wizard for video
+                              setGeneratingPublicationId(publication.id)
+                              setIsPromptWizardOpen(true)
+                            } else if (strategy) {
+                              // Direct redirect for talking_head and others
+                              handleContentGeneration(
+                                id!,
+                                publication.id,
+                                contentType,
+                                prepareHaygenGeneration,
+                                () => setIsPromptModalOpen(true)
+                              )
+                            }
                           }}
                         >
                           🎬 Generate Content
@@ -467,31 +484,19 @@ export default function TaskDetail() {
           }}
           onContinue={async (settings: PromptSettings) => {
             try {
-              // Generate prompt with settings (to validate and cache on backend)
-              await promptsApi.generatePromptWithSettings(
+              const publication = task.publications?.find(p => p.id === generatingPublicationId)
+              const contentType = publication?.contentType || 'video'
+              
+              await handleContentGeneration(
                 id!,
                 generatingPublicationId!,
+                contentType,
+                prepareHaygenGeneration,
+                () => setIsPromptModalOpen(true),
                 settings
               )
-              
-              // Save task IDs and settings (via extension or sessionStorage)
-              // Extension will fetch prompt data from API using POST with settings
-              const success = await prepareHaygenGeneration(
-                id!,
-                generatingPublicationId!,
-                settings
-              )
-              
-              if (success) {
-                // Direct redirect to Haygen
-                // Extension will automatically fetch data from API and fill the form
-                window.open('https://app.heygen.com/video-agent', '_blank')
-              } else {
-                // Fallback: show prompt modal if extension not available
-                setIsPromptModalOpen(true)
-              }
             } catch (error) {
-              console.error('Failed to generate prompt with settings:', error)
+              console.error('Failed to generate content:', error)
               setIsPromptModalOpen(true)
             } finally {
               setIsPromptWizardOpen(false)
@@ -500,23 +505,18 @@ export default function TaskDetail() {
           }}
           onSkipAll={async () => {
             try {
-              // Save task IDs (via extension or sessionStorage)
-              // Extension will fetch prompt data from API without settings
-              const success = await prepareHaygenGeneration(
-                id!,
-                generatingPublicationId!
-              )
+              const publication = task.publications?.find(p => p.id === generatingPublicationId)
+              const contentType = publication?.contentType || 'video'
               
-              if (success) {
-                // Direct redirect to Haygen
-                // Extension will automatically fetch data from API and fill the form
-                window.open('https://app.heygen.com/video-agent', '_blank')
-              } else {
-                // Fallback: show prompt modal if extension not available
-                setIsPromptModalOpen(true)
-              }
+              await handleContentGeneration(
+                id!,
+                generatingPublicationId!,
+                contentType,
+                prepareHaygenGeneration,
+                () => setIsPromptModalOpen(true)
+              )
             } catch (error) {
-              console.error('Failed to prepare Haygen generation:', error)
+              console.error('Failed to generate content:', error)
               setIsPromptModalOpen(true)
             } finally {
               setIsPromptWizardOpen(false)
