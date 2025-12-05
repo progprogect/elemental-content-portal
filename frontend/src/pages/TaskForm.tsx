@@ -38,6 +38,11 @@ export default function TaskForm() {
   const [contentType, setContentType] = useState('video')
   const [customContentType, setCustomContentType] = useState('')
   const [scheduledDate, setScheduledDate] = useState('')
+
+  // Helper function to get final content type
+  const getFinalContentType = () => {
+    return contentType === 'other' ? customContentType : contentType
+  }
   const [listId, setListId] = useState<string | null>(null)
   const [fields, setFields] = useState<TaskField[]>([])
   const [isFieldEditorOpen, setIsFieldEditorOpen] = useState(false)
@@ -1059,7 +1064,7 @@ export default function TaskForm() {
                   taskId: id,
                     data: {
                       platform: data.platform,
-                      contentType: data.contentType || finalContentType,
+                      contentType: data.contentType || getFinalContentType(),
                       executionType: data.executionType || 'manual',
                     status: data.status || 'draft',
                     note: data.note || null,
@@ -1080,7 +1085,7 @@ export default function TaskForm() {
                   id: `temp-${Date.now()}`,
                   taskId: '',
                   platform: platformCode,
-                  contentType: data.contentType || finalContentType,
+                  contentType: data.contentType || getFinalContentType(),
                   executionType: data.executionType || 'manual',
                   status: data.status || 'draft',
                   note: data.note || null,
