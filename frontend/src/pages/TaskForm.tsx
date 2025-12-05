@@ -21,7 +21,10 @@ const CONTENT_TYPES = [
   { value: 'talking_head', label: 'Talking Head' },
   { value: 'text', label: 'Text' },
   { value: 'presentation', label: 'Presentation' },
+  { value: 'other', label: 'Other' },
 ]
+
+const STANDARD_CONTENT_TYPES = ['video', 'image', 'talking_head', 'text', 'presentation']
 
 export default function TaskForm() {
   const navigate = useNavigate()
@@ -32,6 +35,7 @@ export default function TaskForm() {
 
   const [title, setTitle] = useState('')
   const [contentType, setContentType] = useState('video')
+  const [customContentType, setCustomContentType] = useState('')
   const [scheduledDate, setScheduledDate] = useState('')
   const [listId, setListId] = useState<string | null>(null)
   const [fields, setFields] = useState<TaskField[]>([])
@@ -82,7 +86,14 @@ export default function TaskForm() {
   useEffect(() => {
     if (task) {
       setTitle(task.title)
-      setContentType(task.contentType)
+      // Check if contentType is a standard type or custom
+      if (STANDARD_CONTENT_TYPES.includes(task.contentType)) {
+        setContentType(task.contentType)
+        setCustomContentType('')
+      } else {
+        setContentType('other')
+        setCustomContentType(task.contentType)
+      }
       setListId(task.listId || null)
       setFields(task.fields || [])
       setPublications(task.publications || [])
@@ -331,16 +342,24 @@ export default function TaskForm() {
     const [year, month, day] = scheduledDate.split('-')
     const scheduledDateISO = new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toISOString()
 
+    // Determine final contentType
+    const finalContentType = contentType === 'other' ? customContentType : contentType
+    
+    if (contentType === 'other' && !customContentType.trim()) {
+      handleError(new Error('Custom content type is required'), 'Please enter a custom content type')
+      return
+    }
+
     try {
       if (isEdit && id) {
         await updateMutation.mutateAsync({
           id,
-          data: { title, contentType, listId, scheduledDate: scheduledDateISO },
+          data: { title, contentType: finalContentType, listId, scheduledDate: scheduledDateISO },
         })
       } else {
         const newTask = await createMutation.mutateAsync({
           title,
-          contentType,
+          contentType: finalContentType,
           listId: listId || null,
           scheduledDate: scheduledDateISO,
         })
@@ -423,7 +442,7 @@ export default function TaskForm() {
             ? publications 
             : selectedPlatforms.map((platformCode, i) => ({
                 platform: platformCode,
-                contentType: contentType,
+                contentType: finalContentType,
                 executionType: 'manual' as const,
                 status: 'draft' as const,
                 orderIndex: i,
@@ -437,9 +456,9 @@ export default function TaskForm() {
               await createPublicationMutation.mutateAsync({
                 taskId: newTask.id,
                 data: {
-                  platform: pub.platform,
-                  contentType: pub.contentType || contentType,
-                  executionType: pub.executionType || 'manual',
+                              platform: pub.platform,
+                              contentType: pub.contentType || finalContentType,
+                              executionType: pub.executionType || 'manual',
                   status: pub.status || 'draft',
                   note: ('note' in pub ? pub.note : null) || null,
                   content: ('content' in pub ? pub.content : null) || null,
@@ -626,12 +645,30 @@ export default function TaskForm() {
             error={error && !title.trim() ? 'Title is required' : undefined}
           />
 
-          <Select
-            label="Content Type"
-            value={contentType}
-            onChange={(e) => setContentType(e.target.value)}
-            options={CONTENT_TYPES}
-          />
+          <div>
+            <Select
+              label="Content Type"
+              value={contentType}
+              onChange={(e) => {
+                setContentType(e.target.value)
+                if (e.target.value !== 'other') {
+                  setCustomContentType('')
+                }
+              }}
+              options={CONTENT_TYPES}
+            />
+            {contentType === 'other' && (
+              <div className="mt-2">
+                <Input
+                  label="Custom Content Type"
+                  value={customContentType}
+                  onChange={(e) => setCustomContentType(e.target.value)}
+                  placeholder="Enter custom content type..."
+                  required
+                />
+              </div>
+            )}
+          </div>
 
           <Input
             label="Scheduled Date"
@@ -1019,10 +1056,10 @@ export default function TaskForm() {
                 }
                 await createPublicationMutation.mutateAsync({
                   taskId: id,
-                  data: {
-                    platform: data.platform,
-                    contentType: data.contentType || contentType,
-                    executionType: data.executionType || 'manual',
+                    data: {
+                      platform: data.platform,
+                      contentType: data.contentType || finalContentType,
+                      executionType: data.executionType || 'manual',
                     status: data.status || 'draft',
                     note: data.note || null,
                     content: data.content || null,
@@ -1042,7 +1079,7 @@ export default function TaskForm() {
                   id: `temp-${Date.now()}`,
                   taskId: '',
                   platform: platformCode,
-                  contentType: data.contentType || contentType,
+                  contentType: data.contentType || finalContentType,
                   executionType: data.executionType || 'manual',
                   status: data.status || 'draft',
                   note: data.note || null,

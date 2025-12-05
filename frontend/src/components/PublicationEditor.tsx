@@ -13,7 +13,10 @@ const CONTENT_TYPES = [
   { value: 'talking_head', label: 'Talking Head' },
   { value: 'text', label: 'Text' },
   { value: 'presentation', label: 'Presentation' },
+  { value: 'other', label: 'Other' },
 ]
+
+const STANDARD_CONTENT_TYPES = ['video', 'image', 'talking_head', 'text', 'presentation']
 
 const EXECUTION_TYPES = [
   { value: 'manual', label: 'Manual' },
@@ -46,6 +49,7 @@ export default function PublicationEditor({
 }: PublicationEditorProps) {
   const [platformCode, setPlatformCode] = useState(publication?.platform || platform?.code || '')
   const [contentType, setContentType] = useState(publication?.contentType || 'video')
+  const [customContentType, setCustomContentType] = useState('')
   const [executionType, setExecutionType] = useState<'manual' | 'generated'>(publication?.executionType || 'manual')
   const [status, setStatus] = useState<'draft' | 'in_progress' | 'completed' | 'failed'>(publication?.status || 'draft')
   const [note, setNote] = useState(publication?.note || '')
@@ -57,7 +61,14 @@ export default function PublicationEditor({
     if (isOpen) {
       if (publication) {
         setPlatformCode(publication.platform)
-        setContentType(publication.contentType)
+        // Check if contentType is a standard type or custom
+        if (STANDARD_CONTENT_TYPES.includes(publication.contentType)) {
+          setContentType(publication.contentType)
+          setCustomContentType('')
+        } else {
+          setContentType('other')
+          setCustomContentType(publication.contentType)
+        }
         setExecutionType(publication.executionType)
         setStatus(publication.status)
         setNote(publication.note || '')
@@ -65,6 +76,7 @@ export default function PublicationEditor({
       } else if (platform) {
         setPlatformCode(platform.code)
         setContentType('video')
+        setCustomContentType('')
         setExecutionType('manual')
         setStatus('draft')
         setNote('')
@@ -74,6 +86,7 @@ export default function PublicationEditor({
       // Reset when modal closes
       setPlatformCode('')
       setContentType('video')
+      setCustomContentType('')
       setExecutionType('manual')
       setStatus('draft')
       setNote('')
@@ -90,8 +103,16 @@ export default function PublicationEditor({
       return
     }
 
-    if (!contentType) {
+    // Determine final contentType
+    const finalContentType = contentType === 'other' ? customContentType : contentType
+
+    if (!finalContentType || !finalContentType.trim()) {
       setError('Content type is required')
+      return
+    }
+
+    if (contentType === 'other' && !customContentType.trim()) {
+      setError('Custom content type is required')
       return
     }
 
@@ -99,7 +120,7 @@ export default function PublicationEditor({
     try {
       const data: CreatePublicationData | UpdatePublicationData = {
         platform: platformCode,
-        contentType,
+        contentType: finalContentType,
         executionType,
         status,
         note: note || null,
@@ -111,6 +132,7 @@ export default function PublicationEditor({
       if (!publication) {
         setPlatformCode('')
         setContentType('video')
+        setCustomContentType('')
         setExecutionType('manual')
         setStatus('draft')
         setNote('')
@@ -171,13 +193,31 @@ export default function PublicationEditor({
           />
         )}
 
-        <Select
-          label="Content Type"
-          value={contentType}
-          onChange={(e) => setContentType(e.target.value)}
-          options={CONTENT_TYPES}
-          required
-        />
+        <div>
+          <Select
+            label="Content Type"
+            value={contentType}
+            onChange={(e) => {
+              setContentType(e.target.value)
+              if (e.target.value !== 'other') {
+                setCustomContentType('')
+              }
+            }}
+            options={CONTENT_TYPES}
+            required
+          />
+          {contentType === 'other' && (
+            <div className="mt-2">
+              <Input
+                label="Custom Content Type"
+                value={customContentType}
+                onChange={(e) => setCustomContentType(e.target.value)}
+                placeholder="Enter custom content type..."
+                required
+              />
+            </div>
+          )}
+        </div>
 
         <Select
           label="Execution Type"

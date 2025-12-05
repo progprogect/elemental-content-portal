@@ -11,7 +11,10 @@ const CONTENT_TYPES = [
   { value: 'talking_head', label: 'Talking Head' },
   { value: 'text', label: 'Text' },
   { value: 'presentation', label: 'Presentation' },
+  { value: 'other', label: 'Other' },
 ]
+
+const STANDARD_CONTENT_TYPES = ['video', 'image', 'talking_head', 'text', 'presentation']
 
 const EXECUTION_TYPES = [
   { value: 'manual', label: 'Manual' },
@@ -47,6 +50,7 @@ export default function InlinePublicationEditor({
   canDelete = true,
 }: InlinePublicationEditorProps) {
   const [contentType, setContentType] = useState(publication?.contentType || defaultContentType)
+  const [customContentType, setCustomContentType] = useState('')
   const [executionType, setExecutionType] = useState<'manual' | 'generated'>(publication?.executionType || 'manual')
   const [status, setStatus] = useState<'draft' | 'in_progress' | 'completed' | 'failed'>(publication?.status || 'draft')
   const [note, setNote] = useState(publication?.note || '')
@@ -55,13 +59,27 @@ export default function InlinePublicationEditor({
   // Sync state with publication prop changes
   useEffect(() => {
     if (publication) {
-      setContentType(publication.contentType)
+      // Check if contentType is a standard type or custom
+      if (STANDARD_CONTENT_TYPES.includes(publication.contentType)) {
+        setContentType(publication.contentType)
+        setCustomContentType('')
+      } else {
+        setContentType('other')
+        setCustomContentType(publication.contentType)
+      }
       setExecutionType(publication.executionType)
       setStatus(publication.status)
       setNote(publication.note || '')
       setContent(publication.content || '')
     } else {
-      setContentType(defaultContentType)
+      // Check if defaultContentType is standard or custom
+      if (STANDARD_CONTENT_TYPES.includes(defaultContentType)) {
+        setContentType(defaultContentType)
+        setCustomContentType('')
+      } else {
+        setContentType('other')
+        setCustomContentType(defaultContentType)
+      }
       setExecutionType('manual')
       setStatus('draft')
       setNote('')
@@ -70,9 +88,17 @@ export default function InlinePublicationEditor({
   }, [publication, defaultContentType])
 
   const handleSave = () => {
+    // Determine final contentType
+    const finalContentType = contentType === 'other' ? customContentType : contentType
+    
+    if (contentType === 'other' && !customContentType.trim()) {
+      // Don't save if custom type is empty
+      return
+    }
+
     const data: CreatePublicationData | UpdatePublicationData = {
       platform: platform.code,
-      contentType,
+      contentType: finalContentType,
       executionType,
       status,
       note: note || null,
@@ -81,8 +107,15 @@ export default function InlinePublicationEditor({
     onUpdate(data)
   }
 
+  // Determine current final contentType for comparison
+  const currentFinalContentType = contentType === 'other' ? customContentType : contentType
+  const previousFinalContentType = publication?.contentType || defaultContentType
+
+  // Check if custom content type is required but empty
+  const isCustomContentTypeInvalid = contentType === 'other' && !customContentType.trim()
+
   const hasChanges = 
-    contentType !== (publication?.contentType || defaultContentType) ||
+    (currentFinalContentType !== previousFinalContentType && !isCustomContentTypeInvalid) ||
     executionType !== (publication?.executionType || 'manual') ||
     status !== (publication?.status || 'draft') ||
     note !== (publication?.note || '') ||
@@ -152,13 +185,31 @@ export default function InlinePublicationEditor({
       {isExpanded && (
         <div className="border-t border-gray-200 p-4 space-y-4 bg-gray-50">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select
-              label="Content Type"
-              value={contentType}
-              onChange={(e) => setContentType(e.target.value)}
-              options={CONTENT_TYPES}
-              required
-            />
+            <div>
+              <Select
+                label="Content Type"
+                value={contentType}
+                onChange={(e) => {
+                  setContentType(e.target.value)
+                  if (e.target.value !== 'other') {
+                    setCustomContentType('')
+                  }
+                }}
+                options={CONTENT_TYPES}
+                required
+              />
+              {contentType === 'other' && (
+                <div className="mt-2">
+                  <Input
+                    label="Custom Content Type"
+                    value={customContentType}
+                    onChange={(e) => setCustomContentType(e.target.value)}
+                    placeholder="Enter custom content type..."
+                    required
+                  />
+                </div>
+              )}
+            </div>
             <Select
               label="Execution Type"
               value={executionType}
@@ -191,7 +242,14 @@ export default function InlinePublicationEditor({
             <Button
               variant="secondary"
               onClick={() => {
-                setContentType(publication?.contentType || defaultContentType)
+                const resetContentType = publication?.contentType || defaultContentType
+                if (STANDARD_CONTENT_TYPES.includes(resetContentType)) {
+                  setContentType(resetContentType)
+                  setCustomContentType('')
+                } else {
+                  setContentType('other')
+                  setCustomContentType(resetContentType)
+                }
                 setExecutionType(publication?.executionType || 'manual')
                 setStatus(publication?.status || 'draft')
                 setNote(publication?.note || '')
@@ -204,7 +262,7 @@ export default function InlinePublicationEditor({
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={!hasChanges}
+              disabled={!hasChanges || isCustomContentTypeInvalid}
             >
               Save Changes
             </Button>
