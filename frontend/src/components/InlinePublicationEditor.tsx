@@ -7,6 +7,7 @@ import Button from './ui/Button'
 
 const CONTENT_TYPES = [
   { value: 'video', label: 'Video' },
+  { value: 'ai_video', label: 'AI Video' },
   { value: 'image', label: 'Image' },
   { value: 'talking_head', label: 'Talking Head' },
   { value: 'text', label: 'Text' },
@@ -14,7 +15,7 @@ const CONTENT_TYPES = [
   { value: 'other', label: 'Other' },
 ]
 
-const STANDARD_CONTENT_TYPES = ['video', 'image', 'talking_head', 'text', 'presentation']
+const STANDARD_CONTENT_TYPES = ['video', 'ai_video', 'image', 'talking_head', 'text', 'presentation']
 
 const EXECUTION_TYPES = [
   { value: 'manual', label: 'Manual' },
