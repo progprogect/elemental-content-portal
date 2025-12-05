@@ -6,6 +6,62 @@ export interface PromptData {
   assets: Array<{ type: string; url: string; filename: string }>;
 }
 
+/**
+ * Cleans up the prompt by removing unused placeholders, empty lines, and template boilerplate
+ */
+function cleanPrompt(prompt: string): string {
+  // Remove all unused placeholders (e.g., {description}, {style}, etc.)
+  prompt = prompt.replace(/\{[^}]+\}/g, '');
+  
+  // Remove lines that contain only placeholders or are empty after placeholder removal
+  const lines = prompt.split('\n');
+  const cleanedLines = lines
+    .map(line => line.trim())
+    .filter(line => {
+      // Remove empty lines
+      if (!line) return false;
+      // Remove lines that are just colons or dashes (leftovers from template structure)
+      if (/^[:\-]+$/.test(line)) return false;
+      // Remove lines that are just field names with colons but no value
+      // This includes file names like "Avatar IV Video.mp4: " or "IMG_3696.MOV: "
+      if (/^[^:]+:\s*$/.test(line)) return false;
+      return true;
+    });
+  
+  // Remove common template boilerplate
+  // Note: We check if "Additional context:" is followed by content before removing it
+  const boilerplatePatterns = [
+    /^Create a marketing video with the following requirements:\s*$/i,
+    /^Description:\s*$/i,
+    /^Style:\s*$/i,
+    /^Duration:\s*$/i,
+    /^Target Audience:\s*$/i,
+    /^Publication-specific content:\s*$/i,
+  ];
+  
+  // Remove boilerplate, but preserve "Additional context:" if it has content after it
+  const finalLines: string[] = [];
+  for (let i = 0; i < cleanedLines.length; i++) {
+    const line = cleanedLines[i];
+    const isAdditionalContext = /^Additional context:\s*$/i.test(line);
+    
+    if (isAdditionalContext) {
+      // Check if there's content after "Additional context:"
+      const hasContentAfter = i + 1 < cleanedLines.length && cleanedLines[i + 1].trim().length > 0;
+      if (hasContentAfter) {
+        // Keep the header if there's content
+        finalLines.push(line);
+      }
+      // Otherwise skip it (it's empty boilerplate)
+    } else if (!boilerplatePatterns.some(pattern => pattern.test(line))) {
+      finalLines.push(line);
+    }
+  }
+  
+  // Join lines and clean up multiple consecutive newlines
+  return finalLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export async function generatePrompt(taskId: string): Promise<PromptData> {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
@@ -58,20 +114,39 @@ export async function generatePrompt(taskId: string): Promise<PromptData> {
   });
 
   // Add additional fields that are not in template
+  // Only include fields with non-empty values (skip files, they're handled separately in assets)
   const additionalFields = task.fields
-    .filter((f) => !requiredFields.includes(f.fieldName))
+    .filter((f) => {
+      // Skip required fields (already in template)
+      if (requiredFields.includes(f.fieldName)) return false;
+      // Skip file fields (handled in assets)
+      if (f.fieldType === 'file') return false;
+      // Only include fields with actual values
+      const value = (f.fieldValue as any)?.value || '';
+      return value.trim().length > 0;
+    })
     .map((f) => {
       const value = (f.fieldValue as any).value || '';
       return `${f.fieldName}: ${value}`;
     })
+    .filter(line => line.trim().length > 0 && !line.endsWith(':'))
     .join('\n');
 
   if (additionalFields) {
     prompt += `\n\nAdditional context:\n${additionalFields}`;
   }
 
+  // Clean up the prompt: remove unused placeholders, empty lines, and boilerplate
+  prompt = cleanPrompt(prompt);
+
+  // Add content type at the beginning if not already present
+  const contentTypeLabel = task.contentType.charAt(0).toUpperCase() + task.contentType.slice(1).replace(/_/g, ' ');
+  if (!prompt.toLowerCase().includes(task.contentType.toLowerCase())) {
+    prompt = `${contentTypeLabel}\n\n${prompt}`;
+  }
+
   return {
-    prompt,
+    prompt: prompt.trim(),
     assets,
   };
 }
@@ -151,22 +226,32 @@ export async function generatePromptForPublication(
     }
   });
 
-  // Add publication-specific content if available
-  if (publication.content) {
-    prompt += `\n\nPublication-specific content:\n${publication.content}`;
+  // Add publication-specific content if available and not empty
+  if (publication.content && publication.content.trim().length > 0) {
+    prompt += `\n\nPublication-specific content:\n${publication.content.trim()}`;
   }
 
-  if (publication.note) {
-    prompt += `\n\nNote: ${publication.note}`;
+  if (publication.note && publication.note.trim().length > 0) {
+    prompt += `\n\nNote: ${publication.note.trim()}`;
   }
 
   // Add additional fields that are not in template
+  // Only include fields with non-empty values (skip files, they're handled separately in assets)
   const additionalFields = task.fields
-    .filter((f) => !requiredFields.includes(f.fieldName))
+    .filter((f) => {
+      // Skip required fields (already in template)
+      if (requiredFields.includes(f.fieldName)) return false;
+      // Skip file fields (handled in assets)
+      if (f.fieldType === 'file') return false;
+      // Only include fields with actual values
+      const value = (f.fieldValue as any)?.value || '';
+      return value.trim().length > 0;
+    })
     .map((f) => {
       const value = (f.fieldValue as any).value || '';
       return `${f.fieldName}: ${value}`;
     })
+    .filter(line => line.trim().length > 0 && !line.endsWith(':'))
     .join('\n');
 
   if (additionalFields) {
@@ -238,8 +323,17 @@ export async function generatePromptForPublication(
     }
   }
 
+  // Clean up the prompt: remove unused placeholders, empty lines, and boilerplate
+  prompt = cleanPrompt(prompt);
+
+  // Add content type at the beginning if not already present
+  const contentTypeLabel = contentType.charAt(0).toUpperCase() + contentType.slice(1).replace(/_/g, ' ');
+  if (!prompt.toLowerCase().includes(contentType.toLowerCase())) {
+    prompt = `${contentTypeLabel}\n\n${prompt}`;
+  }
+
   return {
-    prompt,
+    prompt: prompt.trim(),
     assets,
   };
 }
