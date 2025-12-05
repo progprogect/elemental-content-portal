@@ -60,9 +60,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
 
   return (
     <>
-      <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${
+      <aside className={`bg-white border-r border-gray-200 transition-all duration-300 flex-shrink-0 ${
         isCollapsed ? 'w-16' : 'w-64'
-      } ${isMobileOpen ? 'fixed inset-y-0 left-0 z-50 shadow-lg' : 'hidden md:flex'} flex-col h-screen`}>
+      } ${isMobileOpen ? 'fixed inset-y-0 left-0 z-50 shadow-lg' : 'hidden md:flex'} flex-col h-screen overflow-hidden`}>
         {/* Logo Header */}
         <div className="p-4 flex items-center justify-between">
           {!isCollapsed ? (
