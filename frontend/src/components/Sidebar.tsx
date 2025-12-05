@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskListsApi, TaskList } from '../services/api/tasks'
-import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
@@ -56,6 +56,27 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
 
   const getTotalTaskCount = (list: TaskList) => {
     return list.taskCount || 0
+  }
+
+  // Content generation options configuration
+  const contentGenerationOptions = [
+    {
+      id: 'talking-head',
+      name: 'Generate Talking Head from Photo',
+      url: 'https://app.heygen.com/templates?ct=explainer%2520video&shortcut=photo-to-video',
+      icon: PhotoIcon,
+    },
+    {
+      id: 'video-from-video',
+      name: 'Generate Video from Original Video',
+      url: 'https://app.heygen.com/video-agent',
+      icon: VideoCameraIcon,
+    },
+  ]
+
+  const handleContentGenerationClick = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer')
+    onMobileClose()
   }
 
   return (
@@ -146,6 +167,33 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
                 <p className="text-sm text-gray-500 px-3 py-2">No projects</p>
               )
             )}
+          </div>
+
+          {/* Content Generation Section */}
+          <div className="px-2 py-2 border-t border-gray-200">
+            {!isCollapsed && (
+              <h2 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                Content Generation
+              </h2>
+            )}
+            <ul className="space-y-1">
+              {contentGenerationOptions.map((option) => {
+                const IconComponent = option.icon
+                return (
+                  <li key={option.id}>
+                    <button
+                      onClick={() => handleContentGenerationClick(option.url)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-700 hover:bg-gray-50"
+                    >
+                      <IconComponent className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && (
+                        <span className="flex-1 text-left truncate">{option.name}</span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         </nav>
 
