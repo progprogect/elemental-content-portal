@@ -122,6 +122,50 @@ const backgroundPresets: FieldPreset[] = [
   },
 ]
 
+// Image style presets
+const imageStylePresets: FieldPreset[] = [
+  {
+    id: 'photo-realistic',
+    label: 'Photo-realistic',
+    value: 'photorealistic, high quality, detailed, professional photography, realistic lighting, sharp focus',
+  },
+  {
+    id: 'artistic',
+    label: 'Artistic',
+    value: 'artistic style, creative, expressive, vibrant colors, artistic composition',
+  },
+  {
+    id: 'digital-art',
+    label: 'Digital Art',
+    value: 'digital art, modern, sleek, contemporary design, digital illustration',
+  },
+  {
+    id: 'illustration',
+    label: 'Illustration',
+    value: 'illustration style, hand-drawn, artistic illustration, detailed illustration',
+  },
+  {
+    id: 'sketch',
+    label: 'Sketch',
+    value: 'sketch style, pencil drawing, artistic sketch, hand-drawn sketch',
+  },
+  {
+    id: 'vintage',
+    label: 'Vintage',
+    value: 'vintage style, retro, classic, nostalgic, vintage photography',
+  },
+  {
+    id: 'modern',
+    label: 'Modern',
+    value: 'modern style, contemporary, clean, minimalist design, modern aesthetic',
+  },
+  {
+    id: 'minimalist',
+    label: 'Minimalist',
+    value: 'minimalist style, simple, clean, minimal design, minimalist composition',
+  },
+]
+
 // Default presets configuration
 export const defaultPresets: FieldPresets = {
   duration: durationPresets,
@@ -129,11 +173,17 @@ export const defaultPresets: FieldPresets = {
   movement: movementPresets,
   sceneTransitions: sceneTransitionsPresets,
   background: backgroundPresets,
+  stylePreset: imageStylePresets,
 }
 
 // Full presets configuration (ready for future extension)
 export const presetsConfig: PresetsConfig = {
   default: defaultPresets,
+  byContentType: {
+    image: {
+      stylePreset: imageStylePresets,
+    },
+  },
 }
 
 // Helper function to get presets for a field

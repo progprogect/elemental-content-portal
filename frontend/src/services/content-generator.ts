@@ -64,6 +64,15 @@ const GENERATION_STRATEGIES: Record<string, GenerationStrategy> = {
       window.open('https://app.heygen.com/templates?ct=explainer%2520video&shortcut=photo-to-video', '_blank')
     },
   },
+  image: {
+    requiresWizard: false,
+    requiresExtension: false,
+    redirectUrl: '',
+    handler: async () => {
+      // Modal window is opened in TaskDetail component
+      // This handler is called but the actual generation happens in the modal
+    },
+  },
 }
 
 /**

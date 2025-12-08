@@ -255,6 +255,25 @@ export const promptsApi = {
   },
 }
 
+export const imagesApi = {
+  generateImage: async (
+    taskId: string,
+    publicationId: string,
+    settings: {
+      prompt: string
+      stylePreset?: string
+      aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+      customStyle?: string
+    }
+  ) => {
+    const response = await apiClient.post<{
+      assetUrl: string
+      assetPath: string
+    }>(`/tasks/${taskId}/publications/${publicationId}/generate-image`, settings)
+    return response.data
+  },
+}
+
 export const taskListsApi = {
   getLists: async () => {
     const response = await apiClient.get<TaskList[]>('/task-lists')

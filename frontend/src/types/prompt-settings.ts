@@ -36,3 +36,11 @@ export interface WizardStep {
 
 export type PromptSettingsField = keyof PromptSettings
 
+export interface ImageGenerationSettings {
+  prompt: string // обязательное
+  stylePreset?: string // ID пресета стиля
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+  model?: 'standard' | 'pro' // версия API
+  customStyle?: string // опционально
+}
+

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi, resultsApi, platformsApi, publicationsApi, fieldsApi, TaskResult, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
+import { tasksApi, resultsApi, platformsApi, publicationsApi, fieldsApi, imagesApi, TaskResult, TaskPublication, CreatePublicationData, UpdatePublicationData } from '../services/api/tasks'
 import { promptsApi } from '../services/api/prompts'
 import { useExtension } from '../hooks/useExtension'
-import { PromptSettings } from '../types/prompt-settings'
+import { PromptSettings, ImageGenerationSettings } from '../types/prompt-settings'
 import { isContentTypeSupported, handleContentGeneration, getGenerationStrategy } from '../services/content-generator'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -15,6 +15,7 @@ import PublicationCard from '../components/PublicationCard'
 import PublicationEditor from '../components/PublicationEditor'
 import TableCellEditor from '../components/TableCellEditor'
 import PromptSettingsWizard from '../components/PromptSettingsWizard'
+import ImageGenerationModal from '../components/ImageGenerationModal'
 
 // Utility function to format date for display
 function formatDateLong(dateString: string): string {
@@ -41,9 +42,12 @@ export default function TaskDetail() {
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
   const [isPromptWizardOpen, setIsPromptWizardOpen] = useState(false)
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
+  const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState(false)
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>(undefined)
   const [resultPublicationId, setResultPublicationId] = useState<string | undefined>(undefined)
   const [generatingPublicationId, setGeneratingPublicationId] = useState<string | undefined>(undefined)
+  const [generatingImagePublicationId, setGeneratingImagePublicationId] = useState<string | undefined>(undefined)
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   const [resultUrl, setResultUrl] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
   const [uploadedFile, setUploadedFile] = useState<{ path: string; url: string } | null>(null)
@@ -316,7 +320,11 @@ export default function TaskDetail() {
                             const contentType = publication.contentType || 'video'
                             const strategy = getGenerationStrategy(contentType)
                             
-                            if (strategy?.requiresWizard) {
+                            if (contentType === 'image') {
+                              // Open image generation modal
+                              setGeneratingImagePublicationId(publication.id)
+                              setIsImageGenerationModalOpen(true)
+                            } else if (strategy?.requiresWizard) {
                               // Open wizard for video
                               setGeneratingPublicationId(publication.id)
                               setIsPromptWizardOpen(true)
@@ -524,6 +532,39 @@ export default function TaskDetail() {
             }
           }}
           contentType={task.publications?.find(p => p.id === generatingPublicationId)?.contentType}
+        />
+      )}
+
+      {/* Image Generation Modal */}
+      {generatingImagePublicationId && (
+        <ImageGenerationModal
+          isOpen={isImageGenerationModalOpen}
+          onClose={() => {
+            setIsImageGenerationModalOpen(false)
+            setGeneratingImagePublicationId(undefined)
+          }}
+          isLoading={isGeneratingImage}
+          onGenerate={async (settings: ImageGenerationSettings) => {
+            if (!id || !generatingImagePublicationId) return
+            
+            setIsGeneratingImage(true)
+            try {
+              // Generate image via API (backend already creates result and updates publication status)
+              await imagesApi.generateImage(id, generatingImagePublicationId, settings)
+              
+              // Invalidate queries to refresh UI with new result
+              queryClient.invalidateQueries({ queryKey: ['task', id] })
+              
+              // Close modal
+              setIsImageGenerationModalOpen(false)
+              setGeneratingImagePublicationId(undefined)
+            } catch (error: any) {
+              console.error('Failed to generate image:', error)
+              throw error // Re-throw to show error in modal
+            } finally {
+              setIsGeneratingImage(false)
+            }
+          }}
         />
       )}
 

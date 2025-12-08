@@ -32,6 +32,11 @@ CLOUDINARY_FOLDER=elemental-portal  # опционально, папка для 
 
 # CORS - URL вашего Frontend (Railway или другой хостинг)
 FRONTEND_URL=https://your-frontend-domain.com
+
+# Nano Banana API Configuration
+NANOBANANA_API_KEY=your_api_key_here
+# Опционально, если endpoint отличается от стандартного
+# NANOBANANA_API_URL=https://api.nanobanana.com
 ```
 
 ### Альтернативные провайдеры

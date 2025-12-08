@@ -30,3 +30,16 @@ export const promptSettingsSchema = z.object({
   additionalRequirements: z.string().optional(),
 })
 
+export interface ImageGenerationSettings {
+  prompt: string
+  stylePreset?: string
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+  model?: 'standard' | 'pro'
+  customStyle?: string
+}
+
+export interface ImageGenerationResult {
+  assetUrl: string
+  assetPath: string
+}
+
