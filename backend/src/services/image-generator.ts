@@ -135,17 +135,40 @@ export async function generateImage(
   
   // Extract image from response according to Gemini API format
   // Response format: { candidates: [{ content: { parts: [{ inlineData: { data: base64, mimeType: "image/png" } }] } }] }
-  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-    console.error('Invalid response structure:', JSON.stringify(data, null, 2));
-    throw new Error('Invalid response format from Google Gemini API');
+  if (!data.candidates || data.candidates.length === 0) {
+    console.error('No candidates in response:', JSON.stringify(data, null, 2));
+    throw new Error('No candidates returned from Google Gemini API');
   }
 
-  const parts = data.candidates[0].content.parts || [];
+  const candidate = data.candidates[0];
+  
+  // Check for finish reason (might indicate an error)
+  if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+    console.error('Candidate finish reason:', candidate.finishReason);
+    console.error('Full candidate:', JSON.stringify(candidate, null, 2));
+    throw new Error(`Image generation finished with reason: ${candidate.finishReason}`);
+  }
+
+  if (!candidate.content || !candidate.content.parts) {
+    console.error('Invalid response structure:', JSON.stringify(data, null, 2));
+    throw new Error('Invalid response format from Google Gemini API - missing content.parts');
+  }
+
+  const parts = candidate.content.parts || [];
+  console.log('Parts found:', parts.length);
+  console.log('Parts structure:', parts.map((p: any) => ({ 
+    hasText: !!p.text, 
+    hasInlineData: !!p.inlineData,
+    hasTextContent: !!p.textContent 
+  })));
+  
   const imagePart = parts.find((part: any) => part.inlineData);
   
   if (!imagePart || !imagePart.inlineData) {
-    console.error('No image data in response:', JSON.stringify(data, null, 2));
-    throw new Error('No image data returned from Google Gemini API');
+    console.error('No image data in response parts');
+    console.error('Available parts:', JSON.stringify(parts, null, 2));
+    console.error('Full response:', JSON.stringify(data, null, 2));
+    throw new Error('No image data returned from Google Gemini API - check parts structure');
   }
 
   const base64Image = imagePart.inlineData.data;
