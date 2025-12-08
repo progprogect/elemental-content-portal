@@ -317,7 +317,7 @@ export default function TaskDetail() {
                           className={`text-sm px-3 py-1.5 ${!isContentTypeSupported(publication.contentType || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
                           disabled={!isContentTypeSupported(publication.contentType || '')}
                           onClick={() => {
-                            const contentType = publication.contentType || 'video'
+                            const contentType = (publication.contentType || 'video').toLowerCase()
                             const strategy = getGenerationStrategy(contentType)
                             
                             if (contentType === 'image') {
@@ -482,58 +482,62 @@ export default function TaskDetail() {
         </div>
       </Modal>
 
-      {/* Prompt Settings Wizard */}
-      {generatingPublicationId && (
-        <PromptSettingsWizard
-          isOpen={isPromptWizardOpen}
-          onClose={() => {
-            setIsPromptWizardOpen(false)
-            setGeneratingPublicationId(undefined)
-          }}
-          onContinue={async (settings: PromptSettings) => {
-            try {
-              const publication = task.publications?.find(p => p.id === generatingPublicationId)
-              const contentType = publication?.contentType || 'video'
-              
-              await handleContentGeneration(
-                id!,
-                generatingPublicationId!,
-                contentType,
-                prepareHaygenGeneration,
-                () => setIsPromptModalOpen(true),
-                settings
-              )
-            } catch (error) {
-              console.error('Failed to generate content:', error)
-              setIsPromptModalOpen(true)
-            } finally {
+      {/* Prompt Settings Wizard - only for non-image content types */}
+      {generatingPublicationId && (() => {
+        const publication = task.publications?.find(p => p.id === generatingPublicationId)
+        const contentType = (publication?.contentType || 'video').toLowerCase()
+        
+        // Don't show wizard for image type - use ImageGenerationModal instead
+        if (contentType === 'image') {
+          return null
+        }
+        
+        return (
+          <PromptSettingsWizard
+            isOpen={isPromptWizardOpen}
+            onClose={() => {
               setIsPromptWizardOpen(false)
               setGeneratingPublicationId(undefined)
-            }
-          }}
-          onSkipAll={async () => {
-            try {
-              const publication = task.publications?.find(p => p.id === generatingPublicationId)
-              const contentType = publication?.contentType || 'video'
-              
-              await handleContentGeneration(
-                id!,
-                generatingPublicationId!,
-                contentType,
-                prepareHaygenGeneration,
-                () => setIsPromptModalOpen(true)
-              )
-            } catch (error) {
-              console.error('Failed to generate content:', error)
-              setIsPromptModalOpen(true)
-            } finally {
-              setIsPromptWizardOpen(false)
-              setGeneratingPublicationId(undefined)
-            }
-          }}
-          contentType={task.publications?.find(p => p.id === generatingPublicationId)?.contentType}
-        />
-      )}
+            }}
+            onContinue={async (settings: PromptSettings) => {
+              try {
+                await handleContentGeneration(
+                  id!,
+                  generatingPublicationId!,
+                  contentType,
+                  prepareHaygenGeneration,
+                  () => setIsPromptModalOpen(true),
+                  settings
+                )
+              } catch (error) {
+                console.error('Failed to generate content:', error)
+                setIsPromptModalOpen(true)
+              } finally {
+                setIsPromptWizardOpen(false)
+                setGeneratingPublicationId(undefined)
+              }
+            }}
+            onSkipAll={async () => {
+              try {
+                await handleContentGeneration(
+                  id!,
+                  generatingPublicationId!,
+                  contentType,
+                  prepareHaygenGeneration,
+                  () => setIsPromptModalOpen(true)
+                )
+              } catch (error) {
+                console.error('Failed to generate content:', error)
+                setIsPromptModalOpen(true)
+              } finally {
+                setIsPromptWizardOpen(false)
+                setGeneratingPublicationId(undefined)
+              }
+            }}
+            contentType={contentType}
+          />
+        )
+      })()}
 
       {/* Image Generation Modal */}
       {generatingImagePublicationId && (
