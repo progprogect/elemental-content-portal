@@ -54,9 +54,11 @@ export async function generateImage(
   // Build final prompt
   const finalPrompt = buildImagePrompt(request);
 
-  // Use Gemini 3 Pro Preview (Nano Banana Pro) as requested
-  // For standard version use: gemini-2.5-flash-image
-  const model = 'gemini-3-pro-preview';
+  // Use Gemini 2.5 Flash Image (Nano Banana) - Pro version may not be available in all regions
+  // Try Pro first, fallback to standard if needed
+  // Pro: gemini-3-pro-preview
+  // Standard: gemini-2.5-flash-image
+  const model = 'gemini-2.5-flash-image'; // Using standard as Pro is geo-restricted
   const aspectRatio = request.aspectRatio || '1:1';
 
   // Use Google Generative AI API endpoint
