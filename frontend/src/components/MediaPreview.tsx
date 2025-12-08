@@ -12,6 +12,7 @@ interface MediaPreviewProps {
 export default function MediaPreview({ url, filename, type, className = '' }: MediaPreviewProps) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [videoError, setVideoError] = useState(false)
 
   // Determine media type from URL or filename
   const getMediaType = (): 'image' | 'video' | 'file' => {
@@ -83,10 +84,21 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
           className={`relative cursor-pointer group overflow-hidden rounded-lg bg-gray-100 ${className}`}
           onClick={handleClick}
         >
-          <div className="w-full h-full flex items-center justify-center bg-gray-900 bg-opacity-50">
-            <VideoCameraIcon className="h-16 w-16 text-white" />
-          </div>
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
+          {!videoError ? (
+            <video
+              src={url}
+              preload="metadata"
+              muted
+              playsInline
+              className="w-full h-full object-contain transition-transform group-hover:scale-105"
+              onError={() => setVideoError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-900 bg-opacity-50">
+              <VideoCameraIcon className="h-16 w-16 text-white" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center">
             <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">
               Нажмите для просмотра
             </span>
