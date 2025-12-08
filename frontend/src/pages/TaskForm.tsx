@@ -49,10 +49,12 @@ export default function TaskForm() {
   const [editingField, setEditingField] = useState<TaskField | undefined>()
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
   const [publications, setPublications] = useState<TaskPublication[]>([])
+  const [originalPublications, setOriginalPublications] = useState<TaskPublication[]>([])
   const [expandedPublications, setExpandedPublications] = useState<Set<string>>(new Set())
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>()
   const [editingPlatformCode, setEditingPlatformCode] = useState<string | undefined>()
+  const [isSaving, setIsSaving] = useState(false)
   const { error, errorDetails, handleError, clearError } = useErrorHandler()
   const columnsInitialized = useRef(false)
 
@@ -102,8 +104,10 @@ export default function TaskForm() {
       }
       setListId(task.listId || null)
       setFields(task.fields || [])
-      setPublications(task.publications || [])
-      setSelectedPlatforms((task.publications || []).map(p => p.platform))
+      const taskPublications = task.publications || []
+      setPublications(taskPublications)
+      setOriginalPublications(taskPublications)
+      setSelectedPlatforms(taskPublications.map(p => p.platform))
       // Expand first publication by default
       if (task.publications && task.publications.length > 0) {
         setExpandedPublications(new Set([task.publications[0].id]))
@@ -331,6 +335,24 @@ export default function TaskForm() {
     },
   })
 
+  // Get publications that have been changed compared to original
+  const getChangedPublications = (): TaskPublication[] => {
+    if (!isEdit) return []
+    
+    return publications.filter(pub => {
+      const original = originalPublications.find(op => op.id === pub.id)
+      if (!original) return false
+      
+      return (
+        pub.contentType !== original.contentType ||
+        pub.executionType !== original.executionType ||
+        pub.status !== original.status ||
+        (pub.note || '') !== (original.note || '') ||
+        (pub.content || '') !== (original.content || '')
+      )
+    })
+  }
+
   const handleSave = async () => {
     if (!title.trim()) {
       handleError(new Error('Title is required'), 'Please enter a task title')
@@ -343,6 +365,7 @@ export default function TaskForm() {
     }
 
     clearError()
+    setIsSaving(true)
 
     // Convert YYYY-MM-DD to ISO datetime string (using local timezone to avoid timezone issues)
     const [year, month, day] = scheduledDate.split('-')
@@ -358,10 +381,49 @@ export default function TaskForm() {
 
     try {
       if (isEdit && id) {
+        // 1. Save task changes
         await updateMutation.mutateAsync({
           id,
           data: { title, contentType: finalContentType, listId, scheduledDate: scheduledDateISO },
         })
+        
+        // 2. Save changed publications
+        const changedPublications = getChangedPublications()
+        if (changedPublications.length > 0) {
+          const failedPublications: Array<{ platform: string; error: string }> = []
+          
+          for (const pub of changedPublications) {
+            const platform = platforms?.find(p => p.code === pub.platform)
+            try {
+              await updatePublicationMutation.mutateAsync({
+                taskId: id,
+                publicationId: pub.id,
+                data: {
+                  contentType: pub.contentType,
+                  executionType: pub.executionType,
+                  status: pub.status,
+                  note: pub.note || null,
+                  content: pub.content || null,
+                },
+              })
+            } catch (pubError) {
+              const errorMessage = getErrorMessage(pubError)
+              failedPublications.push({ platform: platform?.name || pub.platform, error: errorMessage })
+              console.error(`Failed to update publication "${pub.platform}":`, pubError)
+            }
+          }
+          
+          if (failedPublications.length > 0) {
+            const failedNames = failedPublications.map(p => p.platform).join(', ')
+            handleError(
+              new Error(`Failed to update some publications: ${failedNames}`),
+              `Task saved successfully, but ${failedPublications.length} publication(s) could not be updated: ${failedNames}. You can edit them manually.`
+            )
+          } else {
+            // Update original publications to reflect saved state
+            setOriginalPublications([...publications])
+          }
+        }
       } else {
         const newTask = await createMutation.mutateAsync({
           title,
@@ -440,19 +502,35 @@ export default function TaskForm() {
         }
 
         // Create publications for selected platforms
-        if (newTask.id && (selectedPlatforms.length > 0 || publications.length > 0) && platforms) {
+        if (newTask.id && selectedPlatforms.length > 0 && platforms) {
           const failedPublications: Array<{ platform: string; error: string }> = []
           
-          // Use publications from state if available, otherwise create from selectedPlatforms
-          const publicationsToCreate = publications.length > 0 
-            ? publications 
-            : selectedPlatforms.map((platformCode, i) => ({
+          // Create publications for all selected platforms
+          // Use data from publications state if available, otherwise use defaults
+          const publicationsToCreate = selectedPlatforms.map((platformCode, i) => {
+            const existingPub = publications.find(p => p.platform === platformCode)
+            if (existingPub) {
+              // Use existing publication data from state
+              return {
+                platform: platformCode,
+                contentType: existingPub.contentType || finalContentType,
+                executionType: existingPub.executionType || 'manual' as const,
+                status: existingPub.status || 'draft' as const,
+                note: existingPub.note || null,
+                content: existingPub.content || null,
+                orderIndex: existingPub.orderIndex !== undefined ? existingPub.orderIndex : i,
+              }
+            } else {
+              // Create default publication
+              return {
                 platform: platformCode,
                 contentType: finalContentType,
                 executionType: 'manual' as const,
                 status: 'draft' as const,
                 orderIndex: i,
-              }))
+              }
+            }
+          })
           
           for (let i = 0; i < publicationsToCreate.length; i++) {
             const pub = publicationsToCreate[i]
@@ -491,6 +569,8 @@ export default function TaskForm() {
       }
     } catch (error) {
       handleError(error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -920,6 +1000,7 @@ export default function TaskForm() {
                             publication={publication}
                             defaultContentType={contentType}
                             isExpanded={isExpanded}
+                            allowIndividualSave={false}
                             onToggle={() => {
                               const newExpanded = new Set(expandedPublications)
                               if (isExpanded) {
@@ -929,14 +1010,11 @@ export default function TaskForm() {
                               }
                               setExpandedPublications(newExpanded)
                             }}
-                            onUpdate={async (data) => {
-                              if (id) {
-                                await updatePublicationMutation.mutateAsync({
-                                  taskId: id,
-                                  publicationId: publication.id,
-                                  data,
-                                })
-                              }
+                            onUpdate={(data) => {
+                              // Update local state instead of saving immediately
+                              setPublications(publications.map(p => 
+                                p.id === publication.id ? { ...p, ...data } as TaskPublication : p
+                              ))
                             }}
                             onDelete={() => {
                               if (id && window.confirm(`Delete publication for ${platform.name}?`)) {
@@ -961,6 +1039,7 @@ export default function TaskForm() {
                             publication={publication}
                             defaultContentType={contentType}
                             isExpanded={isExpanded}
+                            allowIndividualSave={false}
                             onToggle={() => {
                               const newExpanded = new Set(expandedPublications)
                               if (isExpanded) {
@@ -1021,9 +1100,12 @@ export default function TaskForm() {
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={isSaving || createMutation.isPending || updateMutation.isPending}
             >
-              {isEdit ? 'Save Changes' : 'Create Task'}
+              {isSaving 
+                ? (isEdit ? 'Saving...' : 'Creating...')
+                : (isEdit ? 'Save Changes' : 'Create Task')
+              }
             </Button>
           </div>
         </div>

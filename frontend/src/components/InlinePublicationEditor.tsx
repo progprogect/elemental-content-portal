@@ -38,6 +38,7 @@ interface InlinePublicationEditorProps {
   onUpdate: (data: CreatePublicationData | UpdatePublicationData) => void
   onDelete?: () => void
   canDelete?: boolean
+  allowIndividualSave?: boolean // If false, hide Save/Reset buttons and auto-update on change
 }
 
 export default function InlinePublicationEditor({
@@ -49,6 +50,7 @@ export default function InlinePublicationEditor({
   onUpdate,
   onDelete,
   canDelete = true,
+  allowIndividualSave = true,
 }: InlinePublicationEditorProps) {
   const [contentType, setContentType] = useState(publication?.contentType || defaultContentType)
   const [customContentType, setCustomContentType] = useState('')
@@ -58,6 +60,8 @@ export default function InlinePublicationEditor({
   const [content, setContent] = useState(publication?.content || '')
 
   // Sync state with publication prop changes
+  // When allowIndividualSave is false, only sync on initial mount or when publication ID changes
+  // to avoid overwriting user edits that are stored in parent state
   useEffect(() => {
     if (publication) {
       // Check if contentType is a standard type or custom
@@ -86,27 +90,10 @@ export default function InlinePublicationEditor({
       setNote('')
       setContent('')
     }
-  }, [publication, defaultContentType])
-
-  const handleSave = () => {
-    // Determine final contentType
-    const finalContentType = contentType === 'other' ? customContentType : contentType
-    
-    if (contentType === 'other' && !customContentType.trim()) {
-      // Don't save if custom type is empty
-      return
-    }
-
-    const data: CreatePublicationData | UpdatePublicationData = {
-      platform: platform.code,
-      contentType: finalContentType,
-      executionType,
-      status,
-      note: note || null,
-      content: content || null,
-    }
-    onUpdate(data)
-  }
+    // Sync only when publication ID changes (new publication loaded) or when individual save is allowed
+    // This prevents overwriting user edits when parent state updates the same publication object
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publication?.id, defaultContentType, allowIndividualSave ? publication : undefined])
 
   // Determine current final contentType for comparison
   const currentFinalContentType = contentType === 'other' ? customContentType : contentType
@@ -121,6 +108,45 @@ export default function InlinePublicationEditor({
     status !== (publication?.status || 'draft') ||
     note !== (publication?.note || '') ||
     content !== (publication?.content || '')
+
+  const getPublicationData = (): CreatePublicationData | UpdatePublicationData | null => {
+    // Determine final contentType
+    const finalContentType = contentType === 'other' ? customContentType : contentType
+    
+    if (contentType === 'other' && !customContentType.trim()) {
+      // Don't save if custom type is empty
+      return null
+    }
+
+    return {
+      platform: platform.code,
+      contentType: finalContentType,
+      executionType,
+      status,
+      note: note || null,
+      content: content || null,
+    }
+  }
+
+  const handleSave = () => {
+    const data = getPublicationData()
+    if (data) {
+      onUpdate(data)
+    }
+  }
+
+  // Auto-update parent state when fields change if individual save is disabled
+  useEffect(() => {
+    if (!allowIndividualSave && isExpanded && !isCustomContentTypeInvalid && hasChanges) {
+      const data = getPublicationData()
+      if (data) {
+        onUpdate(data)
+      }
+    }
+    // Note: hasChanges is intentionally not in dependencies to avoid infinite loops
+    // It's recalculated on each render, so the effect will run when actual field values change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentType, customContentType, executionType, status, note, content, allowIndividualSave, isExpanded, isCustomContentTypeInvalid])
 
   return (
     <div className="border border-gray-200 rounded-lg bg-white">
@@ -239,35 +265,37 @@ export default function InlinePublicationEditor({
             placeholder="Enter markdown content for this publication..."
           />
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const resetContentType = publication?.contentType || defaultContentType
-                if (STANDARD_CONTENT_TYPES.includes(resetContentType)) {
-                  setContentType(resetContentType)
-                  setCustomContentType('')
-                } else {
-                  setContentType('other')
-                  setCustomContentType(resetContentType)
-                }
-                setExecutionType(publication?.executionType || 'manual')
-                setStatus(publication?.status || 'draft')
-                setNote(publication?.note || '')
-                setContent(publication?.content || '')
-              }}
-              disabled={!hasChanges}
-            >
-              Reset
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              disabled={!hasChanges || isCustomContentTypeInvalid}
-            >
-              Save Changes
-            </Button>
-          </div>
+          {allowIndividualSave && (
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const resetContentType = publication?.contentType || defaultContentType
+                  if (STANDARD_CONTENT_TYPES.includes(resetContentType)) {
+                    setContentType(resetContentType)
+                    setCustomContentType('')
+                  } else {
+                    setContentType('other')
+                    setCustomContentType(resetContentType)
+                  }
+                  setExecutionType(publication?.executionType || 'manual')
+                  setStatus(publication?.status || 'draft')
+                  setNote(publication?.note || '')
+                  setContent(publication?.content || '')
+                }}
+                disabled={!hasChanges}
+              >
+                Reset
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                disabled={!hasChanges || isCustomContentTypeInvalid}
+              >
+                Save Changes
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
