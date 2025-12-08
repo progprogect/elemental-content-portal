@@ -73,9 +73,16 @@ export const generateImageForPublication = async (req: Request, res: Response) =
     });
   } catch (error: any) {
     console.error('Error generating image:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    });
     res.status(500).json({
       error: 'Failed to generate image',
       message: error.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 };

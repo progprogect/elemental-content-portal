@@ -59,18 +59,34 @@ export async function generateImage(
 
   // Call Nano Banana API
   const apiUrl = process.env.NANOBANANA_API_URL || 'https://api.nanobanana.com';
-  const response = await fetch(`${apiUrl}/api/text-to-image`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt: finalPrompt,
-      aspect_ratio: aspectRatio,
-      model: model,
-    }),
+  const requestUrl = `${apiUrl}/api/text-to-image`;
+  const requestBody = {
+    prompt: finalPrompt,
+    aspect_ratio: aspectRatio,
+    model: model,
+  };
+  
+  console.log('Calling Nano Banana API:', {
+    url: requestUrl,
+    model,
+    aspectRatio,
+    promptLength: finalPrompt.length,
   });
+  
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+  } catch (fetchError: any) {
+    console.error('Fetch error:', fetchError);
+    throw new Error(`Failed to connect to Nano Banana API: ${fetchError.message}`);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -79,38 +95,78 @@ export async function generateImage(
     try {
       const errorData = JSON.parse(errorText);
       errorMessage = errorData.message || errorData.error || errorMessage;
+      console.error('Nano Banana API error response:', errorData);
     } catch {
       errorMessage = errorText || errorMessage;
+      console.error('Nano Banana API error text:', errorText);
     }
     
     throw new Error(errorMessage);
   }
 
-  const data = await response.json() as { image_url?: string; url?: string };
+  let data: any;
+  try {
+    data = await response.json();
+    console.log('Nano Banana API response:', { 
+      hasImageUrl: !!data.image_url, 
+      hasUrl: !!data.url,
+      keys: Object.keys(data),
+    });
+  } catch (parseError: any) {
+    console.error('Failed to parse API response:', parseError);
+    throw new Error(`Failed to parse Nano Banana API response: ${parseError.message}`);
+  }
+  
   const imageUrl = data.image_url || data.url;
 
   if (!imageUrl) {
+    console.error('No image URL in response:', data);
     throw new Error('No image URL returned from Nano Banana API');
   }
 
+  console.log('Downloading image from:', imageUrl);
+
   // Download image
-  const imageResponse = await fetch(imageUrl);
+  let imageResponse: Response;
+  try {
+    imageResponse = await fetch(imageUrl);
+  } catch (fetchError: any) {
+    console.error('Failed to fetch image:', fetchError);
+    throw new Error(`Failed to download image: ${fetchError.message}`);
+  }
+  
   if (!imageResponse.ok) {
-    throw new Error(`Failed to download image: ${imageResponse.status}`);
+    console.error('Image download failed:', imageResponse.status, imageResponse.statusText);
+    throw new Error(`Failed to download image: ${imageResponse.status} ${imageResponse.statusText}`);
   }
 
-  const imageBuffer = await imageResponse.arrayBuffer();
+  let imageBuffer: ArrayBuffer;
+  try {
+    imageBuffer = await imageResponse.arrayBuffer();
+    console.log('Image downloaded, size:', imageBuffer.byteLength);
+  } catch (bufferError: any) {
+    console.error('Failed to read image buffer:', bufferError);
+    throw new Error(`Failed to read image data: ${bufferError.message}`);
+  }
 
   // Save to storage
+  console.log('Saving to storage...');
   const storage = createStorageAdapter();
   const filename = `generated-${Date.now()}.png`;
   const storagePath = `images/${taskId}/${publicationId}`;
   
-  const result = await storage.upload(
-    Buffer.from(imageBuffer),
-    filename,
-    storagePath
-  );
+  let result;
+  try {
+    result = await storage.upload(
+      Buffer.from(imageBuffer),
+      filename,
+      storagePath
+    );
+    console.log('Image saved to storage:', result.path);
+  } catch (storageError: any) {
+    console.error('Storage upload failed:', storageError);
+    throw new Error(`Failed to save image to storage: ${storageError.message}`);
+  }
 
   return {
     assetUrl: result.url,
