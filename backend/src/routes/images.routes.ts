@@ -4,7 +4,7 @@ import { validate } from '../middleware/validation';
 import { z } from 'zod';
 import * as imagesController from '../controllers/images.controller';
 
-const router = Router();
+const router = Router({ mergeParams: true }); // mergeParams needed to access :taskId and :publicationId from parent route
 
 const generateImageSchema = z.object({
   prompt: z.string().min(1).max(2000),

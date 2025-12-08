@@ -6,6 +6,14 @@ import { ImageGenerationSettings } from '../types/prompt-settings';
 export const generateImageForPublication = async (req: Request, res: Response) => {
   const { taskId, publicationId } = req.params;
   
+  // Validate parameters
+  if (!taskId || !publicationId) {
+    return res.status(400).json({ 
+      error: 'Missing required parameters',
+      message: 'taskId and publicationId are required',
+    });
+  }
+  
   // Data is already validated by middleware
   const data = req.body as ImageGenerationSettings;
 
