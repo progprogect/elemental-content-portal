@@ -86,7 +86,7 @@ export async function generateImage(
     throw new Error(errorMessage);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { image_url?: string; url?: string };
   const imageUrl = data.image_url || data.url;
 
   if (!imageUrl) {
