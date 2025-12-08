@@ -590,11 +590,28 @@ export default function TaskDetail() {
               setGeneratingImagePublicationId(undefined)
             } catch (error: any) {
               console.error('Failed to generate image:', error)
+              console.error('Error response:', error.response?.data)
+              console.error('Error details:', {
+                message: error.message,
+                responseData: error.response?.data,
+                status: error.response?.status,
+              })
+              
               // Extract detailed error message from response
-              const errorMessage = error.response?.data?.message || 
-                                 error.response?.data?.error || 
-                                 error.message || 
-                                 'Failed to generate image'
+              let errorMessage = 'Failed to generate image'
+              
+              if (error.response?.data) {
+                const data = error.response.data
+                errorMessage = data.message || data.error || errorMessage
+                
+                // Add additional details if available
+                if (data.details) {
+                  errorMessage += `\n\nDetails: ${typeof data.details === 'string' ? data.details : JSON.stringify(data.details)}`
+                }
+              } else if (error.message) {
+                errorMessage = error.message
+              }
+              
               throw new Error(errorMessage)
             } finally {
               setIsGeneratingImage(false)
