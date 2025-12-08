@@ -320,23 +320,44 @@ export default function TaskDetail() {
                             const contentType = (publication.contentType || 'video').toLowerCase()
                             const strategy = getGenerationStrategy(contentType)
                             
-                            if (contentType === 'image') {
-                              // Open image generation modal
-                              setGeneratingImagePublicationId(publication.id)
-                              setIsImageGenerationModalOpen(true)
-                            } else if (strategy?.requiresWizard) {
-                              // Open wizard for video
-                              setGeneratingPublicationId(publication.id)
-                              setIsPromptWizardOpen(true)
-                            } else if (strategy) {
-                              // Direct redirect for talking_head and others
-                              handleContentGeneration(
-                                id!,
-                                publication.id,
-                                contentType,
-                                prepareHaygenGeneration,
-                                () => setIsPromptModalOpen(true)
-                              )
+                            if (!strategy) {
+                              return
+                            }
+                            
+                            // Handle UI based on strategy uiType
+                            switch (strategy.uiType) {
+                              case 'wizard':
+                                // Open wizard for video
+                                setGeneratingPublicationId(publication.id)
+                                setIsPromptWizardOpen(true)
+                                break
+                              case 'custom-modal':
+                                // Open custom modal (e.g., image generation)
+                                if (strategy.customModalType === 'image') {
+                                  setGeneratingImagePublicationId(publication.id)
+                                  setIsImageGenerationModalOpen(true)
+                                }
+                                break
+                              case 'redirect':
+                                // Direct redirect for talking_head and others
+                                handleContentGeneration(
+                                  id!,
+                                  publication.id,
+                                  contentType,
+                                  prepareHaygenGeneration,
+                                  () => setIsPromptModalOpen(true)
+                                )
+                                break
+                              case 'none':
+                                // No UI needed, handler will manage everything
+                                handleContentGeneration(
+                                  id!,
+                                  publication.id,
+                                  contentType,
+                                  prepareHaygenGeneration,
+                                  () => setIsPromptModalOpen(true)
+                                )
+                                break
                             }
                           }}
                         >
@@ -482,13 +503,14 @@ export default function TaskDetail() {
         </div>
       </Modal>
 
-      {/* Prompt Settings Wizard - only for non-image content types */}
+      {/* Prompt Settings Wizard - only for strategies with uiType === 'wizard' */}
       {generatingPublicationId && (() => {
         const publication = task.publications?.find(p => p.id === generatingPublicationId)
         const contentType = (publication?.contentType || 'video').toLowerCase()
+        const strategy = getGenerationStrategy(contentType)
         
-        // Don't show wizard for image type - use ImageGenerationModal instead
-        if (contentType === 'image') {
+        // Only show wizard if strategy requires it
+        if (!strategy || strategy.uiType !== 'wizard') {
           return null
         }
         

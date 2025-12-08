@@ -2,6 +2,11 @@ import { PromptSettings } from '../types/prompt-settings'
 import { promptsApi } from './api/prompts'
 
 /**
+ * Type of UI component to show for content generation
+ */
+export type GenerationUIType = 'wizard' | 'custom-modal' | 'redirect' | 'none'
+
+/**
  * Strategy for content generation based on content type
  */
 export interface GenerationStrategy {
@@ -11,6 +16,10 @@ export interface GenerationStrategy {
   requiresExtension: boolean
   /** URL to redirect to for generation */
   redirectUrl: string
+  /** Type of UI component to show for generation */
+  uiType: GenerationUIType
+  /** Identifier for custom modal type (required if uiType === 'custom-modal') */
+  customModalType?: string
   /** Handler function for content generation */
   handler: (
     taskId: string,
@@ -29,6 +38,7 @@ const GENERATION_STRATEGIES: Record<string, GenerationStrategy> = {
     requiresWizard: true,
     requiresExtension: true,
     redirectUrl: 'https://app.heygen.com/video-agent',
+    uiType: 'wizard',
     handler: async (taskId, publicationId, prepareHaygenGeneration, onFallback, settings) => {
       try {
         // Generate prompt with settings (to validate and cache on backend)
@@ -59,6 +69,7 @@ const GENERATION_STRATEGIES: Record<string, GenerationStrategy> = {
     requiresWizard: false,
     requiresExtension: false,
     redirectUrl: 'https://app.heygen.com/templates?ct=explainer%2520video&shortcut=photo-to-video',
+    uiType: 'redirect',
     handler: async () => {
       // Simple redirect without wizard or extension
       window.open('https://app.heygen.com/templates?ct=explainer%2520video&shortcut=photo-to-video', '_blank')
@@ -68,6 +79,8 @@ const GENERATION_STRATEGIES: Record<string, GenerationStrategy> = {
     requiresWizard: false,
     requiresExtension: false,
     redirectUrl: '',
+    uiType: 'custom-modal',
+    customModalType: 'image',
     handler: async () => {
       // Modal window is opened in TaskDetail component
       // This handler is called but the actual generation happens in the modal
