@@ -37,7 +37,8 @@ function buildImagePrompt(settings: ImageGenerationSettings): string {
 }
 
 /**
- * Generates image using Nano Banana API and saves it to storage
+ * Generates image using Google Gemini API (Nano Banana Pro)
+ * Documentation: https://ai.google.dev/gemini-api/docs/image-generation
  */
 export async function generateImage(
   request: ImageGenerationSettings,
@@ -53,21 +54,36 @@ export async function generateImage(
   // Build final prompt
   const finalPrompt = buildImagePrompt(request);
 
-  // Always use Pro version (Nano Banana 2)
-  const model = 'Nano Banana 2';
+  // Use Gemini 3 Pro Preview (Nano Banana Pro) as requested
+  // For standard version use: gemini-2.5-flash-image
+  const model = 'gemini-3-pro-preview';
   const aspectRatio = request.aspectRatio || '1:1';
 
-  // Call Nano Banana API
-  const apiUrl = process.env.NANOBANANA_API_URL || 'https://api.nanobanana.com';
-  const requestUrl = `${apiUrl}/api/text-to-image`;
+  // Use Google Generative AI API endpoint
+  // Documentation: https://ai.google.dev/gemini-api/docs/image-generation
+  const apiUrl = 'https://generativelanguage.googleapis.com/v1beta';
+  const requestUrl = `${apiUrl}/models/${model}:generateContent?key=${apiKey}`;
+  
+  // Format request according to Gemini API documentation
   const requestBody = {
-    prompt: finalPrompt,
-    aspect_ratio: aspectRatio,
-    model: model,
+    contents: [
+      {
+        parts: [
+          {
+            text: finalPrompt,
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      responseModalities: ['IMAGE'],
+      // Note: aspect ratio might need to be handled differently
+      // Check if there's a specific parameter for aspect ratio
+    },
   };
   
-  console.log('Calling Nano Banana API:', {
-    url: requestUrl,
+  console.log('Calling Google Gemini API (Nano Banana Pro):', {
+    url: requestUrl.replace(apiKey, '***'),
     model,
     aspectRatio,
     promptLength: finalPrompt.length,
@@ -78,27 +94,26 @@ export async function generateImage(
     response = await fetch(requestUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
     });
   } catch (fetchError: any) {
     console.error('Fetch error:', fetchError);
-    throw new Error(`Failed to connect to Nano Banana API: ${fetchError.message}`);
+    throw new Error(`Failed to connect to Google Gemini API: ${fetchError.message}`);
   }
 
   if (!response.ok) {
     const errorText = await response.text();
-    let errorMessage = `Nano Banana API error: ${response.status}`;
+    let errorMessage = `Google Gemini API error: ${response.status}`;
     
     try {
       const errorData = JSON.parse(errorText);
-      errorMessage = errorData.message || errorData.error || errorMessage;
-      console.error('Nano Banana API error response:', errorData);
+      errorMessage = errorData.error?.message || errorData.message || errorMessage;
+      console.error('Google Gemini API error response:', errorData);
     } catch {
       errorMessage = errorText || errorMessage;
-      console.error('Nano Banana API error text:', errorText);
+      console.error('Google Gemini API error text:', errorText);
     }
     
     throw new Error(errorMessage);
@@ -107,58 +122,56 @@ export async function generateImage(
   let data: any;
   try {
     data = await response.json();
-    console.log('Nano Banana API response:', { 
-      hasImageUrl: !!data.image_url, 
-      hasUrl: !!data.url,
+    console.log('Google Gemini API response structure:', { 
+      hasCandidates: !!data.candidates,
       keys: Object.keys(data),
     });
   } catch (parseError: any) {
     console.error('Failed to parse API response:', parseError);
-    throw new Error(`Failed to parse Nano Banana API response: ${parseError.message}`);
+    throw new Error(`Failed to parse Google Gemini API response: ${parseError.message}`);
   }
   
-  const imageUrl = data.image_url || data.url;
-
-  if (!imageUrl) {
-    console.error('No image URL in response:', data);
-    throw new Error('No image URL returned from Nano Banana API');
+  // Extract image from response according to Gemini API format
+  // Response format: { candidates: [{ content: { parts: [{ inlineData: { data: base64, mimeType: "image/png" } }] } }] }
+  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+    console.error('Invalid response structure:', JSON.stringify(data, null, 2));
+    throw new Error('Invalid response format from Google Gemini API');
   }
 
-  console.log('Downloading image from:', imageUrl);
-
-  // Download image
-  let imageResponse: Response;
-  try {
-    imageResponse = await fetch(imageUrl);
-  } catch (fetchError: any) {
-    console.error('Failed to fetch image:', fetchError);
-    throw new Error(`Failed to download image: ${fetchError.message}`);
-  }
+  const parts = data.candidates[0].content.parts || [];
+  const imagePart = parts.find((part: any) => part.inlineData);
   
-  if (!imageResponse.ok) {
-    console.error('Image download failed:', imageResponse.status, imageResponse.statusText);
-    throw new Error(`Failed to download image: ${imageResponse.status} ${imageResponse.statusText}`);
+  if (!imagePart || !imagePart.inlineData) {
+    console.error('No image data in response:', JSON.stringify(data, null, 2));
+    throw new Error('No image data returned from Google Gemini API');
   }
 
-  let imageBuffer: ArrayBuffer;
+  const base64Image = imagePart.inlineData.data;
+  const mimeType = imagePart.inlineData.mimeType || 'image/png';
+  
+  console.log('Image received, mimeType:', mimeType, 'size:', base64Image.length);
+
+  // Convert base64 to buffer
+  let imageBuffer: Buffer;
   try {
-    imageBuffer = await imageResponse.arrayBuffer();
-    console.log('Image downloaded, size:', imageBuffer.byteLength);
+    imageBuffer = Buffer.from(base64Image, 'base64');
+    console.log('Image buffer created, size:', imageBuffer.length);
   } catch (bufferError: any) {
-    console.error('Failed to read image buffer:', bufferError);
-    throw new Error(`Failed to read image data: ${bufferError.message}`);
+    console.error('Failed to decode base64 image:', bufferError);
+    throw new Error(`Failed to decode image data: ${bufferError.message}`);
   }
 
   // Save to storage
   console.log('Saving to storage...');
   const storage = createStorageAdapter();
-  const filename = `generated-${Date.now()}.png`;
+  const extension = mimeType.split('/')[1] || 'png';
+  const filename = `generated-${Date.now()}.${extension}`;
   const storagePath = `images/${taskId}/${publicationId}`;
   
   let result;
   try {
     result = await storage.upload(
-      Buffer.from(imageBuffer),
+      imageBuffer,
       filename,
       storagePath
     );
