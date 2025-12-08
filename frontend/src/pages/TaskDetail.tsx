@@ -590,7 +590,12 @@ export default function TaskDetail() {
               setGeneratingImagePublicationId(undefined)
             } catch (error: any) {
               console.error('Failed to generate image:', error)
-              throw error // Re-throw to show error in modal
+              // Extract detailed error message from response
+              const errorMessage = error.response?.data?.message || 
+                                 error.response?.data?.error || 
+                                 error.message || 
+                                 'Failed to generate image'
+              throw new Error(errorMessage)
             } finally {
               setIsGeneratingImage(false)
             }

@@ -78,12 +78,26 @@ export const generateImageForPublication = async (req: Request, res: Response) =
       message: error.message,
       name: error.name,
       code: error.code,
+      cause: error.cause,
     });
-    res.status(500).json({
+    
+    // Return detailed error information
+    const errorResponse: any = {
       error: 'Failed to generate image',
       message: error.message || 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-    });
+    };
+    
+    // Include stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.stack = error.stack;
+      errorResponse.details = {
+        name: error.name,
+        code: error.code,
+        cause: error.cause,
+      };
+    }
+    
+    res.status(500).json(errorResponse);
   }
 };
 
