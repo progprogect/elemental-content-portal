@@ -104,15 +104,18 @@ export function getGenerationStrategy(contentType: string): GenerationStrategy |
 
 /**
  * Handle content generation based on content type
+ * 
+ * @param contentType - Content type from publication (not task), as publications can have different types
  */
 export async function handleContentGeneration(
   taskId: string,
   publicationId: string,
-  contentType: string,
+  contentType: string, // Publication contentType, not task contentType
   prepareHaygenGeneration: (taskId: string, publicationId: string, settings?: PromptSettings) => Promise<boolean>,
   onFallback: () => void,
   settings?: PromptSettings
 ): Promise<void> {
+  // Get strategy based on publication contentType (not task contentType)
   const strategy = getGenerationStrategy(contentType)
   
   if (!strategy) {

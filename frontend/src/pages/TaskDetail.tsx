@@ -317,6 +317,8 @@ export default function TaskDetail() {
                           className={`text-sm px-3 py-1.5 ${!isContentTypeSupported(publication.contentType || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
                           disabled={!isContentTypeSupported(publication.contentType || '')}
                           onClick={() => {
+                            // Always use publication contentType, not task contentType
+                            // Publications can have different content types than the task
                             const contentType = (publication.contentType || 'video').toLowerCase()
                             const strategy = getGenerationStrategy(contentType)
                             
@@ -506,6 +508,8 @@ export default function TaskDetail() {
       {/* Prompt Settings Wizard - only for strategies with uiType === 'wizard' */}
       {generatingPublicationId && (() => {
         const publication = task.publications?.find(p => p.id === generatingPublicationId)
+        // Always use publication contentType, not task contentType
+        // Publications can have different content types than the task
         const contentType = (publication?.contentType || 'video').toLowerCase()
         const strategy = getGenerationStrategy(contentType)
         
