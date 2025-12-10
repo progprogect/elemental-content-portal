@@ -27,7 +27,7 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
 
   useEffect(() => {
     if (test) {
-      setContent(test.generatedTestContent)
+      setContent(test.generatedTestContent || '')
       setIsEditing(false)
     }
   }, [test])
@@ -58,7 +58,7 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
   })
 
   const handleSave = async () => {
-    if (test && content.trim()) {
+    if (test && content && content.trim()) {
       await updateMutation.mutateAsync({ testId: test.id, content })
     }
   }
@@ -124,11 +124,11 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
               >
                 {generateMutation.isPending ? 'Regenerating...' : 'Regenerate Test'}
               </Button>
-              {content !== test.generatedTestContent && (
+              {content !== (test.generatedTestContent || '') && (
                 <Button
                   variant="primary"
                   onClick={handleSave}
-                  disabled={updateMutation.isPending || !content.trim()}
+                  disabled={updateMutation.isPending || !content || !content.trim()}
                   className="text-sm"
                 >
                   {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
@@ -138,7 +138,7 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
           </div>
 
           <textarea
-            value={content}
+            value={content || ''}
             onChange={(e) => setContent(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm min-h-[300px]"
             placeholder="Test content will appear here..."
