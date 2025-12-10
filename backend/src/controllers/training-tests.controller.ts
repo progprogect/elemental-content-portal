@@ -26,7 +26,14 @@ export const getTest = async (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Test not found' });
   }
 
-  res.json(test);
+  // Map to frontend interface format
+  res.json({
+    id: test.id,
+    trainingTopicId: test.topicId,
+    generatedTestContent: test.content,
+    createdAt: test.generatedAt.toISOString(),
+    updatedAt: test.updatedAt.toISOString(),
+  });
 };
 
 export const generateTest = async (req: Request, res: Response) => {
@@ -75,6 +82,15 @@ export const generateTest = async (req: Request, res: Response) => {
       });
     }
 
+    // Map to frontend interface format
+    const response = {
+      id: test.id,
+      trainingTopicId: test.topicId,
+      generatedTestContent: test.content,
+      createdAt: test.generatedAt.toISOString(),
+      updatedAt: test.updatedAt.toISOString(),
+    };
+
     res.json(test);
   } catch (error: any) {
     console.error('Test generation error:', error);
@@ -100,11 +116,18 @@ export const updateTest = async (req: Request, res: Response) => {
   const updatedTest = await prisma.trainingTest.update({
     where: { id },
     data: {
-      content: data.content,
+      content: data.generatedTestContent,
       isEdited: true,
     },
   });
 
-  res.json(updatedTest);
+  // Map to frontend interface format
+  res.json({
+    id: updatedTest.id,
+    trainingTopicId: updatedTest.topicId,
+    generatedTestContent: updatedTest.content,
+    createdAt: updatedTest.generatedAt.toISOString(),
+    updatedAt: updatedTest.updatedAt.toISOString(),
+  });
 };
 
