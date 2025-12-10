@@ -14,7 +14,7 @@ export async function generateGensparkPrompt(topicId: string): Promise<GensparkP
     include: {
       roles: {
         include: {
-          trainingRole: true,
+          role: true,
         },
       },
     },
@@ -51,7 +51,7 @@ export async function generateGensparkPrompt(topicId: string): Promise<GensparkP
 
   // Add target roles/competencies if available
   if (topic.roles && topic.roles.length > 0) {
-    const roleNames = topic.roles.map(tr => tr.trainingRole.name).join(', ');
+    const roleNames = topic.roles.map(tr => tr.role.name).join(', ');
     prompt += `Target Audience/Roles: ${roleNames}\n`;
   }
 
