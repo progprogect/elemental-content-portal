@@ -29,6 +29,11 @@ export function errorHandler(
         error: 'Duplicate entry',
       });
     }
+    if (err.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Invalid reference - related record does not exist',
+      });
+    }
   }
 
   if (err.message === 'Task not found' || err.message.includes('not found')) {

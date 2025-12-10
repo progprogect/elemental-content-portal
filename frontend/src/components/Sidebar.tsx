@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskListsApi, TaskList } from '../services/api/tasks'
-import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
@@ -43,6 +43,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   
   // Check if Settings page is active
   const isSettingsActive = location.pathname === '/settings'
+  
+  // Check if Learning Materials page is active
+  const isLearningMaterialsActive = location.pathname.startsWith('/learning-materials')
 
   const handleListClick = (listId: string) => {
     navigate(`/lists/${listId}`)
@@ -167,6 +170,29 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
                 <p className="text-sm text-gray-500 px-3 py-2">No projects</p>
               )
             )}
+          </div>
+
+          {/* Learning Materials Section */}
+          <div className="px-2 py-2 border-t border-gray-200">
+            {!isCollapsed && (
+              <h2 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                Learning
+              </h2>
+            )}
+            <button
+              onClick={() => {
+                navigate('/learning-materials')
+                onMobileClose()
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isLearningMaterialsActive
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <AcademicCapIcon className="h-5 w-5 flex-shrink-0" />
+              {!isCollapsed && <span className="flex-1 text-left">Learning Materials</span>}
+            </button>
           </div>
 
           {/* Content Generation Section */}

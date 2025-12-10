@@ -7,6 +7,7 @@ interface MarkdownEditorProps {
   label?: string
   placeholder?: string
   error?: string
+  className?: string
 }
 
 export default function MarkdownEditor({
@@ -15,6 +16,7 @@ export default function MarkdownEditor({
   label,
   placeholder = 'Enter markdown content...',
   error,
+  className = '',
 }: MarkdownEditorProps) {
   const [isPreview, setIsPreview] = useState(false)
 
@@ -25,7 +27,7 @@ export default function MarkdownEditor({
           {label}
         </label>
       )}
-      <div className="border border-gray-300 rounded-lg overflow-hidden">
+      <div className={`border border-gray-300 rounded-lg overflow-hidden ${className}`}>
         <div className="flex items-center justify-between bg-gray-50 border-b border-gray-300 px-3 py-2">
           <div className="flex gap-2">
             <button

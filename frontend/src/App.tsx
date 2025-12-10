@@ -5,6 +5,8 @@ import TasksList from './pages/TasksList'
 import TaskDetail from './pages/TaskDetail'
 import TaskForm from './pages/TaskForm'
 import Settings from './pages/Settings'
+import LearningMaterials from './pages/LearningMaterials'
+import TrainingTopicDetail from './pages/TrainingTopicDetail'
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
           <Route path="/tasks/new" element={<TaskForm />} />
           <Route path="/tasks/:id/edit" element={<TaskForm />} />
           <Route path="/tasks/:id" element={<TaskDetail />} />
+          <Route path="/learning-materials" element={<LearningMaterials />} />
+          <Route path="/learning-materials/:id" element={<TrainingTopicDetail />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>

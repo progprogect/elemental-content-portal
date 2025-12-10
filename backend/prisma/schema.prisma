@@ -157,3 +157,71 @@ model TaskPublication {
   @@map("task_publications")
 }
 
+model TrainingTopic {
+  id               String            @id @default(uuid())
+  title            String            @db.VarChar(500)
+  description      String?           @db.Text
+  presentationScript String?         @map("presentation_script") @db.Text
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  roles            TrainingTopicRole[]
+  assets           TrainingAsset[]
+  test             TrainingTest?
+
+  @@index([createdAt])
+  @@map("training_topics")
+}
+
+model TrainingRole {
+  id          String            @id @default(uuid())
+  name        String            @unique @db.VarChar(255)
+  description String?           @db.Text
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  topics      TrainingTopicRole[]
+
+  @@index([name])
+  @@map("training_roles")
+}
+
+model TrainingTopicRole {
+  topicId   String         @map("topic_id")
+  roleId    String         @map("role_id")
+  topic     TrainingTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  role      TrainingRole   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, roleId])
+  @@index([topicId])
+  @@index([roleId])
+  @@map("training_topic_roles")
+}
+
+model TrainingAsset {
+  id          String        @id @default(uuid())
+  topicId     String        @map("topic_id")
+  assetPath   String?       @map("asset_path") @db.VarChar(1000)
+  assetUrl    String?       @map("asset_url") @db.VarChar(1000)
+  filename    String?       @db.VarChar(255)
+  size        Int?
+  source      String        @default("manual") @db.VarChar(50)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  topic       TrainingTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([source])
+  @@map("training_assets")
+}
+
+model TrainingTest {
+  id          String        @id @default(uuid())
+  topicId     String        @unique @map("topic_id")
+  content     String        @db.Text
+  isEdited    Boolean       @default(false) @map("is_edited")
+  generatedAt DateTime      @default(now()) @map("generated_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  topic       TrainingTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@map("training_tests")
+}
+
