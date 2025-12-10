@@ -4,7 +4,7 @@ import { prisma } from '../utils/prisma';
 import { generateTest as generateTestService } from '../services/test-generator';
 
 const updateTestSchema = z.object({
-  content: z.string().min(1),
+  generatedTestContent: z.string().min(1),
 });
 
 export const getTest = async (req: Request, res: Response) => {
@@ -91,7 +91,7 @@ export const generateTest = async (req: Request, res: Response) => {
       updatedAt: test.updatedAt.toISOString(),
     };
 
-    res.json(test);
+    res.json(response);
   } catch (error: any) {
     console.error('Test generation error:', error);
     res.status(500).json({ 
