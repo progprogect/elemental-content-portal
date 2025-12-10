@@ -107,8 +107,7 @@ Please generate a comprehensive test that covers the key concepts from the scrip
   const textPart = parts.find((part: any) => part.text);
   
   if (!textPart || !textPart.text) {
-    console.error('No text data in response parts');
-    console.error('Available parts:', JSON.stringify(parts, null, 2));
+    console.error('No text data in response parts from Google Gemini API');
     throw new Error('No text data returned from Google Gemini API');
   }
 
