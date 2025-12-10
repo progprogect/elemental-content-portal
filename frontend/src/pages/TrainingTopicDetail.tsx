@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { trainingTopicsApi, trainingAssetsApi, trainingTestsApi } from '../services/api/training'
+import { trainingTopicsApi, TrainingTopic } from '../services/api/training'
 import Button from '../components/ui/Button'
 import TrainingRoleTags from '../components/TrainingRoleTags'
 import HeyGenPromptModal from '../components/HeyGenPromptModal'
@@ -15,14 +15,17 @@ export default function TrainingTopicDetail() {
   const [isHeyGenModalOpen, setIsHeyGenModalOpen] = useState(false)
   const [presentationScript, setPresentationScript] = useState('')
 
-  const { data: topic, isLoading } = useQuery({
+  const { data: topic, isLoading } = useQuery<TrainingTopic>({
     queryKey: ['training-topic', id],
     queryFn: () => trainingTopicsApi.getTopic(id!),
     enabled: !!id,
-    onSuccess: (data) => {
-      setPresentationScript(data.presentationScript || '')
-    },
   })
+
+  useEffect(() => {
+    if (topic) {
+      setPresentationScript(topic.presentationScript || '')
+    }
+  }, [topic])
 
   const updateScriptMutation = useMutation({
     mutationFn: (script: string) => trainingTopicsApi.updateTopic(id!, { presentationScript: script }),

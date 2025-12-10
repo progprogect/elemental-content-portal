@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { trainingRolesApi, TrainingRole } from '../services/api/training'
+import { trainingRolesApi } from '../services/api/training'
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 

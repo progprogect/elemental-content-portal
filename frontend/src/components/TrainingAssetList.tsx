@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { trainingAssetsApi } from '../services/api/training'
-import FileUpload from './FileUpload'
 import MediaPreview from './MediaPreview'
 import Button from './ui/Button'
 
@@ -80,13 +79,14 @@ export default function TrainingAssetList({ topicId }: TrainingAssetListProps) {
             htmlFor="video-upload"
             className="cursor-pointer"
           >
-            <Button
-              variant="secondary"
-              as="span"
-              disabled={uploadMutation.isPending}
-            >
-              {uploadMutation.isPending ? 'Uploading...' : 'Choose Video File'}
-            </Button>
+            <span className="inline-block">
+              <Button
+                variant="secondary"
+                disabled={uploadMutation.isPending}
+              >
+                {uploadMutation.isPending ? 'Uploading...' : 'Choose Video File'}
+              </Button>
+            </span>
           </label>
           {uploadMutation.isPending && (
             <span className="text-sm text-gray-500">Uploading...</span>
@@ -129,8 +129,8 @@ export default function TrainingAssetList({ topicId }: TrainingAssetListProps) {
                 {mediaUrl && (
                   <div className="mt-3">
                     <MediaPreview
-                      url={mediaUrl}
-                      filename={asset.filename}
+                      url={mediaUrl || ''}
+                      filename={asset.filename || undefined}
                       className="w-full h-64"
                     />
                   </div>

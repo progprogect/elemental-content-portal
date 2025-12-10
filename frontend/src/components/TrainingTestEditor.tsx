@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { trainingTestsApi } from '../services/api/training'
+import { trainingTestsApi, TrainingTest } from '../services/api/training'
 import Button from './ui/Button'
 
 interface TrainingTestEditorProps {
@@ -12,7 +12,7 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
   const [content, setContent] = useState('')
   const [isEditing, setIsEditing] = useState(false)
 
-  const { data: test, isLoading, error } = useQuery({
+  const { data: test, isLoading, error } = useQuery<TrainingTest>({
     queryKey: ['training-test', topicId],
     queryFn: () => trainingTestsApi.getTest(topicId),
     enabled: !!topicId,
@@ -23,11 +23,14 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
       }
       return failureCount < 3
     },
-    onSuccess: (data) => {
-      setContent(data.content)
-      setIsEditing(data.isEdited)
-    },
   })
+
+  useEffect(() => {
+    if (test) {
+      setContent(test.generatedTestContent)
+      setIsEditing(false)
+    }
+  }, [test])
 
   const generateMutation = useMutation({
     mutationFn: () => trainingTestsApi.generateTest(topicId),
@@ -43,7 +46,7 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
 
   const updateMutation = useMutation({
     mutationFn: ({ testId, content }: { testId: string; content: string }) => 
-      trainingTestsApi.updateTest(topicId, testId, { content }),
+      trainingTestsApi.updateTest(topicId, testId, { generatedTestContent: content }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['training-test', topicId] })
       setIsEditing(true)
@@ -109,7 +112,7 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
                 {isEditing ? 'Edited' : 'Generated'}
               </span>
               <span className="text-xs text-gray-500">
-                Generated {new Date(test.generatedAt).toLocaleDateString()}
+                Generated {new Date(test.createdAt).toLocaleDateString()}
               </span>
             </div>
             <div className="flex gap-2">
@@ -121,7 +124,7 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
               >
                 {generateMutation.isPending ? 'Regenerating...' : 'Regenerate Test'}
               </Button>
-              {content !== test.content && (
+              {content !== test.generatedTestContent && (
                 <Button
                   variant="primary"
                   onClick={handleSave}

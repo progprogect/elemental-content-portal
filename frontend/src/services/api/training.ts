@@ -33,10 +33,9 @@ export interface TrainingAsset {
 
 export interface TrainingTest {
   id: string
-  topicId: string
-  content: string
-  isEdited: boolean
-  generatedAt: string
+  trainingTopicId: string
+  generatedTestContent: string
+  createdAt: string
   updatedAt: string
 }
 
@@ -64,7 +63,7 @@ export interface UpdateRoleData {
 }
 
 export interface UpdateTestData {
-  content: string
+  generatedTestContent: string
 }
 
 export interface HeyGenPromptData {
