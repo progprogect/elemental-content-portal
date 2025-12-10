@@ -30,7 +30,7 @@ export const getTest = async (req: Request, res: Response) => {
   res.json({
     id: test.id,
     trainingTopicId: test.topicId,
-    generatedTestContent: test.content,
+    generatedTestContent: test.content || '',
     createdAt: test.generatedAt.toISOString(),
     updatedAt: test.updatedAt.toISOString(),
   });
@@ -87,7 +87,7 @@ export const generateTest = async (req: Request, res: Response) => {
     const response = {
       id: test.id,
       trainingTopicId: test.topicId,
-      generatedTestContent: test.content,
+      generatedTestContent: test.content || '',
       createdAt: test.generatedAt.toISOString(),
       updatedAt: test.updatedAt.toISOString(),
     };
@@ -126,7 +126,7 @@ export const updateTest = async (req: Request, res: Response) => {
   res.json({
     id: updatedTest.id,
     trainingTopicId: updatedTest.topicId,
-    generatedTestContent: updatedTest.content,
+    generatedTestContent: updatedTest.content || '',
     createdAt: updatedTest.generatedAt.toISOString(),
     updatedAt: updatedTest.updatedAt.toISOString(),
   });
