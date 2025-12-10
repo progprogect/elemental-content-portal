@@ -162,9 +162,7 @@ export async function generateImage(
   const imagePart = parts.find((part: any) => part.inlineData);
   
   if (!imagePart || !imagePart.inlineData) {
-    console.error('No image data in response parts');
-    console.error('Available parts:', JSON.stringify(parts, null, 2));
-    console.error('Full response:', JSON.stringify(data, null, 2));
+    console.error('No image data in response parts from Google Gemini API');
     throw new Error('No image data returned from Google Gemini API - check parts structure');
   }
 
