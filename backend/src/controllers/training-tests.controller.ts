@@ -78,6 +78,7 @@ export const generateTest = async (req: Request, res: Response) => {
           topicId,
           content: testContent,
           isEdited: false,
+          generatedAt: new Date(),
         },
       });
     }
