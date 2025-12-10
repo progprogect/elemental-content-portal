@@ -22,21 +22,21 @@ model User {
 }
 
 model Task {
-  id           String            @id @default(uuid())
-  userId       String?           @map("user_id")
-  listId       String?           @map("list_id")
-  title        String            @db.VarChar(500)
-  contentType  String            @map("content_type") @db.VarChar(50)
-  executionType String           @default("manual") @map("execution_type") @db.VarChar(50)
-  status       String            @default("draft") @db.VarChar(50)
-  scheduledDate DateTime         @map("scheduled_date")
-  createdAt    DateTime          @default(now()) @map("created_at")
-  updatedAt    DateTime          @updatedAt @map("updated_at")
-  user         User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  list         TaskList?         @relation(fields: [listId], references: [id], onDelete: SetNull)
-  fields       TaskField[]
-  results      TaskResult[]
-  publications TaskPublication[]
+  id            String            @id @default(uuid())
+  userId        String?           @map("user_id")
+  listId        String?           @map("list_id")
+  title         String            @db.VarChar(500)
+  contentType   String            @map("content_type") @db.VarChar(50)
+  executionType String            @default("manual") @map("execution_type") @db.VarChar(50)
+  status        String            @default("draft") @db.VarChar(50)
+  scheduledDate DateTime          @map("scheduled_date")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  user          User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list          TaskList?         @relation(fields: [listId], references: [id], onDelete: SetNull)
+  fields        TaskField[]
+  results       TaskResult[]
+  publications  TaskPublication[]
 
   @@index([userId])
   @@index([status])
@@ -62,17 +62,17 @@ model TaskField {
 }
 
 model TaskResult {
-  id            String          @id @default(uuid())
-  taskId       String          @map("task_id")
-  publicationId String?        @map("publication_id")
-  resultUrl    String?         @map("result_url") @db.VarChar(1000)
-  downloadUrl  String?         @map("download_url") @db.VarChar(1000)
-  assetPath    String?         @map("asset_path") @db.VarChar(1000)
-  assetUrl     String?         @map("asset_url") @db.VarChar(1000)
-  source       String          @default("manual") @db.VarChar(50)
-  createdAt    DateTime        @default(now()) @map("created_at")
-  task         Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  publication  TaskPublication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  id            String           @id @default(uuid())
+  taskId        String           @map("task_id")
+  publicationId String?          @map("publication_id")
+  resultUrl     String?          @map("result_url") @db.VarChar(1000)
+  downloadUrl   String?          @map("download_url") @db.VarChar(1000)
+  assetPath     String?          @map("asset_path") @db.VarChar(1000)
+  assetUrl      String?          @map("asset_url") @db.VarChar(1000)
+  source        String           @default("manual") @db.VarChar(50)
+  createdAt     DateTime         @default(now()) @map("created_at")
+  task          Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  publication   TaskPublication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([publicationId])
@@ -81,40 +81,40 @@ model TaskResult {
 }
 
 model ContentTypeConfig {
-  id            String   @id @default(uuid())
-  contentType   String   @unique @map("content_type") @db.VarChar(50)
-  generatorService String? @map("generator_service") @db.VarChar(100)
-  generatorType String?  @map("generator_type") @db.VarChar(100)
-  promptTemplate String? @map("prompt_template") @db.Text
-  requiredFields Json?   @map("required_fields")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  contentType      String   @unique @map("content_type") @db.VarChar(50)
+  generatorService String?  @map("generator_service") @db.VarChar(100)
+  generatorType    String?  @map("generator_type") @db.VarChar(100)
+  promptTemplate   String?  @map("prompt_template") @db.Text
+  requiredFields   Json?    @map("required_fields")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   @@map("content_type_configs")
 }
 
 model TaskList {
-  id          String   @id @default(uuid())
-  name        String   @db.VarChar(255)
-  icon        String?  @db.VarChar(50)
-  color       String?  @db.VarChar(20)
-  orderIndex  Int      @default(0) @map("order_index")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  tasks       Task[]
+  id         String   @id @default(uuid())
+  name       String   @db.VarChar(255)
+  icon       String?  @db.VarChar(50)
+  color      String?  @db.VarChar(20)
+  orderIndex Int      @default(0) @map("order_index")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  tasks      Task[]
 
   @@index([orderIndex])
   @@map("task_lists")
 }
 
 model TableColumn {
-  id          String   @id @default(uuid())
-  fieldName   String   @map("field_name") @db.VarChar(255)
-  fieldType   String   @map("field_type") @db.VarChar(50)
-  defaultValue Json?   @map("default_value")
-  icon        String?  @db.VarChar(50)
-  orderIndex  Int      @default(0) @map("order_index")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  fieldName    String   @map("field_name") @db.VarChar(255)
+  fieldType    String   @map("field_type") @db.VarChar(50)
+  defaultValue Json?    @map("default_value")
+  icon         String?  @db.VarChar(50)
+  orderIndex   Int      @default(0) @map("order_index")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@index([orderIndex])
   @@map("table_columns")
@@ -136,18 +136,18 @@ model Platform {
 }
 
 model TaskPublication {
-  id            String          @id @default(uuid())
-  taskId        String          @map("task_id")
-  platform      String          @db.VarChar(50)
-  contentType   String          @map("content_type") @db.VarChar(50)
-  executionType String          @default("manual") @map("execution_type") @db.VarChar(50)
-  status        String          @default("draft") @db.VarChar(50)
-  note          String?         @db.Text
-  content       String?         @db.Text
-  orderIndex    Int             @default(0) @map("order_index")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
-  task          Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id            String       @id @default(uuid())
+  taskId        String       @map("task_id")
+  platform      String       @db.VarChar(50)
+  contentType   String       @map("content_type") @db.VarChar(50)
+  executionType String       @default("manual") @map("execution_type") @db.VarChar(50)
+  status        String       @default("draft") @db.VarChar(50)
+  note          String?      @db.Text
+  content       String?      @db.Text
+  orderIndex    Int          @default(0) @map("order_index")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  task          Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
   results       TaskResult[]
 
   @@index([taskId])
@@ -158,26 +158,26 @@ model TaskPublication {
 }
 
 model TrainingTopic {
-  id               String            @id @default(uuid())
-  title            String            @db.VarChar(500)
-  description      String?           @db.Text
-  presentationScript String?         @map("presentation_script") @db.Text
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
-  roles            TrainingTopicRole[]
-  assets           TrainingAsset[]
-  test             TrainingTest?
+  id                 String              @id @default(uuid())
+  title              String              @db.VarChar(500)
+  description        String?             @db.Text
+  presentationScript String?             @map("presentation_script") @db.Text
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  roles              TrainingTopicRole[]
+  assets             TrainingAsset[]
+  test               TrainingTest?
 
   @@index([createdAt])
   @@map("training_topics")
 }
 
 model TrainingRole {
-  id          String            @id @default(uuid())
-  name        String            @unique @db.VarChar(255)
-  description String?           @db.Text
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
+  id          String              @id @default(uuid())
+  name        String              @unique @db.VarChar(255)
+  description String?             @db.Text
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
   topics      TrainingTopicRole[]
 
   @@index([name])
@@ -185,10 +185,10 @@ model TrainingRole {
 }
 
 model TrainingTopicRole {
-  topicId   String         @map("topic_id")
-  roleId    String         @map("role_id")
-  topic     TrainingTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  role      TrainingRole   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  topicId String        @map("topic_id")
+  roleId  String        @map("role_id")
+  topic   TrainingTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  role    TrainingRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([topicId, roleId])
   @@index([topicId])
@@ -201,14 +201,17 @@ model TrainingAsset {
   topicId     String        @map("topic_id")
   assetPath   String?       @map("asset_path") @db.VarChar(1000)
   assetUrl    String?       @map("asset_url") @db.VarChar(1000)
+  externalUrl String?       @map("external_url") @db.VarChar(1000)
   filename    String?       @db.VarChar(255)
   size        Int?
+  assetType   String        @default("video") @map("asset_type") @db.VarChar(50)
   source      String        @default("manual") @db.VarChar(50)
   createdAt   DateTime      @default(now()) @map("created_at")
   topic       TrainingTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
   @@index([source])
+  @@index([assetType])
   @@map("training_assets")
 }
 
@@ -224,4 +227,3 @@ model TrainingTest {
   @@index([topicId])
   @@map("training_tests")
 }
-

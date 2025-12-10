@@ -1,14 +1,14 @@
 import { prisma } from '../utils/prisma';
 
-export interface HeyGenPromptData {
+export interface GensparkPromptData {
   prompt: string;
 }
 
 /**
- * Generates a prompt for HeyGen Video Agent based on training topic
+ * Generates a prompt for Genspark Superagent based on training topic
  * Includes technical requirements and presentation script
  */
-export async function generateHeyGenPrompt(topicId: string): Promise<HeyGenPromptData> {
+export async function generateGensparkPrompt(topicId: string): Promise<GensparkPromptData> {
   const topic = await prisma.trainingTopic.findUnique({
     where: { id: topicId },
     include: {
@@ -29,17 +29,18 @@ export async function generateHeyGenPrompt(topicId: string): Promise<HeyGenPromp
   }
 
   // Build prompt with technical requirements and presentation script
-  let prompt = `Create an educational video based on the following requirements:\n\n`;
+  let prompt = `Create a comprehensive educational presentation based on the following requirements:\n\n`;
 
-  // Add style and template instructions
-  prompt += `STYLE & TEMPLATE:\n\n`;
-  prompt += `Use a clean, modern healthcare-themed template with white/blue/teal colors.\n\n`;
+  // Add presentation requirements
+  prompt += `PRESENTATION REQUIREMENTS:\n\n`;
+  prompt += `Create a detailed presentation that thoroughly covers all topics in the lesson.\n\n`;
+  prompt += `Use a clean, professional healthcare-themed design with white/blue/teal colors.\n\n`;
   prompt += `Professional medical style, minimalistic, high contrast, readable.\n\n`;
-  prompt += `Add smooth slide transitions.\n\n`;
-  prompt += `Use AI voice-over: Female, professional, calm, neutral accent (or default).\n\n`;
-  prompt += `Include stock medical videos where requested (hand hygiene, PPE, cleaning).\n\n`;
-  prompt += `Add soft background music suitable for training.\n\n`;
-  prompt += `Make visuals engaging: icons, checkmarks, clean illustrations.\n\n`;
+  prompt += `Include smooth slide transitions.\n\n`;
+  prompt += `Each slide should clearly present key concepts and information.\n\n`;
+  prompt += `Use engaging visuals: icons, diagrams, checkmarks, clean illustrations.\n\n`;
+  prompt += `IMPORTANT: Ensure that all content fits well within the slide area. Content should not overflow or extend beyond slide boundaries. If needed, compress content or reduce the amount of content per slide to ensure everything fits properly within the slide zone.\n\n`;
+  prompt += `Make the presentation comprehensive and educational.\n\n`;
   prompt += `---\n\n`;
 
   // Add topic information

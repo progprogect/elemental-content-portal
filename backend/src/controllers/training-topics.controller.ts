@@ -20,7 +20,7 @@ export const getTopics = async (req: Request, res: Response) => {
     include: {
       roles: {
         include: {
-          role: true,
+          trainingRole: true,
         },
       },
       assets: {
@@ -34,7 +34,7 @@ export const getTopics = async (req: Request, res: Response) => {
   // Transform roles to array format
   const topicsWithRoles = topics.map(topic => ({
     ...topic,
-    roles: topic.roles.map(tr => tr.role),
+    roles: topic.roles.map(tr => tr.trainingRole),
   }));
 
   res.json(topicsWithRoles);
@@ -48,7 +48,7 @@ export const getTopic = async (req: Request, res: Response) => {
     include: {
       roles: {
         include: {
-          role: true,
+          trainingRole: true,
         },
       },
       assets: {
@@ -65,7 +65,7 @@ export const getTopic = async (req: Request, res: Response) => {
   // Transform roles to array format
   const topicWithRoles = {
     ...topic,
-    roles: topic.roles.map(tr => tr.role),
+    roles: topic.roles.map(tr => tr.trainingRole),
   };
 
   res.json(topicWithRoles);
@@ -99,7 +99,7 @@ export const createTopic = async (req: Request, res: Response) => {
     include: {
       roles: {
         include: {
-          role: true,
+          trainingRole: true,
         },
       },
       assets: true,
@@ -113,7 +113,7 @@ export const createTopic = async (req: Request, res: Response) => {
 
   const result = {
     ...topicWithRelations,
-    roles: topicWithRelations.roles.map(tr => tr.role),
+    roles: topicWithRelations.roles.map(tr => tr.trainingRole),
   };
 
   res.status(201).json(result);
@@ -171,7 +171,7 @@ export const updateTopic = async (req: Request, res: Response) => {
     include: {
       roles: {
         include: {
-          role: true,
+          trainingRole: true,
         },
       },
       assets: {
@@ -187,7 +187,7 @@ export const updateTopic = async (req: Request, res: Response) => {
 
   const result = {
     ...updatedTopic,
-    roles: updatedTopic.roles.map(tr => tr.role),
+    roles: updatedTopic.roles.map(tr => tr.trainingRole),
   };
 
   res.json(result);

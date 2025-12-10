@@ -5,14 +5,19 @@ import { trainingTopicsApi, TrainingTopic } from '../services/api/training'
 import Button from '../components/ui/Button'
 import TrainingRoleTags from '../components/TrainingRoleTags'
 import HeyGenPromptModal from '../components/HeyGenPromptModal'
+import GensparkPromptModal from '../components/GensparkPromptModal'
+import PresentationUploadModal from '../components/PresentationUploadModal'
 import TrainingTestEditor from '../components/TrainingTestEditor'
 import TrainingAssetList from '../components/TrainingAssetList'
+import MarkdownEditor from '../components/MarkdownEditor'
 
 export default function TrainingTopicDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isHeyGenModalOpen, setIsHeyGenModalOpen] = useState(false)
+  const [isGensparkModalOpen, setIsGensparkModalOpen] = useState(false)
+  const [isPresentationUploadModalOpen, setIsPresentationUploadModalOpen] = useState(false)
   const [presentationScript, setPresentationScript] = useState('')
 
   const { data: topic, isLoading } = useQuery<TrainingTopic>({
@@ -91,12 +96,11 @@ export default function TrainingTopicDetail() {
             {updateScriptMutation.isPending ? 'Saving...' : 'Save Script'}
           </Button>
         </div>
-        <textarea
+        <MarkdownEditor
           value={presentationScript}
-          onChange={(e) => setPresentationScript(e.target.value)}
+          onChange={setPresentationScript}
           placeholder="Enter your presentation script here..."
-          className="input min-h-[300px] font-mono text-sm"
-          rows={15}
+          className="min-h-[300px]"
         />
       </div>
 
@@ -111,6 +115,13 @@ export default function TrainingTopicDetail() {
           >
             🎬 Generate Video in HeyGen
           </Button>
+          <Button
+            variant="primary"
+            onClick={() => setIsGensparkModalOpen(true)}
+            disabled={!topic.presentationScript || topic.presentationScript.trim().length === 0}
+          >
+            📊 Generate Presentation in Genspark
+          </Button>
         </div>
       </div>
 
@@ -119,7 +130,21 @@ export default function TrainingTopicDetail() {
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Video Assets</h3>
         </div>
-        <TrainingAssetList topicId={topic.id} />
+        <TrainingAssetList topicId={topic.id} assetType="video" />
+      </div>
+
+      {/* Presentation Assets Section */}
+      <div className="card mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Presentation Assets</h3>
+          <Button
+            variant="secondary"
+            onClick={() => setIsPresentationUploadModalOpen(true)}
+          >
+            Add Presentation
+          </Button>
+        </div>
+        <TrainingAssetList topicId={topic.id} assetType="presentation" />
       </div>
 
       {/* Test Section */}
@@ -132,6 +157,20 @@ export default function TrainingTopicDetail() {
       <HeyGenPromptModal
         isOpen={isHeyGenModalOpen}
         onClose={() => setIsHeyGenModalOpen(false)}
+        topicId={topic.id}
+      />
+
+      {/* Genspark Prompt Modal */}
+      <GensparkPromptModal
+        isOpen={isGensparkModalOpen}
+        onClose={() => setIsGensparkModalOpen(false)}
+        topicId={topic.id}
+      />
+
+      {/* Presentation Upload Modal */}
+      <PresentationUploadModal
+        isOpen={isPresentationUploadModalOpen}
+        onClose={() => setIsPresentationUploadModalOpen(false)}
         topicId={topic.id}
       />
     </div>

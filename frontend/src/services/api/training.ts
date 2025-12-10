@@ -25,8 +25,10 @@ export interface TrainingAsset {
   topicId: string
   assetPath?: string | null
   assetUrl?: string | null
+  externalUrl?: string | null
   filename?: string | null
   size?: number | null
+  assetType: 'video' | 'presentation' | 'other'
   source: string
   createdAt: string
 }
@@ -70,6 +72,16 @@ export interface HeyGenPromptData {
   prompt: string
 }
 
+export interface GensparkPromptData {
+  prompt: string
+}
+
+export interface AddAssetLinkData {
+  url: string
+  filename?: string
+  assetType?: 'video' | 'presentation'
+}
+
 export const trainingTopicsApi = {
   getTopics: async () => {
     const response = await apiClient.get<TrainingTopic[]>('/training-topics')
@@ -97,6 +109,11 @@ export const trainingTopicsApi = {
 
   generateHeyGenPrompt: async (id: string) => {
     const response = await apiClient.get<HeyGenPromptData>(`/training-topics/${id}/heygen-prompt`)
+    return response.data
+  },
+
+  generateGensparkPrompt: async (id: string) => {
+    const response = await apiClient.get<GensparkPromptData>(`/training-topics/${id}/genspark-prompt`)
     return response.data
   },
 }
@@ -136,6 +153,22 @@ export const trainingAssetsApi = {
         'Content-Type': 'multipart/form-data',
       },
     })
+    return response.data
+  },
+
+  uploadPresentation: async (topicId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post<TrainingAsset>(`/training-topics/${topicId}/assets/presentation`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  addAssetLink: async (topicId: string, data: AddAssetLinkData) => {
+    const response = await apiClient.post<TrainingAsset>(`/training-topics/${topicId}/assets/link`, data)
     return response.data
   },
 
