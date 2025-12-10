@@ -37,7 +37,7 @@ Please generate a comprehensive test that covers the key concepts from the scrip
       temperature: 0.7,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 8192,
     },
   };
   
