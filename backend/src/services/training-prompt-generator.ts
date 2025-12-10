@@ -31,6 +31,17 @@ export async function generateHeyGenPrompt(topicId: string): Promise<HeyGenPromp
   // Build prompt with technical requirements and presentation script
   let prompt = `Create an educational video based on the following requirements:\n\n`;
 
+  // Add style and template instructions
+  prompt += `STYLE & TEMPLATE:\n\n`;
+  prompt += `Use a clean, modern healthcare-themed template with white/blue/teal colors.\n\n`;
+  prompt += `Professional medical style, minimalistic, high contrast, readable.\n\n`;
+  prompt += `Add smooth slide transitions.\n\n`;
+  prompt += `Use AI voice-over: Female, professional, calm, neutral accent (or default).\n\n`;
+  prompt += `Include stock medical videos where requested (hand hygiene, PPE, cleaning).\n\n`;
+  prompt += `Add soft background music suitable for training.\n\n`;
+  prompt += `Make visuals engaging: icons, checkmarks, clean illustrations.\n\n`;
+  prompt += `---\n\n`;
+
   // Add topic information
   prompt += `Topic: ${topic.title}\n`;
   if (topic.description) {
