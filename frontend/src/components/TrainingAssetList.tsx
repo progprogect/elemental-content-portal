@@ -23,18 +23,6 @@ export default function TrainingAssetList({ topicId, assetType = 'all' }: Traini
     ? allAssets 
     : allAssets.filter(asset => asset.assetType === assetType)
 
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => trainingAssetsApi.uploadAsset(topicId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['training-assets', topicId] })
-      queryClient.invalidateQueries({ queryKey: ['training-topic', topicId] })
-    },
-    onError: (error: any) => {
-      console.error('Upload error:', error)
-      alert(error.response?.data?.error || 'Failed to upload video')
-    },
-  })
-
   const deleteMutation = useMutation({
     mutationFn: ({ topicId, assetId }: { topicId: string; assetId: string }) => 
       trainingAssetsApi.deleteAsset(topicId, assetId),
@@ -47,14 +35,6 @@ export default function TrainingAssetList({ topicId, assetType = 'all' }: Traini
       alert(error.response?.data?.error || 'Failed to delete video')
     },
   })
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      await uploadMutation.mutateAsync(file)
-      e.target.value = '' // Reset input
-    }
-  }
 
   const handleDelete = async (assetId: string, asset: TrainingAsset) => {
     const assetTypeLabel = asset.assetType === 'presentation' ? 'presentation' : 'video'

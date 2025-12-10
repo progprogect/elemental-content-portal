@@ -98,7 +98,7 @@ export default function TrainingTopicDetail() {
         </div>
         <MarkdownEditor
           value={presentationScript}
-          onChange={setPresentationScript}
+          onChange={(value) => setPresentationScript(value || '')}
           placeholder="Enter your presentation script here..."
           className="min-h-[300px]"
         />
