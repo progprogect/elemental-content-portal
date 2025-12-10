@@ -42,7 +42,6 @@ Please generate a comprehensive test that covers the key concepts from the scrip
   };
   
   console.log('Calling Google Gemini API for test generation:', {
-    url: requestUrl.replace(apiKey, '***'),
     model,
     promptLength: prompt.length,
   });
@@ -57,7 +56,7 @@ Please generate a comprehensive test that covers the key concepts from the scrip
       body: JSON.stringify(requestBody),
     });
   } catch (fetchError: any) {
-    console.error('Fetch error:', fetchError);
+    console.error('Fetch error connecting to Google Gemini API');
     throw new Error(`Failed to connect to Google Gemini API: ${fetchError.message}`);
   }
 
@@ -68,10 +67,9 @@ Please generate a comprehensive test that covers the key concepts from the scrip
     try {
       const errorData = JSON.parse(errorText);
       errorMessage = errorData.error?.message || errorData.message || errorMessage;
-      console.error('Google Gemini API error response:', errorData);
+      console.error('Google Gemini API error:', response.status, errorMessage);
     } catch {
-      errorMessage = errorText || errorMessage;
-      console.error('Google Gemini API error text:', errorText);
+      console.error('Google Gemini API error:', response.status);
     }
     
     throw new Error(errorMessage);
@@ -88,7 +86,7 @@ Please generate a comprehensive test that covers the key concepts from the scrip
   
   // Extract text from response
   if (!data.candidates || data.candidates.length === 0) {
-    console.error('No candidates in response:', JSON.stringify(data, null, 2));
+    console.error('No candidates in response from Google Gemini API');
     throw new Error('No candidates returned from Google Gemini API');
   }
 
@@ -101,7 +99,7 @@ Please generate a comprehensive test that covers the key concepts from the scrip
   }
 
   if (!candidate.content || !candidate.content.parts) {
-    console.error('Invalid response structure:', JSON.stringify(data, null, 2));
+    console.error('Invalid response structure from Google Gemini API - missing content.parts');
     throw new Error('Invalid response format from Google Gemini API - missing content.parts');
   }
 

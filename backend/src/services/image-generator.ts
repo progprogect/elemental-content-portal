@@ -84,8 +84,7 @@ export async function generateImage(
     },
   };
   
-  console.log('Calling Google Gemini API (Nano Banana Pro):', {
-    url: requestUrl.replace(apiKey, '***'),
+  console.log('Calling Google Gemini API for image generation:', {
     model,
     aspectRatio,
     promptLength: finalPrompt.length,
@@ -101,7 +100,7 @@ export async function generateImage(
       body: JSON.stringify(requestBody),
     });
   } catch (fetchError: any) {
-    console.error('Fetch error:', fetchError);
+    console.error('Fetch error connecting to Google Gemini API');
     throw new Error(`Failed to connect to Google Gemini API: ${fetchError.message}`);
   }
 
@@ -112,10 +111,9 @@ export async function generateImage(
     try {
       const errorData = JSON.parse(errorText);
       errorMessage = errorData.error?.message || errorData.message || errorMessage;
-      console.error('Google Gemini API error response:', errorData);
+      console.error('Google Gemini API error:', response.status, errorMessage);
     } catch {
-      errorMessage = errorText || errorMessage;
-      console.error('Google Gemini API error text:', errorText);
+      console.error('Google Gemini API error:', response.status);
     }
     
     throw new Error(errorMessage);
@@ -136,7 +134,7 @@ export async function generateImage(
   // Extract image from response according to Gemini API format
   // Response format: { candidates: [{ content: { parts: [{ inlineData: { data: base64, mimeType: "image/png" } }] } }] }
   if (!data.candidates || data.candidates.length === 0) {
-    console.error('No candidates in response:', JSON.stringify(data, null, 2));
+    console.error('No candidates in response from Google Gemini API');
     throw new Error('No candidates returned from Google Gemini API');
   }
 
@@ -145,12 +143,11 @@ export async function generateImage(
   // Check for finish reason (might indicate an error)
   if (candidate.finishReason && candidate.finishReason !== 'STOP') {
     console.error('Candidate finish reason:', candidate.finishReason);
-    console.error('Full candidate:', JSON.stringify(candidate, null, 2));
     throw new Error(`Image generation finished with reason: ${candidate.finishReason}`);
   }
 
   if (!candidate.content || !candidate.content.parts) {
-    console.error('Invalid response structure:', JSON.stringify(data, null, 2));
+    console.error('Invalid response structure from Google Gemini API - missing content.parts');
     throw new Error('Invalid response format from Google Gemini API - missing content.parts');
   }
 
