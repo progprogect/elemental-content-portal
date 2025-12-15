@@ -101,6 +101,70 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
     }
   }
 
+  // Определяем тип медиа на клиенте как fallback
+  const detectMediaType = (url: string): 'image' | 'video' | 'file' => {
+    // Если бэкенд уже определил тип, используем его
+    if (item.mediaType && item.mediaType !== 'file') {
+      return item.mediaType
+    }
+    
+    // Пытаемся определить по URL
+    const urlLower = url.toLowerCase()
+    
+    // Проверка расширения изображений
+    if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|jfif)$/i)) {
+      return 'image'
+    }
+    
+    // Проверка расширения видео
+    if (urlLower.match(/\.(mp4|mov|avi|webm|mkv|flv|wmv|m4v|3gp|ogv)$/i)) {
+      return 'video'
+    }
+    
+    // Проверка по содержимому URL (для случаев без расширения)
+    if (urlLower.includes('/image/') || urlLower.includes('/img/') || 
+        urlLower.includes('image') || urlLower.includes('photo') || 
+        urlLower.includes('picture') || urlLower.match(/\/[^\/]*\.(jpg|jpeg|png|gif|webp)/i)) {
+      return 'image'
+    }
+    
+    if (urlLower.includes('/video/') || urlLower.includes('/vid/') || 
+        urlLower.includes('video') || urlLower.includes('movie') || 
+        urlLower.match(/\/[^\/]*\.(mp4|mov|avi|webm)/i)) {
+      return 'video'
+    }
+    
+    // Если ничего не подошло, но есть URL - попробуем как изображение
+    // (многие API возвращают изображения без расширения)
+    if (url && url.length > 0) {
+      // Проверяем по task contentType
+      if (item.task?.contentType === 'image' || item.publication?.contentType === 'image') {
+        return 'image'
+      }
+      if (item.task?.contentType === 'video' || item.publication?.contentType === 'video') {
+        return 'video'
+      }
+      // По умолчанию пробуем как изображение
+      return 'image'
+    }
+    
+    return 'file'
+  }
+
+  const displayMediaType = detectMediaType(item.mediaUrl)
+  
+  // Отладочная информация (можно убрать в продакшене)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('GalleryItem:', {
+      id: item.id,
+      mediaUrl: item.mediaUrl,
+      mediaType: item.mediaType,
+      displayMediaType,
+      taskContentType: item.task?.contentType,
+      publicationContentType: item.publication?.contentType,
+    })
+  }
+
   return (
     <div
       className="relative group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
@@ -116,31 +180,48 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
         className="aspect-square w-full overflow-hidden bg-gray-100 cursor-pointer"
         onClick={handleCardClick}
       >
-        {item.mediaType === 'image' ? (
-          <img
-            src={item.mediaUrl}
-            alt={item.filename || 'Preview'}
-            className="w-full h-full object-contain"
-            loading="lazy"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement
-              target.style.display = 'none'
-              const parent = target.parentElement
-              if (parent) {
-                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-gray-200"><svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>'
-              }
-            }}
-          />
-        ) : item.mediaType === 'video' ? (
+        {displayMediaType === 'image' ? (
+          <>
+            <img
+              src={item.mediaUrl}
+              alt={item.filename || 'Preview'}
+              className="w-full h-full object-contain"
+              loading="lazy"
+              onError={(e) => {
+                console.error('Image load error:', item.mediaUrl, e)
+                const target = e.target as HTMLImageElement
+                const parent = target.parentElement
+                if (parent) {
+                  parent.innerHTML = '<div class="w-full h-full flex flex-col items-center justify-center bg-gray-200"><svg class="h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><a href="' + item.mediaUrl + '" target="_blank" rel="noopener noreferrer" class="text-xs text-primary-600 hover:underline">Open in new tab</a></div>'
+                }
+              }}
+              onLoad={() => {
+                console.log('Image loaded successfully:', item.mediaUrl)
+              }}
+            />
+            {/* Fallback для случаев когда изображение не загружается */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 pointer-events-none">
+              <a
+                href={item.mediaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary-600 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Open in new tab
+              </a>
+            </div>
+          </>
+        ) : displayMediaType === 'video' ? (
           <video
             src={item.mediaUrl}
             preload="metadata"
             muted
             playsInline
             className="w-full h-full object-contain"
+            crossOrigin="anonymous"
             onError={(e) => {
               const target = e.target as HTMLVideoElement
-              target.style.display = 'none'
               const parent = target.parentElement
               if (parent) {
                 parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-gray-900 bg-opacity-50"><svg class="h-16 w-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></div>'
@@ -148,8 +229,23 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
             }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-50">
-            <DocumentIcon className="h-12 w-12 text-gray-400" />
+          // Для файлов без расширения попробуем показать как изображение или видео
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50">
+            <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
+            {item.mediaUrl && (
+              <a
+                href={item.mediaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  window.open(item.mediaUrl, '_blank')
+                }}
+                className="text-xs text-primary-600 hover:underline"
+              >
+                Open file
+              </a>
+            )}
           </div>
         )}
       </div>
