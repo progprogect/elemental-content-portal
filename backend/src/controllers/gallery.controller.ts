@@ -105,7 +105,7 @@ export const getGallery = async (req: Request, res: Response) => {
           sort === 'oldest'
             ? { createdAt: 'asc' }
             : sort === 'task'
-            ? { taskId: 'asc', createdAt: 'desc' }
+            ? [{ taskId: 'asc' }, { createdAt: 'desc' }]
             : { createdAt: 'desc' },
         skip,
         take: limitNum,

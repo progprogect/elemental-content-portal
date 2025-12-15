@@ -67,8 +67,49 @@ export default function GalleryLightbox({
     return null
   }
 
-  const isImage = currentItem.mediaType === 'image'
-  const isVideo = currentItem.mediaType === 'video'
+  // Определяем тип медиа по URL (аналогично GalleryItem)
+  const detectMediaType = (url: string, backendType: string): 'image' | 'video' | 'file' => {
+    if (backendType && backendType !== 'file') {
+      return backendType as 'image' | 'video'
+    }
+    
+    if (!url || url.length === 0) {
+      return 'file'
+    }
+    
+    const urlLower = url.toLowerCase()
+    const urlWithoutQuery = urlLower.split('?')[0].split('#')[0]
+    
+    // Проверка расширения изображений
+    if (urlWithoutQuery.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|jfif|heic|heif)$/i)) {
+      return 'image'
+    }
+    
+    // Проверка расширения видео
+    if (urlWithoutQuery.match(/\.(mp4|mov|avi|webm|mkv|flv|wmv|m4v|3gp|ogv|mpg|mpeg)$/i)) {
+      return 'video'
+    }
+    
+    // Проверка по паттернам в URL
+    if (urlLower.includes('/image/') || urlLower.includes('/img/') || urlLower.includes('/photo/')) {
+      return 'image'
+    }
+    
+    if (urlLower.includes('/video/') || urlLower.includes('/vid/') || urlLower.includes('/movie/')) {
+      return 'video'
+    }
+    
+    // Если расширения нет, но есть URL - пробуем как изображение
+    if (url && url.length > 0) {
+      return 'image'
+    }
+    
+    return 'file'
+  }
+
+  const displayMediaType = detectMediaType(currentItem.mediaUrl, currentItem.mediaType)
+  const isImage = displayMediaType === 'image'
+  const isVideo = displayMediaType === 'video'
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -177,6 +218,26 @@ export default function GalleryLightbox({
               </video>
             ) : (
               <div className="text-white text-center">
+                {/* Пробуем показать как изображение, даже если тип 'file' */}
+                {currentItem.mediaUrl && (
+                  <div className="mb-4">
+                    <img
+                      src={currentItem.mediaUrl}
+                      alt={currentItem.filename || 'Preview'}
+                      className="max-w-full max-h-[60vh] object-contain rounded-lg mx-auto"
+                      onError={(e) => {
+                        // Если изображение не загрузилось, скрываем его
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                      }}
+                      onLoad={() => {
+                        // Если изображение загрузилось, показываем его
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'block'
+                      }}
+                    />
+                  </div>
+                )}
                 <p className="text-lg mb-4">{currentItem.filename || 'File'}</p>
                 <a
                   href={currentItem.mediaUrl}
