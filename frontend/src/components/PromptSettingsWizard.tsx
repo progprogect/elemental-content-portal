@@ -9,6 +9,7 @@ interface PromptSettingsWizardProps {
   onContinue: (settings: PromptSettings) => void
   onSkipAll: () => void
   contentType?: string
+  onShowPrompt?: (settings: PromptSettings) => void
 }
 
 const wizardSteps: WizardStep[] = [
@@ -45,6 +46,7 @@ export default function PromptSettingsWizard({
   onContinue,
   onSkipAll,
   contentType,
+  onShowPrompt,
 }: PromptSettingsWizardProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [settings, setSettings] = useState<PromptSettings>({})
@@ -94,12 +96,23 @@ export default function PromptSettingsWizard({
         }
       }
     })
-    onContinue(filteredSettings)
+    
+    // Use onShowPrompt if provided, otherwise fallback to onContinue for backward compatibility
+    if (onShowPrompt) {
+      onShowPrompt(filteredSettings)
+    } else {
+      onContinue(filteredSettings)
+    }
     handleClose()
   }
 
   const handleSkipAll = () => {
-    onSkipAll()
+    // Use onShowPrompt if provided (with empty settings), otherwise fallback to onSkipAll
+    if (onShowPrompt) {
+      onShowPrompt({})
+    } else {
+      onSkipAll()
+    }
     handleClose()
   }
 

@@ -36,7 +36,7 @@ export interface GenerationStrategy {
 const GENERATION_STRATEGIES: Record<string, GenerationStrategy> = {
   video: {
     requiresWizard: true,
-    requiresExtension: true,
+    requiresExtension: false,
     redirectUrl: 'https://app.heygen.com/video-agent',
     uiType: 'wizard',
     handler: async (taskId, publicationId, prepareHaygenGeneration, onFallback, settings) => {

@@ -16,6 +16,7 @@ import PublicationEditor from '../components/PublicationEditor'
 import TableCellEditor from '../components/TableCellEditor'
 import PromptSettingsWizard from '../components/PromptSettingsWizard'
 import ImageGenerationModal from '../components/ImageGenerationModal'
+import VideoPromptModal from '../components/VideoPromptModal'
 
 // Utility function to format date for display
 function formatDateLong(dateString: string): string {
@@ -43,6 +44,9 @@ export default function TaskDetail() {
   const [isPromptWizardOpen, setIsPromptWizardOpen] = useState(false)
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState(false)
+  const [isVideoPromptModalOpen, setIsVideoPromptModalOpen] = useState(false)
+  const [promptModalSettings, setPromptModalSettings] = useState<PromptSettings | undefined>()
+  const [promptModalPublicationId, setPromptModalPublicationId] = useState<string | undefined>()
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>(undefined)
   const [resultPublicationId, setResultPublicationId] = useState<string | undefined>(undefined)
   const [generatingPublicationId, setGeneratingPublicationId] = useState<string | undefined>(undefined)
@@ -526,6 +530,7 @@ export default function TaskDetail() {
               setGeneratingPublicationId(undefined)
             }}
             onContinue={async (settings: PromptSettings) => {
+              // Fallback for backward compatibility (not used in new flow)
               try {
                 await handleContentGeneration(
                   id!,
@@ -544,6 +549,7 @@ export default function TaskDetail() {
               }
             }}
             onSkipAll={async () => {
+              // Fallback for backward compatibility (not used in new flow)
               try {
                 await handleContentGeneration(
                   id!,
@@ -559,6 +565,14 @@ export default function TaskDetail() {
                 setIsPromptWizardOpen(false)
                 setGeneratingPublicationId(undefined)
               }
+            }}
+            onShowPrompt={(settings: PromptSettings) => {
+              // Save settings and publicationId, then open VideoPromptModal
+              setPromptModalSettings(settings)
+              setPromptModalPublicationId(generatingPublicationId)
+              setIsVideoPromptModalOpen(true)
+              setIsPromptWizardOpen(false)
+              setGeneratingPublicationId(undefined)
             }}
             contentType={contentType}
           />
@@ -617,6 +631,21 @@ export default function TaskDetail() {
               setIsGeneratingImage(false)
             }
           }}
+        />
+      )}
+
+      {/* Video Prompt Modal */}
+      {promptModalPublicationId && (
+        <VideoPromptModal
+          isOpen={isVideoPromptModalOpen}
+          onClose={() => {
+            setIsVideoPromptModalOpen(false)
+            setPromptModalPublicationId(undefined)
+            setPromptModalSettings(undefined)
+          }}
+          taskId={id!}
+          publicationId={promptModalPublicationId}
+          settings={promptModalSettings}
         />
       )}
 
