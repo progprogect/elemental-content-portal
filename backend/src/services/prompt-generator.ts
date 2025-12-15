@@ -47,6 +47,9 @@ function cleanPrompt(prompt: string): string {
     /^Duration:\s*$/i,
     /^Target Audience:\s*$/i,
     /^Publication-specific content:\s*$/i,
+    /^Ответственный:\s*Максим\s*$/i,
+    /^Responsible:\s*Максим\s*$/i,
+    /^Ответственный:\s*Maxim\s*$/i,
   ];
   
   // Remove boilerplate, but preserve "Additional context:" if it has content after it
@@ -177,6 +180,9 @@ function buildPromptSettingsSections(settings: PromptSettings): string[] {
   if (settings.background) {
     videoSettings.push(`- Background: ${settings.background}`);
   }
+  if (settings.hasAvatar !== undefined) {
+    videoSettings.push(`- Avatar: ${settings.hasAvatar ? 'Yes' : 'No'}`);
+  }
   if (videoSettings.length > 0) {
     settingsSections.push(`Video Settings:\n${videoSettings.join('\n')}`);
   }
@@ -188,6 +194,13 @@ function buildPromptSettingsSections(settings: PromptSettings): string[] {
   }
   if (settings.language) {
     audioSettings.push(`- Language: ${settings.language}`);
+  }
+  if (settings.hasVoiceOver !== undefined) {
+    if (settings.hasVoiceOver === false) {
+      audioSettings.push(`- Voice over volume: 0 (no voice narration)`);
+    } else {
+      audioSettings.push(`- Voice over: Yes`);
+    }
   }
   if (audioSettings.length > 0) {
     settingsSections.push(`Audio Settings:\n${audioSettings.join('\n')}`);

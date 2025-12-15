@@ -12,6 +12,8 @@ export interface PromptSettings {
   hasText?: boolean
   textContent?: string
   textToRead?: string
+  hasAvatar?: boolean
+  hasVoiceOver?: boolean
   additionalRequirements?: string
 }
 
@@ -27,6 +29,8 @@ export const promptSettingsSchema = z.object({
   hasText: z.boolean().optional(),
   textContent: z.string().optional(),
   textToRead: z.string().optional(),
+  hasAvatar: z.boolean().optional(),
+  hasVoiceOver: z.boolean().optional(),
   additionalRequirements: z.string().optional(),
 })
 

@@ -26,12 +26,12 @@ const wizardSteps: WizardStep[] = [
   {
     id: 'video',
     title: 'Video Settings',
-    fields: ['movement', 'sceneTransitions', 'background'],
+    fields: ['movement', 'sceneTransitions', 'background', 'hasAvatar'],
   },
   {
     id: 'audio',
     title: 'Audio & Text',
-    fields: ['voice', 'hasText', 'textContent', 'textToRead'],
+    fields: ['voice', 'hasVoiceOver', 'hasText', 'textContent', 'textToRead'],
   },
   {
     id: 'additional',

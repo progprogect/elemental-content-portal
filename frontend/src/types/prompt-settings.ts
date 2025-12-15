@@ -17,6 +17,8 @@ export interface PromptSettings {
   hasText?: boolean
   textContent?: string
   textToRead?: string
+  hasAvatar?: boolean
+  hasVoiceOver?: boolean
   
   // Step 4: Additional
   additionalRequirements?: string

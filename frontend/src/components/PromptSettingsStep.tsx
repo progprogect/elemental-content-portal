@@ -140,6 +140,27 @@ export default function PromptSettingsStep({
           </div>
         )
 
+      case 'hasAvatar':
+        return (
+          <div key={field} className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Should there be an avatar?
+            </label>
+            <Select
+              value={value === true ? 'yes' : value === false ? 'no' : ''}
+              onChange={(e) => onChange(field, e.target.value === 'yes')}
+              options={[
+                { value: '', label: 'Select...' },
+                { value: 'yes', label: 'Yes' },
+                { value: 'no', label: 'No' },
+              ]}
+            />
+            <p className="text-xs text-gray-500">
+              Choose whether the video should include an avatar (talking head).
+            </p>
+          </div>
+        )
+
       case 'voice':
         return (
           <div key={field} className="space-y-2">
@@ -152,6 +173,27 @@ export default function PromptSettingsStep({
             />
             <p className="text-xs text-gray-500">
               Describe the voice characteristics. You can write detailed instructions, e.g., "Use a fast-paced voice at the beginning to grab attention, then slow down when explaining important details."
+            </p>
+          </div>
+        )
+
+      case 'hasVoiceOver':
+        return (
+          <div key={field} className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Should there be voice over the video?
+            </label>
+            <Select
+              value={value === true ? 'yes' : value === false ? 'no' : ''}
+              onChange={(e) => onChange(field, e.target.value === 'yes')}
+              options={[
+                { value: '', label: 'Select...' },
+                { value: 'yes', label: 'Yes' },
+                { value: 'no', label: 'No' },
+              ]}
+            />
+            <p className="text-xs text-gray-500">
+              Choose whether the video should have voice narration. If "No" is selected, voice volume will be set to 0.
             </p>
           </div>
         )
