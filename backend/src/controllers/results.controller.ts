@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
+import { createStorageAdapter } from '../storage';
 
 const createResultSchema = z.object({
   resultUrl: z.union([z.string().url(), z.literal('')]).optional(),
@@ -89,6 +90,31 @@ export const addResult = async (req: Request, res: Response) => {
 export const deleteResult = async (req: Request, res: Response) => {
   const { id: taskId, resultId } = req.params;
 
+  // Получаем результат перед удалением, чтобы знать путь к файлу
+  const result = await prisma.taskResult.findUnique({
+    where: {
+      id: resultId,
+      taskId,
+    },
+  });
+
+  if (!result) {
+    return res.status(404).json({ error: 'Result not found' });
+  }
+
+  // Удаляем файл из хранилища, если он есть
+  if (result.assetPath) {
+    try {
+      const storage = createStorageAdapter();
+      await storage.delete(result.assetPath);
+    } catch (error) {
+      console.error('Storage delete error:', error);
+      // Продолжаем удаление из БД даже если удаление из хранилища не удалось
+      // (файл может быть уже удален или хранилище недоступно)
+    }
+  }
+
+  // Удаляем запись из БД
   await prisma.taskResult.delete({
     where: {
       id: resultId,
