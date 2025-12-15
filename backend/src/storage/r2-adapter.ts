@@ -27,7 +27,9 @@ export class CloudflareR2Adapter implements StorageAdapter {
   }
 
   async upload(file: Buffer, filename: string, path?: string): Promise<StorageResult> {
-    const key = path ? `${path}/${filename}` : filename;
+    // Normalize path: remove leading/trailing slashes and prevent duplication
+    const normalizedPath = path ? path.replace(/^\/+|\/+$/g, '') : '';
+    const key = normalizedPath ? `${normalizedPath}/${filename}` : filename;
     const contentType = this.getContentType(filename);
 
     await this.client.send(
@@ -39,9 +41,14 @@ export class CloudflareR2Adapter implements StorageAdapter {
       })
     );
 
+    // Normalize publicUrl: remove trailing slash to prevent duplication
+    const normalizedPublicUrl = this.publicUrl.replace(/\/+$/, '');
+    // Ensure key doesn't start with slash
+    const normalizedKey = key.replace(/^\/+/, '');
+    
     return {
-      path: key,
-      url: `${this.publicUrl}/${key}`,
+      path: normalizedKey,
+      url: `${normalizedPublicUrl}/${normalizedKey}`,
       size: file.length,
     };
   }

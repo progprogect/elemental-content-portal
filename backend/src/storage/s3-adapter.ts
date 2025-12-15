@@ -23,7 +23,9 @@ export class AwsS3Adapter implements StorageAdapter {
   }
 
   async upload(file: Buffer, filename: string, path?: string): Promise<StorageResult> {
-    const key = path ? `${path}/${filename}` : filename;
+    // Normalize path: remove leading/trailing slashes and prevent duplication
+    const normalizedPath = path ? path.replace(/^\/+|\/+$/g, '') : '';
+    const key = normalizedPath ? `${normalizedPath}/${filename}` : filename;
     const contentType = this.getContentType(filename);
 
     await this.client.send(
@@ -35,11 +37,14 @@ export class AwsS3Adapter implements StorageAdapter {
       })
     );
 
+    // Ensure key doesn't start with slash
+    const normalizedKey = key.replace(/^\/+/, '');
+    
     // Generate public URL
-    const url = `https://${this.bucketName}.s3.amazonaws.com/${key}`;
+    const url = `https://${this.bucketName}.s3.amazonaws.com/${normalizedKey}`;
 
     return {
-      path: key,
+      path: normalizedKey,
       url,
       size: file.length,
     };

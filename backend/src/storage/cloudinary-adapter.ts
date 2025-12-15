@@ -28,6 +28,8 @@ export class CloudinaryAdapter implements StorageAdapter {
       
       // Generate public_id: remove extension and use folder path if provided
       const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+      // If folderPath is provided, include it in public_id, but don't set folder option separately
+      // to avoid duplication
       const publicId = folderPath ? `${folderPath}/${nameWithoutExt}` : nameWithoutExt;
 
       const uploadOptions: any = {
@@ -36,9 +38,8 @@ export class CloudinaryAdapter implements StorageAdapter {
         overwrite: false,
       };
 
-      if (folderPath) {
-        uploadOptions.folder = folderPath;
-      }
+      // Don't set folder if public_id already contains the path to avoid duplication
+      // Cloudinary will use public_id as the full path, so folder is not needed
 
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
