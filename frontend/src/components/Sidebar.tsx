@@ -13,9 +13,10 @@ interface SidebarProps {
   onToggleCollapse: () => void
   isMobileOpen: boolean
   onMobileClose: () => void
+  onOpenVideoWizard?: () => void
 }
 
-export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose, onOpenVideoWizard }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -77,9 +78,16 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
     },
   ]
 
-  const handleContentGenerationClick = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer')
-    onMobileClose()
+  const handleContentGenerationClick = (optionId: string, url: string) => {
+    if (optionId === 'video-from-video' && onOpenVideoWizard) {
+      // Open wizard for video generation
+      onOpenVideoWizard()
+      onMobileClose()
+    } else {
+      // Direct redirect for other options
+      window.open(url, '_blank', 'noopener,noreferrer')
+      onMobileClose()
+    }
   }
 
   return (
@@ -208,7 +216,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
                 return (
                   <li key={option.id}>
                     <button
-                      onClick={() => handleContentGenerationClick(option.url)}
+                      onClick={() => handleContentGenerationClick(option.id, option.url)}
                       className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-700 hover:bg-gray-50"
                     >
                       <IconComponent className="h-5 w-5 flex-shrink-0" />

@@ -8,9 +8,10 @@ import Button from './ui/Button'
 interface VideoPromptModalProps {
   isOpen: boolean
   onClose: () => void
-  taskId: string
-  publicationId: string
+  taskId?: string
+  publicationId?: string
   settings?: PromptSettings
+  contentType?: string
 }
 
 export default function VideoPromptModal({ 
@@ -18,7 +19,8 @@ export default function VideoPromptModal({
   onClose, 
   taskId, 
   publicationId, 
-  settings 
+  settings,
+  contentType = 'video'
 }: VideoPromptModalProps) {
   const [copied, setCopied] = useState(false)
   const [editedPrompt, setEditedPrompt] = useState('')
@@ -37,10 +39,19 @@ export default function VideoPromptModal({
     return JSON.stringify(sorted)
   }, [settings])
 
+  // Use different API call based on whether we have taskId/publicationId
   const { data: promptData, isLoading, error } = useQuery({
-    queryKey: ['video-prompt', taskId, publicationId, settingsKey],
-    queryFn: () => promptsApi.generatePromptWithSettings(taskId, publicationId, settings || {}),
-    enabled: isOpen && !!taskId && !!publicationId,
+    queryKey: taskId && publicationId 
+      ? ['video-prompt', taskId, publicationId, settingsKey]
+      : ['video-prompt-standalone', contentType, settingsKey],
+    queryFn: () => {
+      if (taskId && publicationId) {
+        return promptsApi.generatePromptWithSettings(taskId, publicationId, settings || {})
+      } else {
+        return promptsApi.generatePromptFromSettings(contentType, settings)
+      }
+    },
+    enabled: isOpen && ((!!taskId && !!publicationId) || !!contentType),
   })
 
   // Initialize edited prompt when promptData is loaded

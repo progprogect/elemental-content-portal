@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generatePrompt, generatePromptForPublication } from '../services/prompt-generator';
+import { generatePrompt, generatePromptForPublication, generatePromptFromSettings } from '../services/prompt-generator';
 import { asyncHandler } from '../utils/async-handler';
 import { promptSettingsSchema } from '../types/prompt-settings';
 
@@ -28,6 +28,20 @@ router.post('/tasks/:taskId/publications/:publicationId/generate', asyncHandler(
 router.get('/tasks/:taskId/publications/:publicationId/generate', asyncHandler(async (req, res) => {
   const { taskId, publicationId } = req.params;
   const promptData = await generatePromptForPublication(taskId, publicationId);
+  res.json(promptData);
+}));
+
+// Generate prompt from settings only (standalone, without task/publication)
+router.post('/generate-from-settings', asyncHandler(async (req, res) => {
+  const contentType = req.body.contentType || 'video';
+  
+  // Parse and validate settings (optional)
+  let settings;
+  if (req.body.settings) {
+    settings = promptSettingsSchema.parse(req.body.settings);
+  }
+  
+  const promptData = await generatePromptFromSettings(contentType, settings);
   res.json(promptData);
 }));
 

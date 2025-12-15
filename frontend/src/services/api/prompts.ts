@@ -44,5 +44,19 @@ export const promptsApi = {
     )
     return response.data
   },
+
+  /**
+   * Generate prompt from settings only (standalone, without task/publication)
+   */
+  async generatePromptFromSettings(
+    contentType: string,
+    settings?: PromptSettings
+  ): Promise<PromptData> {
+    const response = await apiClient.post<PromptData>(
+      '/prompts/generate-from-settings',
+      { contentType, settings }
+    )
+    return response.data
+  },
 }
 

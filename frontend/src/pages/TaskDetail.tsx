@@ -635,19 +635,25 @@ export default function TaskDetail() {
       )}
 
       {/* Video Prompt Modal */}
-      {promptModalPublicationId && (
-        <VideoPromptModal
-          isOpen={isVideoPromptModalOpen}
-          onClose={() => {
-            setIsVideoPromptModalOpen(false)
-            setPromptModalPublicationId(undefined)
-            setPromptModalSettings(undefined)
-          }}
-          taskId={id!}
-          publicationId={promptModalPublicationId}
-          settings={promptModalSettings}
-        />
-      )}
+      {promptModalPublicationId && (() => {
+        const publication = task.publications?.find(p => p.id === promptModalPublicationId)
+        const contentType = (publication?.contentType || task.contentType || 'video').toLowerCase()
+        
+        return (
+          <VideoPromptModal
+            isOpen={isVideoPromptModalOpen}
+            onClose={() => {
+              setIsVideoPromptModalOpen(false)
+              setPromptModalPublicationId(undefined)
+              setPromptModalSettings(undefined)
+            }}
+            taskId={id!}
+            publicationId={promptModalPublicationId}
+            settings={promptModalSettings}
+            contentType={contentType}
+          />
+        )
+      })()}
 
       {/* Generate Prompt Modal (Fallback) */}
       <Modal

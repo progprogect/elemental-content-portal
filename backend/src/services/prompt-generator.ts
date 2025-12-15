@@ -390,3 +390,52 @@ export async function generatePromptForPublication(
   };
 }
 
+/**
+ * Generate prompt from settings only (without task/publication)
+ * Used for standalone video generation from sidebar
+ */
+export async function generatePromptFromSettings(
+  contentType: string,
+  settings?: PromptSettings
+): Promise<PromptData> {
+  // Get content type configuration
+  const config = await prisma.contentTypeConfig.findUnique({
+    where: { contentType },
+  });
+
+  if (!config || !config.promptTemplate) {
+    throw new Error(`No prompt template configured for content type: ${contentType}`);
+  }
+
+  // Start with base template
+  let prompt = config.promptTemplate;
+
+  // Remove placeholders that won't be filled (since we don't have task fields)
+  prompt = prompt.replace(/\{[^}]+\}/g, '');
+
+  // Add settings to prompt if provided
+  if (settings) {
+    // Goal description (first, if provided)
+    if (settings.goalDescription) {
+      prompt = `${settings.goalDescription}\n\n${prompt}`;
+    }
+
+    // Build and append settings sections
+    const settingsSections = buildPromptSettingsSections(settings);
+    if (settingsSections.length > 0) {
+      prompt += `\n\n${settingsSections.join('\n\n')}`;
+    }
+  }
+
+  // Clean up the prompt
+  prompt = cleanPrompt(prompt);
+
+  // Add content type at the beginning if not already present
+  const finalPrompt = addContentTypeToPrompt(prompt, contentType);
+
+  return {
+    prompt: finalPrompt.trim(),
+    assets: [],
+  };
+}
+
