@@ -68,6 +68,7 @@ import trainingTopicsRoutes from './routes/training-topics.routes';
 import trainingRolesRoutes from './routes/training-roles.routes';
 import trainingAssetsRoutes from './routes/training-assets.routes';
 import trainingTestsRoutes from './routes/training-tests.routes';
+import galleryRoutes from './routes/gallery.routes';
 
 app.use('/api/task-lists', taskListsRoutes);
 app.use('/api/table-columns', tableColumnsRoutes);
@@ -83,6 +84,7 @@ app.use('/api/training-topics', trainingTopicsRoutes);
 app.use('/api/training-roles', trainingRolesRoutes);
 app.use('/api/training-topics/:topicId/assets', trainingAssetsRoutes);
 app.use('/api/training-topics/:topicId/test', trainingTestsRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 // Serve React app for all non-API routes (in production)
 if (process.env.NODE_ENV === 'production') {

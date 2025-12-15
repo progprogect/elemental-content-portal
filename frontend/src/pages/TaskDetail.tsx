@@ -395,6 +395,8 @@ export default function TaskDetail() {
                               key={result.id}
                               result={result}
                               onDelete={() => deleteResultMutation.mutate(result.id)}
+                              taskId={id}
+                              publicationId={publication.id}
                             />
                           ))}
                         </div>
@@ -769,8 +771,20 @@ export default function TaskDetail() {
   )
 }
 
-function ResultCard({ result, onDelete }: { result: TaskResult; onDelete: () => void }) {
+function ResultCard({ result, onDelete, taskId, publicationId }: { result: TaskResult; onDelete: () => void; taskId?: string; publicationId?: string }) {
+  const navigate = useNavigate()
   const mediaUrl = result.assetUrl || result.downloadUrl || result.resultUrl
+  
+  const handleViewInGallery = () => {
+    navigate('/gallery', {
+      state: {
+        galleryFilters: {
+          taskId: taskId,
+          publicationId: publicationId || result.publicationId || undefined,
+        },
+      },
+    })
+  }
   
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
@@ -780,12 +794,20 @@ function ResultCard({ result, onDelete }: { result: TaskResult; onDelete: () => 
             Source: {result.source} • {new Date(result.createdAt).toLocaleString()}
           </div>
         </div>
-        <button
-          onClick={onDelete}
-          className="text-red-600 hover:text-red-700 text-sm"
-        >
-          Delete
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleViewInGallery}
+            className="text-primary-600 hover:text-primary-700 text-sm"
+          >
+            View in Gallery
+          </button>
+          <button
+            onClick={onDelete}
+            className="text-red-600 hover:text-red-700 text-sm"
+          >
+            Delete
+          </button>
+        </div>
       </div>
       {mediaUrl && (
         <div className="mb-2">

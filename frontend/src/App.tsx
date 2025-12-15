@@ -7,6 +7,7 @@ import TaskForm from './pages/TaskForm'
 import Settings from './pages/Settings'
 import LearningMaterials from './pages/LearningMaterials'
 import TrainingTopicDetail from './pages/TrainingTopicDetail'
+import Gallery from './pages/Gallery'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/tasks/:id" element={<TaskDetail />} />
           <Route path="/learning-materials" element={<LearningMaterials />} />
           <Route path="/learning-materials/:id" element={<TrainingTopicDetail />} />
+          <Route path="/gallery" element={<Gallery />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
