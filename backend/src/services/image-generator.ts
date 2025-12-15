@@ -244,15 +244,15 @@ export async function generateImage(
     throw new Error('Invalid response format from Google Gemini API - missing content.parts');
   }
 
-  const parts = candidate.content.parts || [];
-  console.log('Parts found:', parts.length);
-  console.log('Parts structure:', parts.map((p: any) => ({ 
+  const responseParts = candidate.content.parts || [];
+  console.log('Parts found:', responseParts.length);
+  console.log('Parts structure:', responseParts.map((p: any) => ({ 
     hasText: !!p.text, 
     hasInlineData: !!p.inlineData,
     hasTextContent: !!p.textContent 
   })));
   
-  const imagePart = parts.find((part: any) => part.inlineData);
+  const imagePart = responseParts.find((part: any) => part.inlineData);
   
   if (!imagePart || !imagePart.inlineData) {
     console.error('No image data in response parts from Google Gemini API');
