@@ -101,53 +101,45 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
     }
   }
 
-  // Определяем тип медиа на клиенте как fallback
+  // Определяем тип медиа только по расширению файла в URL
   const detectMediaType = (url: string): 'image' | 'video' | 'file' => {
-    // Если бэкенд уже определил тип, используем его
+    if (!url || url.length === 0) {
+      return 'file'
+    }
+    
+    // Если бэкенд уже определил тип и это не 'file', используем его
+    // (бэкенд проверяет по расширению в assetPath или URL)
     if (item.mediaType && item.mediaType !== 'file') {
       return item.mediaType
     }
     
-    // Пытаемся определить по URL
+    // Пытаемся определить по расширению файла в URL
     const urlLower = url.toLowerCase()
     
+    // Убираем query параметры для проверки расширения
+    const urlWithoutQuery = urlLower.split('?')[0].split('#')[0]
+    
     // Проверка расширения изображений
-    if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|jfif)$/i)) {
+    if (urlWithoutQuery.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|jfif|heic|heif)$/i)) {
       return 'image'
     }
     
     // Проверка расширения видео
-    if (urlLower.match(/\.(mp4|mov|avi|webm|mkv|flv|wmv|m4v|3gp|ogv)$/i)) {
+    if (urlWithoutQuery.match(/\.(mp4|mov|avi|webm|mkv|flv|wmv|m4v|3gp|ogv|mpg|mpeg)$/i)) {
       return 'video'
     }
     
-    // Проверка по содержимому URL (для случаев без расширения)
-    if (urlLower.includes('/image/') || urlLower.includes('/img/') || 
-        urlLower.includes('image') || urlLower.includes('photo') || 
-        urlLower.includes('picture') || urlLower.match(/\/[^\/]*\.(jpg|jpeg|png|gif|webp)/i)) {
+    // Если расширения нет, проверяем по паттернам в URL (для случаев когда файл без расширения)
+    // Но только если это явные паттерны типа /image/ или /video/
+    if (urlLower.includes('/image/') || urlLower.includes('/img/') || urlLower.includes('/photo/')) {
       return 'image'
     }
     
-    if (urlLower.includes('/video/') || urlLower.includes('/vid/') || 
-        urlLower.includes('video') || urlLower.includes('movie') || 
-        urlLower.match(/\/[^\/]*\.(mp4|mov|avi|webm)/i)) {
+    if (urlLower.includes('/video/') || urlLower.includes('/vid/') || urlLower.includes('/movie/')) {
       return 'video'
     }
     
-    // Если ничего не подошло, но есть URL - попробуем как изображение
-    // (многие API возвращают изображения без расширения)
-    if (url && url.length > 0) {
-      // Проверяем по task contentType
-      if (item.task?.contentType === 'image' || item.publication?.contentType === 'image') {
-        return 'image'
-      }
-      if (item.task?.contentType === 'video' || item.publication?.contentType === 'video') {
-        return 'video'
-      }
-      // По умолчанию пробуем как изображение
-      return 'image'
-    }
-    
+    // Если ничего не подошло - возвращаем 'file'
     return 'file'
   }
 
@@ -158,10 +150,9 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
     console.log('GalleryItem:', {
       id: item.id,
       mediaUrl: item.mediaUrl,
-      mediaType: item.mediaType,
-      displayMediaType,
-      taskContentType: item.task?.contentType,
-      publicationContentType: item.publication?.contentType,
+      filename: item.filename,
+      backendMediaType: item.mediaType,
+      detectedMediaType: displayMediaType,
     })
   }
 
@@ -372,4 +363,5 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
     </div>
   )
 }
+
 
