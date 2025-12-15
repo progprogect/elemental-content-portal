@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PhotoIcon, VideoCameraIcon, DocumentIcon } from '@heroicons/react/24/outline'
 import Lightbox from './Lightbox'
 
@@ -13,6 +13,12 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [videoError, setVideoError] = useState(false)
+
+  // Reset error states when URL changes
+  useEffect(() => {
+    setImageError(false)
+    setVideoError(false)
+  }, [url])
 
   // Determine media type from URL or filename
   const getMediaType = (): 'image' | 'video' | 'file' => {
@@ -49,6 +55,7 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
         >
           {!imageError ? (
             <img
+              key={url}
               src={url}
               alt={filename || 'Preview'}
               className="w-full h-full object-contain transition-transform group-hover:scale-105"
@@ -86,6 +93,7 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
         >
           {!videoError ? (
             <video
+              key={url}
               src={url}
               preload="metadata"
               muted
