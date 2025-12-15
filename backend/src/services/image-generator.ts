@@ -147,20 +147,41 @@ export async function generateImage(
   const requestUrl = `${apiUrl}/models/${model}:generateContent?key=${apiKey}`;
   
   // Build parts array for Gemini API request
-  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
-    {
-      text: finalPrompt,
-    },
-  ];
+  // For refinement: image first, then prompt with modification instructions
+  // For generation: prompt first, then optional reference image
+  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [];
   
-  // Add reference image if available
-  if (referenceImageBase64 && referenceImageMimeType) {
+  if (referenceImageBase64 && referenceImageMimeType && request.refinementPrompt) {
+    // Refinement mode: show image first, then modification prompt
     parts.push({
       inlineData: {
         mimeType: referenceImageMimeType,
         data: referenceImageBase64,
       },
     });
+    // Modify prompt to explicitly indicate refinement
+    // Extract base prompt and refinement separately for clearer instruction
+    const basePrompt = request.prompt.trim();
+    const refinementText = request.refinementPrompt.trim();
+    const refinementInstruction = `Based on this image, modify it with the following changes: ${refinementText}. Keep the original style and composition but apply these modifications.`;
+    parts.push({
+      text: refinementInstruction,
+    });
+  } else {
+    // Generation mode: prompt first, then optional reference image
+    parts.push({
+      text: finalPrompt,
+    });
+    
+    // Add reference image if available (for style reference, not refinement)
+    if (referenceImageBase64 && referenceImageMimeType) {
+      parts.push({
+        inlineData: {
+          mimeType: referenceImageMimeType,
+          data: referenceImageBase64,
+        },
+      });
+    }
   }
   
   // Format request according to Gemini API documentation
@@ -181,7 +202,27 @@ export async function generateImage(
     model,
     aspectRatio,
     promptLength: finalPrompt.length,
+    hasReferenceImage: !!referenceImageBase64,
+    refinementPrompt: request.refinementPrompt || 'none',
+    useCurrentResultAsReference: request.useCurrentResultAsReference || false,
   });
+  
+  // Log parts structure for debugging
+  console.log('Parts structure:', {
+    count: parts.length,
+    hasImage: !!referenceImageBase64,
+    partsOrder: parts.map(p => p.text ? 'text' : 'image'),
+    firstPartType: parts[0]?.text ? 'text' : 'image',
+    isRefinementMode: !!(referenceImageBase64 && request.refinementPrompt),
+  });
+  
+  // Log prompt for debugging (truncate if too long)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Full prompt:', finalPrompt.substring(0, 500) + (finalPrompt.length > 500 ? '...' : ''));
+    if (request.refinementPrompt) {
+      console.log('Refinement prompt:', request.refinementPrompt);
+    }
+  }
   
   let response: Response;
   try {
