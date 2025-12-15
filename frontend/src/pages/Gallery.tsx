@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { galleryApi, GalleryItem, GalleryFilters } from '../services/api/gallery'
+import { galleryApi, GalleryItem, GalleryFilters as GalleryFiltersType } from '../services/api/gallery'
 import { resultsApi } from '../services/api/tasks'
-import GalleryFilters as GalleryFiltersComponent from '../components/GalleryFilters'
+import GalleryFilters from '../components/GalleryFilters'
 import GalleryGrid from '../components/GalleryGrid'
 import GalleryLightbox from '../components/GalleryLightbox'
 import Button from '../components/ui/Button'
@@ -17,7 +17,7 @@ export default function Gallery() {
   const hasAppliedStateFilters = useRef(false)
 
   // Получаем фильтры из URL
-  const getFiltersFromUrl = (): GalleryFilters => {
+  const getFiltersFromUrl = (): GalleryFiltersType => {
     return {
       type: (searchParams.get('type') || 'all') as 'all' | 'image' | 'video',
       source: (searchParams.get('source') || 'all') as 'all' | 'manual' | 'haygen' | 'nanobanana',
@@ -48,7 +48,7 @@ export default function Gallery() {
     }
 
     if (!hasAppliedStateFilters.current) {
-      const stateFilters = location.state.galleryFilters as Partial<GalleryFilters>
+      const stateFilters = location.state.galleryFilters as Partial<GalleryFiltersType>
       const newParams = new URLSearchParams(searchParams)
       
       Object.entries(stateFilters).forEach(([key, value]) => {
@@ -167,7 +167,7 @@ export default function Gallery() {
         )}
       </div>
 
-      <GalleryFiltersComponent />
+      <GalleryFilters />
 
       <GalleryGrid
         items={items}
