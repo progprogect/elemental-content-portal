@@ -80,12 +80,41 @@ export default function ImageGenerationModal({
     setError(null)
     
     try {
+      // Regenerate with original settings (without refinement, without using current result as reference)
       const settings: ImageGenerationSettings = {
         prompt: prompt.trim(),
         aspectRatio,
         ...(stylePreset && { stylePreset }),
         ...(customStyle.trim() && { customStyle: customStyle.trim() }),
-        refinementPrompt: refinementPrompt.trim() || undefined,
+        ...(referenceImageUrl && { referenceImageUrl }),
+      }
+      
+      const result = await onGenerate(settings)
+      setCurrentResult(result)
+      setRefinementPrompt('')
+    } catch (err: any) {
+      setError(err.message || 'Failed to regenerate image')
+    }
+  }
+
+  const handleRefine = async () => {
+    if (!currentResult) return
+
+    if (!refinementPrompt.trim()) {
+      setError('Please enter refinement instructions')
+      return
+    }
+
+    setError(null)
+    
+    try {
+      // Apply refinement to current result (use current result as reference + refinement prompt)
+      const settings: ImageGenerationSettings = {
+        prompt: prompt.trim(),
+        aspectRatio,
+        ...(stylePreset && { stylePreset }),
+        ...(customStyle.trim() && { customStyle: customStyle.trim() }),
+        refinementPrompt: refinementPrompt.trim(),
         useCurrentResultAsReference: true,
         referenceImageUrl: currentResult.assetUrl,
       }
@@ -101,7 +130,7 @@ export default function ImageGenerationModal({
         setRefinementPrompt('')
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to regenerate image')
+      setError(err.message || 'Failed to refine image')
     }
   }
 
@@ -168,6 +197,14 @@ export default function ImageGenerationModal({
                 className="ml-3"
               >
                 {isLoading ? 'Regenerating...' : 'Regenerate'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleRefine}
+                disabled={isLoading || isSaving || !refinementPrompt.trim()}
+                className="ml-3"
+              >
+                {isLoading ? 'Refining...' : 'Apply Refinement'}
               </Button>
               <Button
                 variant="primary"
