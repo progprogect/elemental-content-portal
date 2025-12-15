@@ -171,52 +171,57 @@ export default function ImageGenerationModal({
       onClose={handleClose}
       title="Generate Image"
       footer={
-        <>
-          <Button
-            variant="secondary"
-            onClick={handleClose}
-            disabled={isLoading || isSaving}
-          >
-            Cancel
-          </Button>
+        <div className="flex flex-row-reverse gap-3">
           {!hasResult ? (
-            <Button
-              variant="primary"
-              onClick={handleGenerate}
-              disabled={isLoading || !prompt.trim()}
-              className="ml-3"
-            >
-              {isLoading ? 'Generating...' : 'Generate Image'}
-            </Button>
+            <>
+              <Button
+                variant="primary"
+                onClick={handleGenerate}
+                disabled={isLoading || !prompt.trim()}
+              >
+                {isLoading ? 'Generating...' : 'Generate Image'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleClose}
+                disabled={isLoading || isSaving}
+              >
+                Cancel
+              </Button>
+            </>
           ) : (
             <>
               <Button
-                variant="secondary"
-                onClick={handleRegenerate}
+                variant="primary"
+                onClick={handleSaveResult}
                 disabled={isLoading || isSaving}
-                className="ml-3"
               >
-                {isLoading ? 'Regenerating...' : 'Regenerate'}
+                {isSaving ? 'Saving...' : 'Add to Result'}
               </Button>
               <Button
                 variant="secondary"
                 onClick={handleRefine}
                 disabled={isLoading || isSaving || !refinementPrompt.trim()}
-                className="ml-3"
               >
                 {isLoading ? 'Refining...' : 'Apply Refinement'}
               </Button>
               <Button
-                variant="primary"
-                onClick={handleSaveResult}
+                variant="secondary"
+                onClick={handleRegenerate}
                 disabled={isLoading || isSaving}
-                className="ml-3"
               >
-                {isSaving ? 'Saving...' : 'Add to Result'}
+                {isLoading ? 'Regenerating...' : 'Regenerate'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleClose}
+                disabled={isLoading || isSaving}
+              >
+                Cancel
               </Button>
             </>
           )}
-        </>
+        </div>
       }
     >
       <div className="space-y-4">
