@@ -238,6 +238,7 @@ export default function ImageGenerationModal({
               <label className="block text-sm font-medium text-gray-700">Result:</label>
               <div className="w-full h-64 rounded-lg overflow-hidden bg-gray-100">
                 <MediaPreview
+                  key={currentResult.assetUrl}
                   url={currentResult.assetUrl}
                   type="image"
                   className="w-full h-full"
