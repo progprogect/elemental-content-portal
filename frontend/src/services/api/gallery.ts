@@ -22,6 +22,7 @@ export interface GalleryItem {
   downloadUrl?: string
   assetPath?: string
   assetUrl?: string
+  itemType?: 'result' | 'field' // Тип элемента: результат или поле задания
 }
 
 export interface GalleryFilters {

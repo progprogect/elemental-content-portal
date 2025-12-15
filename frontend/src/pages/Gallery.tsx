@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { galleryApi, GalleryItem, GalleryFilters as GalleryFiltersType } from '../services/api/gallery'
-import { resultsApi } from '../services/api/tasks'
+import { resultsApi, fieldsApi } from '../services/api/tasks'
 import GalleryFilters from '../components/GalleryFilters'
 import GalleryGrid from '../components/GalleryGrid'
 import GalleryLightbox from '../components/GalleryLightbox'
@@ -66,14 +66,21 @@ export default function Gallery() {
     }
   }, [location.state, setSearchParams])
 
-  // Удаление результата
-  const deleteResultMutation = useMutation({
+  // Удаление элемента (результат или поле)
+  const deleteItemMutation = useMutation({
     mutationFn: async (item: GalleryItem) => {
       if (!item.task) {
         throw new Error('Cannot delete item without task')
       }
-      // Находим taskId из item.task.id
-      await resultsApi.deleteResult(item.task.id, item.id)
+      
+      // Определяем тип элемента и вызываем соответствующий API
+      if (item.itemType === 'field') {
+        // Удаление поля задания
+        await fieldsApi.deleteField(item.task.id, item.id)
+      } else {
+        // Удаление результата (по умолчанию)
+        await resultsApi.deleteResult(item.task.id, item.id)
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gallery'] })
@@ -91,7 +98,7 @@ export default function Gallery() {
 
   const handleItemDelete = async (item: GalleryItem) => {
     try {
-      await deleteResultMutation.mutateAsync(item)
+      await deleteItemMutation.mutateAsync(item)
     } catch (error: any) {
       console.error('Failed to delete item:', error)
       alert(error.response?.data?.error || 'Failed to delete item')

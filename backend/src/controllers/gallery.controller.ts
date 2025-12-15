@@ -81,8 +81,30 @@ export const getGallery = async (req: Request, res: Response) => {
       }
     }
 
-    // Получение результатов с включением связанных данных
-    const [results, total] = await Promise.all([
+    // Получение результатов и полей с файлами
+    const whereFields: any = {
+      fieldType: 'file',
+      fieldValue: {
+        path: { not: null },
+      },
+    };
+    
+    if (taskId) {
+      whereFields.taskId = taskId;
+    }
+    
+    if (dateFrom || dateTo) {
+      whereFields.createdAt = {};
+      if (dateFrom) {
+        whereFields.createdAt.gte = new Date(dateFrom as string);
+      }
+      if (dateTo) {
+        whereFields.createdAt.lte = new Date(dateTo as string);
+      }
+    }
+
+    // Получаем все результаты и поля без пагинации (пагинацию применим после объединения)
+    const [allResults, allFields, totalResults, totalFields] = await Promise.all([
       prisma.taskResult.findMany({
         where,
         include: {
@@ -101,20 +123,25 @@ export const getGallery = async (req: Request, res: Response) => {
             },
           },
         },
-        orderBy:
-          sort === 'oldest'
-            ? { createdAt: 'asc' }
-            : sort === 'task'
-            ? [{ taskId: 'asc' }, { createdAt: 'desc' }]
-            : { createdAt: 'desc' },
-        skip,
-        take: limitNum,
+      }),
+      prisma.taskField.findMany({
+        where: whereFields,
+        include: {
+          task: {
+            select: {
+              id: true,
+              title: true,
+              contentType: true,
+            },
+          },
+        },
       }),
       prisma.taskResult.count({ where }),
+      prisma.taskField.count({ where: whereFields }),
     ]);
 
     // Преобразование результатов в формат галереи
-    const items = results
+    const resultItems = allResults
       .map((result) => {
         const mediaUrl = getMediaUrl(result);
         if (!mediaUrl) return null; // Пропускаем результаты без URL
@@ -154,32 +181,106 @@ export const getGallery = async (req: Request, res: Response) => {
           downloadUrl: result.downloadUrl || undefined,
           assetPath: result.assetPath || undefined,
           assetUrl: result.assetUrl || undefined,
+          itemType: 'result' as const,
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
+    // Преобразование полей с файлами в формат галереи
+    const fieldItems = allFields
+      .map((field) => {
+        const fieldValue = field.fieldValue as { path?: string; url?: string; filename?: string; size?: number } | null;
+        if (!fieldValue || !fieldValue.path) return null;
+
+        const mediaUrl = fieldValue.url || fieldValue.path;
+        const mediaType = getMediaType(fieldValue.path);
+
+        // Фильтрация по типу медиа
+        if (type !== 'all' && mediaType !== type) {
+          return null;
+        }
+
+        return {
+          id: field.id,
+          mediaUrl,
+          mediaType,
+          filename: fieldValue.filename || fieldValue.path.split('/').pop() || undefined,
+          source: 'manual' as const,
+          createdAt: field.createdAt.toISOString(),
+          task: field.task
+            ? {
+                id: field.task.id,
+                title: field.task.title,
+                contentType: field.task.contentType,
+              }
+            : undefined,
+          publication: undefined,
+          assetPath: fieldValue.path,
+          assetUrl: fieldValue.url || undefined,
+          itemType: 'field' as const,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    // Объединяем и сортируем все элементы
+    const allItems = [...resultItems, ...fieldItems];
+    
+    // Сортируем объединенный список
+    allItems.sort((a, b) => {
+      if (sort === 'oldest') {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else if (sort === 'task') {
+        const taskCompare = (a.task?.id || '').localeCompare(b.task?.id || '');
+        if (taskCompare !== 0) return taskCompare;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+    // Применяем пагинацию к объединенному списку
+    const items = allItems.slice(skip, skip + limitNum);
+
     // Если фильтруем по типу медиа, нужно пересчитать total
     // Для точности делаем дополнительный запрос, но только если фильтруем по типу
-    let filteredTotal = total;
+    let filteredTotal = totalResults + totalFields;
     if (type !== 'all') {
-      // Получаем все результаты для подсчета после фильтрации по типу
-      const allResults = await prisma.taskResult.findMany({
-        where,
-        select: {
-          id: true,
-          assetPath: true,
-          assetUrl: true,
-          downloadUrl: true,
-          resultUrl: true,
-        },
-      });
+      // Получаем все результаты и поля для подсчета после фильтрации по типу
+      const [allResults, allFields] = await Promise.all([
+        prisma.taskResult.findMany({
+          where,
+          select: {
+            id: true,
+            assetPath: true,
+            assetUrl: true,
+            downloadUrl: true,
+            resultUrl: true,
+          },
+        }),
+        prisma.taskField.findMany({
+          where: whereFields,
+          select: {
+            id: true,
+            fieldValue: true,
+          },
+        }),
+      ]);
 
-      filteredTotal = allResults.filter((result) => {
+      const filteredResults = allResults.filter((result) => {
         const mediaUrl = getMediaUrl(result);
         if (!mediaUrl) return false;
         const mediaType = getMediaType(result.assetPath || result.assetUrl || result.downloadUrl || result.resultUrl);
         return mediaType === type;
-      }).length;
+      });
+
+      const filteredFields = allFields.filter((field) => {
+        const fieldValue = field.fieldValue as { path?: string } | null;
+        if (!fieldValue || !fieldValue.path) return false;
+        const mediaType = getMediaType(fieldValue.path);
+        return mediaType === type;
+      });
+
+      filteredTotal = filteredResults.length + filteredFields.length;
     }
 
     const totalPages = Math.ceil(filteredTotal / limitNum);

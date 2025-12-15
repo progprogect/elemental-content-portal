@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
+import { createStorageAdapter } from '../storage';
 
 const createFieldSchema = z.object({
   fieldName: z.string().min(1).max(255),
@@ -71,6 +72,33 @@ export const updateField = async (req: Request, res: Response) => {
 export const deleteField = async (req: Request, res: Response) => {
   const { id: taskId, fieldId } = req.params;
 
+  // Получаем поле перед удалением, чтобы знать путь к файлу
+  const field = await prisma.taskField.findUnique({
+    where: {
+      id: fieldId,
+      taskId,
+    },
+  });
+
+  if (!field) {
+    return res.status(404).json({ error: 'Field not found' });
+  }
+
+  // Удаляем файл из хранилища, если это поле типа 'file' и есть путь
+  if (field.fieldType === 'file') {
+    const fieldValue = field.fieldValue as { path?: string } | null;
+    if (fieldValue?.path) {
+      try {
+        const storage = createStorageAdapter();
+        await storage.delete(fieldValue.path);
+      } catch (error) {
+        console.error('Storage delete error:', error);
+        // Продолжаем удаление из БД даже если удаление из хранилища не удалось
+      }
+    }
+  }
+
+  // Удаляем запись из БД
   await prisma.taskField.delete({
     where: {
       id: fieldId,
