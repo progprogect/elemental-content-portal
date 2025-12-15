@@ -29,9 +29,10 @@ export default function VideoPromptModal({
     }
     // Sort keys to ensure consistent stringification
     const sorted = Object.keys(settings).sort().reduce((acc, key) => {
-      acc[key] = settings[key as keyof PromptSettings]
+      const typedKey = key as keyof PromptSettings
+      acc[typedKey] = settings[typedKey]
       return acc
-    }, {} as PromptSettings)
+    }, {} as Record<string, any>)
     return JSON.stringify(sorted)
   }, [settings])
 
