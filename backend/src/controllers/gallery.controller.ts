@@ -82,11 +82,10 @@ export const getGallery = async (req: Request, res: Response) => {
     }
 
     // Получение результатов и полей с файлами
+    // Для JSONB полей в Prisma нужно использовать другой синтаксис
+    // Получаем все поля типа 'file' и фильтруем в коде
     const whereFields: any = {
       fieldType: 'file',
-      fieldValue: {
-        path: { not: null },
-      },
     };
     
     if (taskId) {
@@ -187,10 +186,14 @@ export const getGallery = async (req: Request, res: Response) => {
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
     // Преобразование полей с файлами в формат галереи
+    // Фильтруем поля, у которых есть path в fieldValue
     const fieldItems = allFields
+      .filter((field) => {
+        const fieldValue = field.fieldValue as { path?: string } | null;
+        return fieldValue && fieldValue.path;
+      })
       .map((field) => {
-        const fieldValue = field.fieldValue as { path?: string; url?: string; filename?: string; size?: number } | null;
-        if (!fieldValue || !fieldValue.path) return null;
+        const fieldValue = field.fieldValue as { path?: string; url?: string; filename?: string; size?: number };
 
         const mediaUrl = fieldValue.url || fieldValue.path;
         const mediaType = getMediaType(fieldValue.path);
@@ -273,12 +276,16 @@ export const getGallery = async (req: Request, res: Response) => {
         return mediaType === type;
       });
 
-      const filteredFields = allFields.filter((field) => {
-        const fieldValue = field.fieldValue as { path?: string } | null;
-        if (!fieldValue || !fieldValue.path) return false;
-        const mediaType = getMediaType(fieldValue.path);
-        return mediaType === type;
-      });
+      const filteredFields = allFields
+        .filter((field) => {
+          const fieldValue = field.fieldValue as { path?: string } | null;
+          return fieldValue && fieldValue.path;
+        })
+        .filter((field) => {
+          const fieldValue = field.fieldValue as { path?: string };
+          const mediaType = getMediaType(fieldValue.path);
+          return mediaType === type;
+        });
 
       filteredTotal = filteredResults.length + filteredFields.length;
     }
