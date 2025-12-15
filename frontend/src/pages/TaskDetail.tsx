@@ -52,6 +52,7 @@ export default function TaskDetail() {
   const [generatingPublicationId, setGeneratingPublicationId] = useState<string | undefined>(undefined)
   const [generatingImagePublicationId, setGeneratingImagePublicationId] = useState<string | undefined>(undefined)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+  const [isSavingImage, setIsSavingImage] = useState(false)
   const [resultUrl, setResultUrl] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
   const [uploadedFile, setUploadedFile] = useState<{ path: string; url: string } | null>(null)
@@ -588,22 +589,19 @@ export default function TaskDetail() {
             setGeneratingImagePublicationId(undefined)
           }}
           isLoading={isGeneratingImage}
+          isSaving={isSavingImage}
           onGenerate={async (settings: ImageGenerationSettings) => {
-            if (!id || !generatingImagePublicationId) return
+            if (!id || !generatingImagePublicationId) {
+              throw new Error('Missing task ID or publication ID')
+            }
             
             setIsGeneratingImage(true)
             try {
-              // Generate image via API (backend already creates result and updates publication status)
-              await imagesApi.generateImage(id, generatingImagePublicationId, settings)
-              
-              // Invalidate queries to refresh UI with new result
-              queryClient.invalidateQueries({ queryKey: ['task', id] })
-              
-              // Close modal
-              setIsImageGenerationModalOpen(false)
-              setGeneratingImagePublicationId(undefined)
+              // Generate image preview (without saving to database)
+              const result = await imagesApi.generateImagePreview(id, generatingImagePublicationId, settings)
+              return result
             } catch (error: any) {
-              console.error('Failed to generate image:', error)
+              console.error('Failed to generate image preview:', error)
               console.error('Error response:', error.response?.data)
               console.error('Error details:', {
                 message: error.message,
@@ -629,6 +627,60 @@ export default function TaskDetail() {
               throw new Error(errorMessage)
             } finally {
               setIsGeneratingImage(false)
+            }
+          }}
+          onRegenerate={async (settings: ImageGenerationSettings) => {
+            if (!id || !generatingImagePublicationId) {
+              throw new Error('Missing task ID or publication ID')
+            }
+            
+            setIsGeneratingImage(true)
+            try {
+              // Regenerate image preview with refinement
+              const result = await imagesApi.generateImagePreview(id, generatingImagePublicationId, settings)
+              return result
+            } catch (error: any) {
+              console.error('Failed to regenerate image:', error)
+              
+              let errorMessage = 'Failed to regenerate image'
+              if (error.response?.data) {
+                const data = error.response.data
+                errorMessage = data.message || data.error || errorMessage
+              } else if (error.message) {
+                errorMessage = error.message
+              }
+              
+              throw new Error(errorMessage)
+            } finally {
+              setIsGeneratingImage(false)
+            }
+          }}
+          onSaveResult={async (result: { assetUrl: string; assetPath: string }) => {
+            if (!id || !generatingImagePublicationId) {
+              throw new Error('Missing task ID or publication ID')
+            }
+            
+            setIsSavingImage(true)
+            try {
+              // Save result to database
+              await imagesApi.saveImageResult(id, generatingImagePublicationId, result)
+              
+              // Invalidate queries to refresh UI with new result
+              queryClient.invalidateQueries({ queryKey: ['task', id] })
+            } catch (error: any) {
+              console.error('Failed to save image result:', error)
+              
+              let errorMessage = 'Failed to save result'
+              if (error.response?.data) {
+                const data = error.response.data
+                errorMessage = data.message || data.error || errorMessage
+              } else if (error.message) {
+                errorMessage = error.message
+              }
+              
+              throw new Error(errorMessage)
+            } finally {
+              setIsSavingImage(false)
             }
           }}
         />

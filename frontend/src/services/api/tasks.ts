@@ -272,6 +272,41 @@ export const imagesApi = {
     }>(`/tasks/${taskId}/publications/${publicationId}/generate-image`, settings)
     return response.data
   },
+  
+  generateImagePreview: async (
+    taskId: string,
+    publicationId: string,
+    settings: {
+      prompt: string
+      stylePreset?: string
+      aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+      customStyle?: string
+      referenceImageUrl?: string
+      refinementPrompt?: string
+      useCurrentResultAsReference?: boolean
+    }
+  ) => {
+    const response = await apiClient.post<{
+      assetUrl: string
+      assetPath: string
+    }>(`/tasks/${taskId}/publications/${publicationId}/generate-image-preview`, settings)
+    return response.data
+  },
+  
+  saveImageResult: async (
+    taskId: string,
+    publicationId: string,
+    result: {
+      assetUrl: string
+      assetPath: string
+    }
+  ) => {
+    const response = await apiClient.post<{
+      assetUrl: string
+      assetPath: string
+    }>(`/tasks/${taskId}/publications/${publicationId}/save-image-result`, result)
+    return response.data
+  },
 }
 
 export const taskListsApi = {

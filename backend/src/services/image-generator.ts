@@ -2,7 +2,54 @@ import { ImageGenerationSettings, ImageGenerationResult } from '../types/prompt-
 import { createStorageAdapter } from '../storage';
 
 /**
- * Builds final prompt from settings by combining prompt with style preset and custom style
+ * Downloads an image from URL and returns it as Buffer
+ */
+async function downloadImageFromUrl(url: string): Promise<Buffer> {
+  try {
+    // Check if URL is from our storage (check if it contains our storage paths)
+    const storage = createStorageAdapter();
+    
+    // Try to extract path from URL to check if it's from our storage
+    // For Cloudflare R2: URL format is https://public-url/path/to/file
+    // For S3: URL format is https://bucket.s3.amazonaws.com/path/to/file
+    // For Cloudinary: URL format is https://res.cloudinary.com/...
+    
+    // Try to download from our storage first if URL matches our storage pattern
+    try {
+      // Extract path from URL - this is a simple heuristic
+      // In production, you might want to parse URL more carefully
+      const urlObj = new URL(url);
+      // Check for both /images/ and /uploads/ paths (our storage paths)
+      const pathMatch = urlObj.pathname.match(/\/(images|uploads)\/.+/);
+      
+      if (pathMatch) {
+        const path = pathMatch[0].substring(1); // Remove leading slash
+        try {
+          const buffer = await storage.download(path);
+          return buffer;
+        } catch {
+          // If download from storage fails, fall through to fetch
+        }
+      }
+    } catch {
+      // If URL parsing fails, fall through to fetch
+    }
+    
+    // Fallback to fetch for external URLs or if storage download failed
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error: any) {
+    throw new Error(`Failed to download image from URL: ${error.message}`);
+  }
+}
+
+/**
+ * Builds final prompt from settings by combining prompt with style preset, custom style, and refinement prompt
  */
 function buildImagePrompt(settings: ImageGenerationSettings): string {
   let prompt = settings.prompt.trim();
@@ -33,6 +80,11 @@ function buildImagePrompt(settings: ImageGenerationSettings): string {
     prompt += `, ${settings.customStyle.trim()}`;
   }
   
+  // Add refinement prompt if provided
+  if (settings.refinementPrompt && settings.refinementPrompt.trim()) {
+    prompt += `. ${settings.refinementPrompt.trim()}`;
+  }
+  
   return prompt;
 }
 
@@ -54,6 +106,34 @@ export async function generateImage(
   // Build final prompt
   const finalPrompt = buildImagePrompt(request);
 
+  // Determine reference image URL
+  const referenceImageUrl = request.referenceImageUrl;
+
+  // Download reference image if provided
+  let referenceImageBase64: string | null = null;
+  let referenceImageMimeType: string | null = null;
+  
+  if (referenceImageUrl) {
+    try {
+      const referenceImageBuffer = await downloadImageFromUrl(referenceImageUrl);
+      // Determine mime type from URL or default to jpeg
+      const urlLower = referenceImageUrl.toLowerCase();
+      if (urlLower.includes('.png')) {
+        referenceImageMimeType = 'image/png';
+      } else if (urlLower.includes('.webp')) {
+        referenceImageMimeType = 'image/webp';
+      } else {
+        referenceImageMimeType = 'image/jpeg';
+      }
+      
+      // Convert buffer to base64 for Gemini API
+      referenceImageBase64 = referenceImageBuffer.toString('base64');
+    } catch (error: any) {
+      console.warn('Failed to download reference image, continuing without it:', error.message);
+      // Continue without reference image if download fails
+    }
+  }
+
   // Use Gemini 2.5 Flash Image (Nano Banana) - Pro version may not be available in all regions
   // Try Pro first, fallback to standard if needed
   // Pro: gemini-3-pro-preview
@@ -66,15 +146,28 @@ export async function generateImage(
   const apiUrl = 'https://generativelanguage.googleapis.com/v1beta';
   const requestUrl = `${apiUrl}/models/${model}:generateContent?key=${apiKey}`;
   
+  // Build parts array for Gemini API request
+  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
+    {
+      text: finalPrompt,
+    },
+  ];
+  
+  // Add reference image if available
+  if (referenceImageBase64 && referenceImageMimeType) {
+    parts.push({
+      inlineData: {
+        mimeType: referenceImageMimeType,
+        data: referenceImageBase64,
+      },
+    });
+  }
+  
   // Format request according to Gemini API documentation
   const requestBody = {
     contents: [
       {
-        parts: [
-          {
-            text: finalPrompt,
-          },
-        ],
+        parts,
       },
     ],
     generationConfig: {

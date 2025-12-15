@@ -40,6 +40,9 @@ export interface ImageGenerationSettings {
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
   model?: 'standard' | 'pro'
   customStyle?: string
+  referenceImageUrl?: string // URL загруженного reference image
+  refinementPrompt?: string // Промпт для доработки (добавляется к основному)
+  useCurrentResultAsReference?: boolean // Флаг для использования текущего результата как reference
 }
 
 export interface ImageGenerationResult {
