@@ -85,6 +85,7 @@ app.use('/api/training-roles', trainingRolesRoutes);
 app.use('/api/training-topics/:topicId/assets', trainingAssetsRoutes);
 app.use('/api/training-topics/:topicId/test', trainingTestsRoutes);
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/images', imagesRoutes);
 
 // Serve React app for all non-API routes (in production)
 if (process.env.NODE_ENV === 'production') {

@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import * as galleryController from '../controllers/gallery.controller';
 import { asyncHandler } from '../utils/async-handler';
+import { validate } from '../middleware/validation';
 import { z } from 'zod';
 
 const router = Router();
@@ -35,7 +36,14 @@ const validateQuery = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const addGalleryItemSchema = z.object({
+  assetUrl: z.string().url(),
+  assetPath: z.string().min(1),
+  source: z.enum(['manual', 'haygen', 'nanobanana']).optional(),
+});
+
 router.get('/', validateQuery, asyncHandler(galleryController.getGallery));
+router.post('/add-item', validate(addGalleryItemSchema), asyncHandler(galleryController.addGalleryItem));
 
 export default router;
 

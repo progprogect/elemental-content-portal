@@ -313,3 +313,67 @@ export const getGallery = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Add item to gallery without task/publication context (standalone mode)
+ * Used for saving standalone generated images to gallery
+ */
+export const addGalleryItem = async (req: Request, res: Response) => {
+  try {
+    const { assetUrl, assetPath, source = 'nanobanana' } = req.body;
+
+    // Validate required fields
+    if (!assetUrl || !assetPath) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'assetUrl and assetPath are required',
+      });
+    }
+
+    // Validate source
+    const validSources = ['manual', 'haygen', 'nanobanana'];
+    if (!validSources.includes(source)) {
+      return res.status(400).json({
+        error: 'Invalid source',
+        message: `Source must be one of: ${validSources.join(', ')}`,
+      });
+    }
+
+    // Create TaskResult with taskId=null and publicationId=null
+    const result = await prisma.taskResult.create({
+      data: {
+        taskId: null,
+        publicationId: null,
+        assetUrl,
+        assetPath,
+        source,
+      },
+    });
+
+    // Transform to GalleryItem format
+    const mediaType = getMediaType(assetPath || assetUrl);
+    const mediaUrl = assetUrl;
+
+    const galleryItem = {
+      id: result.id,
+      mediaUrl,
+      mediaType,
+      filename: assetPath ? assetPath.split('/').pop() || undefined : undefined,
+      source: result.source as 'manual' | 'haygen' | 'nanobanana',
+      createdAt: result.createdAt.toISOString(),
+      task: undefined, // No task for standalone items
+      publication: undefined, // No publication for standalone items
+      assetPath: result.assetPath || undefined,
+      assetUrl: result.assetUrl || undefined,
+      itemType: 'result' as const,
+    };
+
+    res.status(201).json(galleryItem);
+  } catch (error) {
+    console.error('Error adding gallery item:', error);
+    res.status(500).json({
+      error: 'Failed to add gallery item',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+

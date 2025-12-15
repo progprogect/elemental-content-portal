@@ -63,7 +63,7 @@ model TaskField {
 
 model TaskResult {
   id            String           @id @default(uuid())
-  taskId        String           @map("task_id")
+  taskId        String?          @map("task_id")
   publicationId String?          @map("publication_id")
   resultUrl     String?          @map("result_url") @db.VarChar(1000)
   downloadUrl   String?          @map("download_url") @db.VarChar(1000)
@@ -71,7 +71,7 @@ model TaskResult {
   assetUrl      String?          @map("asset_url") @db.VarChar(1000)
   source        String           @default("manual") @db.VarChar(50)
   createdAt     DateTime         @default(now()) @map("created_at")
-  task          Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task          Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
   publication   TaskPublication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([taskId])

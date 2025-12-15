@@ -14,9 +14,10 @@ interface SidebarProps {
   isMobileOpen: boolean
   onMobileClose: () => void
   onOpenVideoWizard?: () => void
+  onOpenImageGeneration?: () => void
 }
 
-export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose, onOpenVideoWizard }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose, onOpenVideoWizard, onOpenImageGeneration }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -68,6 +69,12 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   // Content generation options configuration
   const contentGenerationOptions = [
     {
+      id: 'generate-image',
+      name: 'Generate Image',
+      url: '',
+      icon: PhotoIcon,
+    },
+    {
       id: 'talking-head',
       name: 'Generate Talking Head from Photo',
       url: 'https://app.heygen.com/templates?ct=explainer%2520video&shortcut=photo-to-video',
@@ -82,7 +89,11 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   ]
 
   const handleContentGenerationClick = (optionId: string, url: string) => {
-    if (optionId === 'video-from-video' && onOpenVideoWizard) {
+    if (optionId === 'generate-image' && onOpenImageGeneration) {
+      // Open image generation modal
+      onOpenImageGeneration()
+      onMobileClose()
+    } else if (optionId === 'video-from-video' && onOpenVideoWizard) {
       // Open wizard for video generation
       onOpenVideoWizard()
       onMobileClose()

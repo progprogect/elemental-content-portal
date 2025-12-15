@@ -176,6 +176,54 @@ export const generateImagePreview = async (req: Request, res: Response) => {
 };
 
 /**
+ * Generate image without task/publication context (standalone mode)
+ * Used for generating images directly from sidebar
+ */
+export const generateStandaloneImage = async (req: Request, res: Response) => {
+  // Data is already validated by middleware
+  const data = req.body as ImageGenerationSettings;
+
+  try {
+    // Generate image without taskId and publicationId
+    const imageResult = await generateImage(data, null, null);
+
+    // Return result without saving to database
+    // User will save it to gallery separately via addGalleryItem
+    res.status(200).json({
+      assetUrl: imageResult.assetUrl,
+      assetPath: imageResult.assetPath,
+    });
+  } catch (error: any) {
+    console.error('Error generating standalone image:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      cause: error.cause,
+    });
+    
+    // Return detailed error information
+    const errorResponse: any = {
+      error: 'Failed to generate image',
+      message: error.message || 'Unknown error',
+    };
+    
+    // Include stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.stack = error.stack;
+      errorResponse.details = {
+        name: error.name,
+        code: error.code,
+        cause: error.cause,
+      };
+    }
+    
+    res.status(500).json(errorResponse);
+  }
+};
+
+/**
  * Save image result to database after user confirmation
  * Used after iterative refinement is complete
  */

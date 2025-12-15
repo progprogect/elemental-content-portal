@@ -94,8 +94,8 @@ function buildImagePrompt(settings: ImageGenerationSettings): string {
  */
 export async function generateImage(
   request: ImageGenerationSettings,
-  taskId: string,
-  publicationId: string
+  taskId?: string | null,
+  publicationId?: string | null
 ): Promise<ImageGenerationResult> {
   const apiKey = process.env.NANOBANANA_API_KEY;
   
@@ -320,7 +320,16 @@ export async function generateImage(
   const storage = createStorageAdapter();
   const extension = mimeType.split('/')[1] || 'png';
   const filename = `generated-${Date.now()}.${extension}`;
-  const storagePath = `images/${taskId}/${publicationId}`;
+  
+  // Determine storage path based on whether taskId/publicationId are provided
+  let storagePath: string;
+  if (taskId && publicationId) {
+    storagePath = `images/${taskId}/${publicationId}`;
+  } else {
+    // Standalone mode: use timestamp-based path
+    const timestamp = Date.now();
+    storagePath = `images/standalone/${timestamp}`;
+  }
   
   let result;
   try {

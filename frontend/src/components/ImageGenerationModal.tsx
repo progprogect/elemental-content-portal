@@ -17,6 +17,7 @@ interface ImageGenerationModalProps {
   onSaveResult?: (result: { assetUrl: string; assetPath: string }) => Promise<void>
   isLoading?: boolean
   isSaving?: boolean
+  mode?: 'standalone' | 'publication' // Mode: standalone (for sidebar) or publication (for task publications)
 }
 
 export default function ImageGenerationModal({
@@ -27,6 +28,7 @@ export default function ImageGenerationModal({
   onSaveResult,
   isLoading = false,
   isSaving = false,
+  mode = 'publication',
 }: ImageGenerationModalProps) {
   // Settings state
   const [prompt, setPrompt] = useState('')
@@ -196,7 +198,7 @@ export default function ImageGenerationModal({
                 onClick={handleSaveResult}
                 disabled={isLoading || isSaving}
               >
-                {isSaving ? 'Saving...' : 'Add to Result'}
+                {isSaving ? 'Saving...' : mode === 'standalone' ? 'Add to Gallery' : 'Add to Result'}
               </Button>
               <Button
                 variant="secondary"

@@ -39,5 +39,11 @@ router.post(
   asyncHandler(imagesController.saveImageResult)
 );
 
+router.post(
+  '/generate-standalone',
+  validate(generateImageSchema),
+  asyncHandler(imagesController.generateStandaloneImage)
+);
+
 export default router;
 
