@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { promptsApi } from '../services/api/prompts'
 import { PromptSettings } from '../types/prompt-settings'
@@ -21,6 +21,7 @@ export default function VideoPromptModal({
   settings 
 }: VideoPromptModalProps) {
   const [copied, setCopied] = useState(false)
+  const [editedPrompt, setEditedPrompt] = useState('')
 
   // Create stable key from settings object to avoid unnecessary re-renders
   const settingsKey = useMemo(() => {
@@ -42,10 +43,26 @@ export default function VideoPromptModal({
     enabled: isOpen && !!taskId && !!publicationId,
   })
 
-  const handleCopyPrompt = async () => {
+  // Initialize edited prompt when promptData is loaded
+  useEffect(() => {
     if (promptData?.prompt) {
+      setEditedPrompt(promptData.prompt)
+    }
+  }, [promptData?.prompt])
+
+  // Reset edited prompt when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEditedPrompt('')
+      setCopied(false)
+    }
+  }, [isOpen])
+
+  const handleCopyPrompt = async () => {
+    const promptToCopy = editedPrompt || promptData?.prompt
+    if (promptToCopy) {
       try {
-        await navigator.clipboard.writeText(promptData.prompt)
+        await navigator.clipboard.writeText(promptToCopy)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       } catch (err) {
@@ -53,6 +70,14 @@ export default function VideoPromptModal({
       }
     }
   }
+
+  const handleResetPrompt = () => {
+    if (promptData?.prompt) {
+      setEditedPrompt(promptData.prompt)
+    }
+  }
+
+  const isPromptEdited = promptData?.prompt && editedPrompt !== promptData.prompt
 
   const handleOpenHeyGen = () => {
     window.open('https://app.heygen.com/video-agent', '_blank', 'noopener,noreferrer')
@@ -68,10 +93,19 @@ export default function VideoPromptModal({
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>
+          {isPromptEdited && (
+            <Button
+              variant="secondary"
+              onClick={handleResetPrompt}
+              className="ml-3"
+            >
+              Reset
+            </Button>
+          )}
           <Button
             variant="primary"
             onClick={handleCopyPrompt}
-            disabled={!promptData?.prompt || copied}
+            disabled={(!editedPrompt && !promptData?.prompt) || copied}
             className="ml-3"
           >
             {copied ? 'Copied!' : 'Copy Prompt'}
@@ -100,13 +134,20 @@ export default function VideoPromptModal({
         {promptData && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Generated Prompt
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Generated Prompt
+                </label>
+                {isPromptEdited && (
+                  <span className="text-xs text-blue-600 font-medium">
+                    Edited
+                  </span>
+                )}
+              </div>
               <textarea
-                readOnly
-                value={promptData.prompt}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
+                value={editedPrompt}
+                onChange={(e) => setEditedPrompt(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={15}
               />
             </div>
@@ -115,6 +156,7 @@ export default function VideoPromptModal({
                 <strong>Instructions:</strong>
               </p>
               <ol className="list-decimal list-inside text-sm text-blue-700 mt-2 space-y-1">
+                <li>Edit the prompt if needed (you can modify it directly in the text area above)</li>
                 <li>Click "Copy Prompt" to copy the prompt to your clipboard</li>
                 <li>Click "Open HeyGen Video Agent" to open HeyGen in a new tab</li>
                 <li>Paste the prompt into HeyGen and generate your video</li>
