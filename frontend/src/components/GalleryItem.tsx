@@ -146,7 +146,7 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
   const displayMediaType = detectMediaType(item.mediaUrl)
   
   // Отладочная информация (можно убрать в продакшене)
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     console.log('GalleryItem:', {
       id: item.id,
       mediaUrl: item.mediaUrl,
