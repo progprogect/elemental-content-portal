@@ -194,57 +194,6 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
               </button>
               {isMenuOpen && menuPosition && (
                 <>
-                  <div
-                    className="fixed w-48 bg-white rounded-md shadow-lg z-[9999] border border-gray-200"
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      top: `${menuPosition.top}px`,
-                      right: `${menuPosition.right}px`,
-                    }}
-                  >
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        onView(item)
-                        setIsMenuOpen(false)
-                        setMenuPosition(null)
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      View
-                    </button>
-                    {item.task && (
-                      <button
-                        onClick={() => {
-                          handleViewTask()
-                          setMenuPosition(null)
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        View Task
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        handleDownload()
-                        setMenuPosition(null)
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Download
-                    </button>
-                    {onDelete && (
-                      <button
-                        onClick={() => {
-                          handleDelete()
-                          setMenuPosition(null)
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
                   {/* Overlay to close menu on outside click */}
                   <div
                     className="fixed inset-0 z-[9998]"
@@ -253,6 +202,58 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
                       setMenuPosition(null)
                     }}
                   />
+                  <div
+                    className="fixed w-48 bg-white rounded-md shadow-lg z-[9999] border border-gray-200"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      top: `${menuPosition.top}px`,
+                      right: `${menuPosition.right}px`,
+                    }}
+                  >
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          onView(item)
+                          setIsMenuOpen(false)
+                          setMenuPosition(null)
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        View
+                      </button>
+                      {item.task && (
+                        <button
+                          onClick={() => {
+                            handleViewTask()
+                            setMenuPosition(null)
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          View Task
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          handleDownload()
+                          setMenuPosition(null)
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Download
+                      </button>
+                      {onDelete && (
+                        <button
+                          onClick={() => {
+                            handleDelete()
+                            setMenuPosition(null)
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </>
               )}
             </div>
