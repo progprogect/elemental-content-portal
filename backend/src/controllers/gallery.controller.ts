@@ -194,7 +194,10 @@ export const getGallery = async (req: Request, res: Response) => {
       })
       .map((field) => {
         const fieldValue = field.fieldValue as { path?: string; url?: string; filename?: string; size?: number };
-
+        
+        // Уже отфильтрованы выше, но TypeScript не знает об этом
+        if (!fieldValue.path) return null;
+        
         const mediaUrl = fieldValue.url || fieldValue.path;
         const mediaType = getMediaType(fieldValue.path);
 
