@@ -230,7 +230,7 @@ export default function GalleryLightbox({
                         const target = e.target as HTMLImageElement
                         target.style.display = 'none'
                       }}
-                      onLoad={() => {
+                      onLoad={(e) => {
                         // Если изображение загрузилось, показываем его
                         const target = e.target as HTMLImageElement
                         target.style.display = 'block'
