@@ -4,6 +4,7 @@ import { promptsApi } from '../services/api/prompts'
 import { PromptSettings } from '../types/prompt-settings'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
+import VoiceInputButton from './VoiceInputButton'
 
 interface VideoPromptModalProps {
   isOpen: boolean
@@ -155,12 +156,20 @@ export default function VideoPromptModal({
                   </span>
                 )}
               </div>
-              <textarea
-                value={editedPrompt}
-                onChange={(e) => setEditedPrompt(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={15}
-              />
+              <div className="relative">
+                <textarea
+                  value={editedPrompt}
+                  onChange={(e) => setEditedPrompt(e.target.value)}
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg bg-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={15}
+                />
+                <VoiceInputButton
+                  onTranscribe={(text) => {
+                    setEditedPrompt(editedPrompt + (editedPrompt ? ' ' : '') + text)
+                  }}
+                  className="absolute right-2 top-2"
+                />
+              </div>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">

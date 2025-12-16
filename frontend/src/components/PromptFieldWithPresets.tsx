@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FieldPreset } from '../types/prompt-settings'
 import Button from './ui/Button'
+import VoiceInputButton from './VoiceInputButton'
 
 interface PromptFieldWithPresetsProps {
   label: string
@@ -43,8 +44,15 @@ export default function PromptFieldWithPresets({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`input w-full ${type === 'textarea' ? 'min-h-[100px] resize-y' : ''}`}
+          className={`input w-full ${type === 'textarea' ? 'min-h-[100px] resize-y pr-10' : 'pr-10'}`}
           required={required}
+        />
+        <VoiceInputButton
+          onTranscribe={(text) => {
+            // Add transcribed text to existing value with space separator
+            onChange(value + (value ? ' ' : '') + text)
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2"
         />
       </div>
 

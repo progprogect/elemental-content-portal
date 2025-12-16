@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { trainingTestsApi, TrainingTest } from '../services/api/training'
 import Button from './ui/Button'
+import VoiceInputButton from './VoiceInputButton'
 
 interface TrainingTestEditorProps {
   topicId: string
@@ -137,12 +138,20 @@ export default function TrainingTestEditor({ topicId }: TrainingTestEditorProps)
             </div>
           </div>
 
-          <textarea
-            value={content || ''}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm min-h-[300px]"
-            placeholder="Test content will appear here..."
-          />
+          <div className="relative">
+            <textarea
+              value={content || ''}
+              onChange={(e) => setContent(e.target.value)}
+              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-sm min-h-[300px]"
+              placeholder="Test content will appear here..."
+            />
+            <VoiceInputButton
+              onTranscribe={(text) => {
+                setContent((content || '') + (content ? ' ' : '') + text)
+              }}
+              className="absolute right-2 top-2"
+            />
+          </div>
         </>
       )}
 

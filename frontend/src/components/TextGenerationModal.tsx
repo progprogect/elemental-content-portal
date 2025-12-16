@@ -5,6 +5,7 @@ import Modal from './ui/Modal'
 import Button from './ui/Button'
 import Select from './ui/Select'
 import MDEditor from '@uiw/react-md-editor'
+import VoiceInputButton from './VoiceInputButton'
 
 interface TextGenerationModalProps {
   isOpen: boolean
@@ -166,13 +167,21 @@ export default function TextGenerationModal({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   What should the text be about? (optional)
                 </label>
-                <textarea
-                  value={additionalInstructions}
-                  onChange={(e) => setAdditionalInstructions(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  rows={4}
-                  placeholder="E.g., Make it engaging and casual, include emojis..."
-                />
+                <div className="relative">
+                  <textarea
+                    value={additionalInstructions}
+                    onChange={(e) => setAdditionalInstructions(e.target.value)}
+                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    rows={4}
+                    placeholder="E.g., Make it engaging and casual, include emojis..."
+                  />
+                  <VoiceInputButton
+                    onTranscribe={(text) => {
+                      setAdditionalInstructions(additionalInstructions + (additionalInstructions ? ' ' : '') + text)
+                    }}
+                    className="absolute right-2 top-2"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center">
