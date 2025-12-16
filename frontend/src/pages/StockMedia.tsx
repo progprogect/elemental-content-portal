@@ -126,7 +126,7 @@ export default function StockMedia() {
 
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="mb-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <div className="flex-1">
               <Input
                 type="text"
@@ -136,7 +136,7 @@ export default function StockMedia() {
                 className="w-full"
               />
             </div>
-            <Button type="submit" variant="primary" className="h-10">
+            <Button type="submit" variant="primary">
               <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
               Search
             </Button>
@@ -144,7 +144,6 @@ export default function StockMedia() {
               type="button"
               variant="secondary"
               onClick={() => setShowFilters(!showFilters)}
-              className="h-10"
             >
               <FunnelIcon className="h-5 w-5" />
             </Button>
