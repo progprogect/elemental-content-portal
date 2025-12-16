@@ -65,9 +65,16 @@ export default function TextToSpeechModal({
         voiceId,
         settings,
       })
+      
+      // Validate result
+      if (!result.audioUrl || !result.audioPath) {
+        throw new Error('Invalid response: missing audioUrl or audioPath')
+      }
+      
       setCurrentResult(result)
       setIsSettingsExpanded(false)
     } catch (err: any) {
+      console.error('Error generating speech:', err)
       setError(err.response?.data?.message || err.message || 'Failed to generate speech')
     } finally {
       setIsGenerating(false)
@@ -81,6 +88,12 @@ export default function TextToSpeechModal({
 
   const handleSaveResult = async () => {
     if (!currentResult) return
+
+    // Validate result before saving
+    if (!currentResult.audioUrl || !currentResult.audioPath) {
+      setError('Invalid result: missing audioUrl or audioPath')
+      return
+    }
 
     setError(null)
     setIsSaving(true)
