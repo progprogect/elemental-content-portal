@@ -45,7 +45,8 @@ export interface StockMediaSearchResponse {
  * Documentation: https://www.pexels.com/api/documentation/
  */
 export async function searchPexels(params: StockMediaSearchParams): Promise<StockMediaSearchResponse> {
-  const apiKey = process.env.PEXELS_API_KEY;
+  // Support both naming conventions
+  const apiKey = process.env.PEXELS_API_KEY || process.env.Pexels_API_Key;
   if (!apiKey) {
     throw new Error('PEXELS_API_KEY is not configured');
   }
@@ -137,9 +138,10 @@ export async function searchPexels(params: StockMediaSearchParams): Promise<Stoc
  * Documentation: https://unsplash.com/documentation
  */
 export async function searchUnsplash(params: StockMediaSearchParams): Promise<StockMediaSearchResponse> {
-  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  // Try both naming conventions for compatibility
+  const accessKey = process.env.Unsplash_Access_Key || process.env.UNSPLASH_ACCESS_KEY;
   if (!accessKey) {
-    throw new Error('UNSPLASH_ACCESS_KEY is not configured');
+    throw new Error('Unsplash_Access_Key or UNSPLASH_ACCESS_KEY is not configured');
   }
 
   const { query, orientation, color, page = 1, perPage = 20 } = params;
@@ -208,9 +210,10 @@ export async function searchUnsplash(params: StockMediaSearchParams): Promise<St
  * Documentation: https://pixabay.com/api/docs/
  */
 export async function searchPixabay(params: StockMediaSearchParams): Promise<StockMediaSearchResponse> {
-  const apiKey = process.env.PIXABAY_API_KEY;
+  // Try both naming conventions for compatibility
+  const apiKey = process.env.Pixabay_API_KEY || process.env.PIXABAY_API_KEY;
   if (!apiKey) {
-    throw new Error('PIXABAY_API_KEY is not configured');
+    throw new Error('Pixabay_API_KEY or PIXABAY_API_KEY is not configured');
   }
 
   const { query, type = 'all', orientation, page = 1, perPage = 20 } = params;
