@@ -3,7 +3,6 @@ import { useMutation } from '@tanstack/react-query'
 import { publicationsApi } from '../services/api/tasks'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
-import Input from './ui/Input'
 import Select from './ui/Select'
 import MDEditor from '@uiw/react-md-editor'
 
