@@ -8,6 +8,7 @@ import Settings from './pages/Settings'
 import LearningMaterials from './pages/LearningMaterials'
 import TrainingTopicDetail from './pages/TrainingTopicDetail'
 import Gallery from './pages/Gallery'
+import StockMedia from './pages/StockMedia'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/learning-materials" element={<LearningMaterials />} />
           <Route path="/learning-materials/:id" element={<TrainingTopicDetail />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/stock-media" element={<StockMedia />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>

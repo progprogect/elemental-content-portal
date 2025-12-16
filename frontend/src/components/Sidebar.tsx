@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskListsApi, TaskList } from '../services/api/tasks'
-import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon, LanguageIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon, LanguageIcon, FilmIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
@@ -51,6 +51,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   
   // Check if Gallery page is active
   const isGalleryActive = location.pathname === '/gallery'
+  
+  // Check if Stock Media page is active
+  const isStockMediaActive = location.pathname === '/stock-media'
 
   const handleListClick = (listId: string) => {
     navigate(`/lists/${listId}`)
@@ -243,6 +246,20 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
             >
               <Squares2X2Icon className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && <span className="flex-1 text-left">Gallery</span>}
+            </button>
+            <button
+              onClick={() => {
+                navigate('/stock-media')
+                onMobileClose()
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isStockMediaActive
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <FilmIcon className="h-5 w-5 flex-shrink-0" />
+              {!isCollapsed && <span className="flex-1 text-left">Stock Media</span>}
             </button>
           </div>
 

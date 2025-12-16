@@ -69,6 +69,7 @@ import trainingRolesRoutes from './routes/training-roles.routes';
 import trainingAssetsRoutes from './routes/training-assets.routes';
 import trainingTestsRoutes from './routes/training-tests.routes';
 import galleryRoutes from './routes/gallery.routes';
+import stockMediaRoutes from './routes/stock-media.routes';
 import speechRoutes from './routes/speech.routes';
 
 app.use('/api/task-lists', taskListsRoutes);
@@ -86,6 +87,7 @@ app.use('/api/training-roles', trainingRolesRoutes);
 app.use('/api/training-topics/:topicId/assets', trainingAssetsRoutes);
 app.use('/api/training-topics/:topicId/test', trainingTestsRoutes);
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/stock-media', stockMediaRoutes);
 app.use('/api/images', imagesRoutes);
 app.use('/api', speechRoutes);
 
