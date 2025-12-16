@@ -44,6 +44,7 @@ const addGalleryItemSchema = z.object({
 
 router.get('/', validateQuery, asyncHandler(galleryController.getGallery));
 router.post('/add-item', validate(addGalleryItemSchema), asyncHandler(galleryController.addGalleryItem));
+router.delete('/:itemId', asyncHandler(galleryController.deleteGalleryItem));
 
 export default router;
 

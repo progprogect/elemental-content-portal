@@ -87,5 +87,37 @@ export const galleryApi = {
     )
     return response.data
   },
+
+  /**
+   * Add item to gallery (standalone, without task/publication)
+   */
+  async addGalleryItem(
+    assetUrl: string,
+    assetPath: string,
+    source: 'manual' | 'haygen' | 'nanobanana' = 'manual'
+  ): Promise<GalleryItem> {
+    const response = await apiClient.post<GalleryItem>('/gallery/add-item', {
+      assetUrl,
+      assetPath,
+      source,
+    })
+    return response.data
+  },
+
+  /**
+   * Delete gallery item by ID
+   */
+  async deleteGalleryItem(
+    itemId: string,
+    itemType: 'result' | 'field',
+    taskId?: string
+  ): Promise<void> {
+    const params = new URLSearchParams()
+    params.append('itemType', itemType)
+    if (taskId) {
+      params.append('taskId', taskId)
+    }
+    await apiClient.delete(`/gallery/${itemId}?${params.toString()}`)
+  },
 }
 

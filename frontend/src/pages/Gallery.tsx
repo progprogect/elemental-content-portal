@@ -6,7 +6,9 @@ import { resultsApi, fieldsApi } from '../services/api/tasks'
 import GalleryFilters from '../components/GalleryFilters'
 import GalleryGrid from '../components/GalleryGrid'
 import GalleryLightbox from '../components/GalleryLightbox'
+import AddGalleryItemModal from '../components/AddGalleryItemModal'
 import Button from '../components/ui/Button'
+import { PlusIcon } from '@heroicons/react/24/outline'
 
 export default function Gallery() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -14,6 +16,7 @@ export default function Gallery() {
   const queryClient = useQueryClient()
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [addModalOpen, setAddModalOpen] = useState(false)
   const hasAppliedStateFilters = useRef(false)
 
   // Получаем фильтры из URL
@@ -69,18 +72,12 @@ export default function Gallery() {
   // Удаление элемента (результат или поле)
   const deleteItemMutation = useMutation({
     mutationFn: async (item: GalleryItem) => {
-      if (!item.task) {
-        throw new Error('Cannot delete item without task')
-      }
-      
-      // Определяем тип элемента и вызываем соответствующий API
-      if (item.itemType === 'field') {
-        // Удаление поля задания
-        await fieldsApi.deleteField(item.task.id, item.id)
-      } else {
-        // Удаление результата (по умолчанию)
-        await resultsApi.deleteResult(item.task.id, item.id)
-      }
+      // Используем универсальный метод удаления из галереи
+      await galleryApi.deleteGalleryItem(
+        item.id,
+        item.itemType || 'result',
+        item.task?.id
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gallery'] })
@@ -166,12 +163,22 @@ export default function Gallery() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Gallery</h2>
-        {pagination && pagination.total > 0 && (
-          <div className="text-sm text-gray-600">
-            Showing {((pagination.page - 1) * pagination.limit) + 1} -{' '}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {pagination && pagination.total > 0 && (
+            <div className="text-sm text-gray-600">
+              Showing {((pagination.page - 1) * pagination.limit) + 1} -{' '}
+              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+            </div>
+          )}
+          <Button
+            variant="primary"
+            onClick={() => setAddModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Добавить
+          </Button>
+        </div>
       </div>
 
       <GalleryFilters />
@@ -216,6 +223,12 @@ export default function Gallery() {
           onDownload={handleItemDownload}
         />
       )}
+
+      {/* Add Gallery Item Modal */}
+      <AddGalleryItemModal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+      />
     </div>
   )
 }

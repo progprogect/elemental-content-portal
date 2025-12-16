@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
+import { createStorageAdapter } from '../storage';
 
 /**
  * Определяет тип медиа по URL или пути файла
@@ -308,6 +309,89 @@ export const getGallery = async (req: Request, res: Response) => {
     console.error('Error fetching gallery:', error);
     res.status(500).json({
       error: 'Failed to fetch gallery items',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Delete gallery item by ID (works for both standalone and task-linked items)
+ */
+export const deleteGalleryItem = async (req: Request, res: Response) => {
+  try {
+    const { itemId } = req.params;
+    const { itemType } = req.query; // 'result' or 'field'
+
+    // Validate itemType
+    if (itemType && itemType !== 'result' && itemType !== 'field') {
+      return res.status(400).json({
+        error: 'Invalid itemType',
+        message: 'itemType must be either "result" or "field"',
+      });
+    }
+
+    if (itemType === 'field') {
+      // For fields, we need taskId
+      const { taskId } = req.query;
+      if (!taskId || typeof taskId !== 'string') {
+        return res.status(400).json({
+          error: 'Missing taskId',
+          message: 'taskId is required for field items',
+        });
+      }
+
+      const field = await prisma.taskField.findUnique({
+        where: { id: itemId, taskId },
+      });
+
+      if (!field) {
+        return res.status(404).json({ error: 'Field not found' });
+      }
+
+      // Delete from storage if it's a file field
+      if (field.fieldType === 'file' && field.fieldValue && (field.fieldValue as any).path) {
+        try {
+          const storage = createStorageAdapter();
+          await storage.delete((field.fieldValue as any).path);
+        } catch (error) {
+          console.error('Storage delete error for TaskField:', error);
+        }
+      }
+
+      await prisma.taskField.delete({
+        where: { id: itemId, taskId },
+      });
+    } else {
+      // For results, try to find by ID (works for both standalone and task-linked)
+      const result = await prisma.taskResult.findUnique({
+        where: { id: itemId },
+      });
+
+      if (!result) {
+        return res.status(404).json({ error: 'Result not found' });
+      }
+
+      // Delete from storage if assetPath exists
+      if (result.assetPath) {
+        try {
+          const storage = createStorageAdapter();
+          await storage.delete(result.assetPath);
+        } catch (error) {
+          console.error('Storage delete error for TaskResult:', error);
+        }
+      }
+
+      // Delete from DB (works for both standalone and task-linked)
+      await prisma.taskResult.delete({
+        where: { id: itemId },
+      });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting gallery item:', error);
+    res.status(500).json({
+      error: 'Failed to delete gallery item',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
