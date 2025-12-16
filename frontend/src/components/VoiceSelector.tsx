@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import Select from './ui/Select'
-import { voicesApi, Voice } from '../services/api/voices'
+import { voicesApi } from '../services/api/voices'
 
 interface VoiceSelectorProps {
   value: string

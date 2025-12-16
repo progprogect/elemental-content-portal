@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockMediaApi, StockMediaItem, StockMediaSearchParams } from '../services/api/stock-media'
 import StockMediaGrid from '../components/StockMediaGrid'
+import StockMediaLightbox from '../components/StockMediaLightbox'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
@@ -23,6 +24,8 @@ export default function StockMedia() {
   )
   const [addingItemId, setAddingItemId] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   const page = parseInt(searchParams.get('page') || '1', 10)
   const perPage = 24
@@ -68,7 +71,7 @@ export default function StockMedia() {
     },
     onError: (error: any) => {
       console.error('Failed to add to gallery:', error)
-      alert(error.response?.data?.error || 'Не удалось добавить в галерею')
+      alert(error.response?.data?.error || 'Failed to add to gallery')
       setAddingItemId(null)
     },
   })
@@ -79,8 +82,21 @@ export default function StockMedia() {
     setSearchParams({ q: searchQuery }, { replace: true })
   }
 
+  const handleItemView = (item: StockMediaItem) => {
+    const index = data?.items.findIndex((i) => i.id === item.id) ?? -1
+    if (index >= 0) {
+      setSelectedItemIndex(index)
+      setLightboxOpen(true)
+    }
+  }
+
   const handleAddToGallery = (item: StockMediaItem) => {
     addToGalleryMutation.mutate(item)
+  }
+
+  const handleCloseLightbox = () => {
+    setLightboxOpen(false)
+    setSelectedItemIndex(null)
   }
 
   const handleNextPage = () => {
@@ -110,11 +126,11 @@ export default function StockMedia() {
 
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="mb-4">
-          <div className="flex gap-2">
-            <div className="flex-1">
+          <div className="flex gap-2 items-center">
+            <div className="w-80">
               <Input
                 type="text"
-                placeholder="Поиск фото и видео..."
+                placeholder="Search photos and videos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full"
@@ -122,7 +138,7 @@ export default function StockMedia() {
             </div>
             <Button type="submit" variant="primary">
               <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
-              Поиск
+              Search
             </Button>
             <Button
               type="button"
@@ -140,24 +156,24 @@ export default function StockMedia() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Select
-                  label="Тип"
+                  label="Type"
                   value={type}
                   onChange={(e) => setType(e.target.value as 'photo' | 'video' | 'all')}
                   options={[
-                    { value: 'all', label: 'Все' },
-                    { value: 'photo', label: 'Фото' },
-                    { value: 'video', label: 'Видео' },
+                    { value: 'all', label: 'All' },
+                    { value: 'photo', label: 'Photos' },
+                    { value: 'video', label: 'Videos' },
                   ]}
                 />
               </div>
 
               <div>
                 <Select
-                  label="Источник"
+                  label="Source"
                   value={source}
                   onChange={(e) => setSource(e.target.value as 'pexels' | 'unsplash' | 'pixabay' | 'all')}
                   options={[
-                    { value: 'all', label: 'Все источники' },
+                    { value: 'all', label: 'All Sources' },
                     { value: 'pexels', label: 'Pexels' },
                     { value: 'unsplash', label: 'Unsplash' },
                     { value: 'pixabay', label: 'Pixabay' },
@@ -167,14 +183,14 @@ export default function StockMedia() {
 
               <div>
                 <Select
-                  label="Ориентация"
+                  label="Orientation"
                   value={orientation}
                   onChange={(e) => setOrientation(e.target.value as 'landscape' | 'portrait' | 'square' | '')}
                   options={[
-                    { value: '', label: 'Любая' },
-                    { value: 'landscape', label: 'Горизонтальная' },
-                    { value: 'portrait', label: 'Вертикальная' },
-                    { value: 'square', label: 'Квадратная' },
+                    { value: '', label: 'Any' },
+                    { value: 'landscape', label: 'Landscape' },
+                    { value: 'portrait', label: 'Portrait' },
+                    { value: 'square', label: 'Square' },
                   ]}
                 />
               </div>
@@ -189,7 +205,7 @@ export default function StockMedia() {
             onClick={() => setSource('all')}
             className="text-sm"
           >
-            Все
+            All
           </Button>
           <Button
             variant={source === 'pexels' ? 'primary' : 'secondary'}
@@ -219,16 +235,16 @@ export default function StockMedia() {
       {isLoading && (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="mt-2 text-gray-600">Поиск...</p>
+          <p className="mt-2 text-gray-600">Searching...</p>
         </div>
       )}
 
       {/* Error State */}
       {error && (
         <div className="text-center py-12 text-red-600">
-          <p className="text-lg">Ошибка загрузки</p>
+          <p className="text-lg">Error loading results</p>
           <p className="text-sm mt-2">
-            {error instanceof Error ? error.message : 'Неизвестная ошибка'}
+            {error instanceof Error ? error.message : 'Unknown error'}
           </p>
         </div>
       )}
@@ -238,11 +254,12 @@ export default function StockMedia() {
         <>
           {data.items.length > 0 && (
             <div className="mb-4 text-sm text-gray-600">
-              Найдено: {data.total} результатов
+              Found: {data.total} results
             </div>
           )}
           <StockMediaGrid
             items={data.items}
+            onItemView={handleItemView}
             onAddToGallery={handleAddToGallery}
             addingItemId={addingItemId}
           />
@@ -255,17 +272,17 @@ export default function StockMedia() {
                 disabled={page === 1}
                 onClick={handlePreviousPage}
               >
-                Назад
+                Previous
               </Button>
               <span className="px-4 py-2 text-sm text-gray-700">
-                Страница {page} из {data.totalPages}
+                Page {page} of {data.totalPages}
               </span>
               <Button
                 variant="secondary"
                 disabled={page === data.totalPages}
                 onClick={handleNextPage}
               >
-                Вперед
+                Next
               </Button>
             </div>
           )}
@@ -275,8 +292,8 @@ export default function StockMedia() {
       {/* Empty State */}
       {!isLoading && !error && data && data.items.length === 0 && searchQuery && (
         <div className="text-center py-12 text-gray-500">
-          <p className="text-lg">Ничего не найдено</p>
-          <p className="text-sm mt-2">Попробуйте изменить параметры поиска</p>
+          <p className="text-lg">No results found</p>
+          <p className="text-sm mt-2">Try adjusting your search parameters</p>
         </div>
       )}
 
@@ -284,9 +301,20 @@ export default function StockMedia() {
       {!isLoading && !error && !searchQuery.trim() && (
         <div className="text-center py-12 text-gray-500">
           <FilmIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-          <p className="text-lg">Начните поиск стоковых медиа</p>
-          <p className="text-sm mt-2">Введите запрос в поле поиска выше</p>
+          <p className="text-lg">Start searching stock media</p>
+          <p className="text-sm mt-2">Enter your search query in the field above</p>
         </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxOpen && selectedItemIndex !== null && data && data.items.length > 0 && (
+        <StockMediaLightbox
+          items={data.items}
+          currentIndex={selectedItemIndex}
+          onClose={handleCloseLightbox}
+          onAddToGallery={handleAddToGallery}
+          isAdding={addingItemId === data.items[selectedItemIndex]?.id}
+        />
       )}
     </div>
   )

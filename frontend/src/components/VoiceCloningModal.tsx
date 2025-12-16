@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
 import Input from './ui/Input'
-import FileUpload from './FileUpload'
 import { voicesApi } from '../services/api/voices'
 
 interface VoiceCloningModalProps {

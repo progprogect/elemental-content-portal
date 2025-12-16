@@ -48,4 +48,23 @@ export const speechApi = {
     )
     return response.data
   },
+
+  /**
+   * Transcribe audio to text
+   */
+  async transcribeAudio(audioBlob: Blob): Promise<string> {
+    const formData = new FormData()
+    formData.append('audio', audioBlob, 'audio.webm')
+
+    const response = await apiClient.post<{ text: string }>(
+      '/speech/transcribe',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data.text
+  },
 }
