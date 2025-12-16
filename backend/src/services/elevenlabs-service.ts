@@ -242,11 +242,26 @@ export async function generateSpeech(
     const voice = await getVoiceById(voiceId);
     
     if (!voice) {
-      throw new Error('Voice not found');
+      console.error('Voice not found for voiceId:', voiceId);
+      throw new Error(`Voice not found: ${voiceId}`);
     }
 
     // Use the ElevenLabs voice ID (either from API or cloned)
+    // For premium voices, id equals voice_id from API
+    // For cloned voices, we need to use elevenlabsId
     const elevenlabsVoiceId = voice.elevenlabsId || voice.id;
+    
+    if (!elevenlabsVoiceId) {
+      console.error('Voice ID is missing for voice:', voice);
+      throw new Error('Voice ID is missing');
+    }
+    
+    console.log('Generating speech with voice:', {
+      voiceId,
+      elevenlabsVoiceId,
+      voiceType: voice.voiceType,
+      name: voice.name,
+    });
 
     // Default settings
     const defaultSettings = {
