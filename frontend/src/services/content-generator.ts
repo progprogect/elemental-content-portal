@@ -75,6 +75,16 @@ const GENERATION_STRATEGIES: Record<string, GenerationStrategy> = {
       window.open('https://app.heygen.com/templates?ct=explainer%2520video&shortcut=photo-to-video', '_blank')
     },
   },
+  translate: {
+    requiresWizard: false,
+    requiresExtension: false,
+    redirectUrl: 'https://app.heygen.com/apps?shortcut=translate-video',
+    uiType: 'redirect',
+    handler: async () => {
+      // Simple redirect without wizard or extension
+      window.open('https://app.heygen.com/apps?shortcut=translate-video', '_blank')
+    },
+  },
   image: {
     requiresWizard: false,
     requiresExtension: false,

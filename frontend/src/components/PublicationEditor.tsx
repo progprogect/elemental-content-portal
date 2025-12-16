@@ -12,12 +12,13 @@ const CONTENT_TYPES = [
   { value: 'ai_video', label: 'AI Video' },
   { value: 'image', label: 'Image' },
   { value: 'talking_head', label: 'Talking Head' },
+  { value: 'translate', label: 'Translate' },
   { value: 'text', label: 'Text' },
   { value: 'presentation', label: 'Presentation' },
   { value: 'other', label: 'Other' },
 ]
 
-const STANDARD_CONTENT_TYPES = ['video', 'ai_video', 'image', 'talking_head', 'text', 'presentation']
+const STANDARD_CONTENT_TYPES = ['video', 'ai_video', 'image', 'talking_head', 'translate', 'text', 'presentation']
 
 const EXECUTION_TYPES = [
   { value: 'manual', label: 'Manual' },

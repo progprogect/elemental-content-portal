@@ -319,8 +319,8 @@ export default function TaskDetail() {
                       <div className="flex flex-wrap gap-3">
                         <Button
                           variant="primary"
-                          className={`text-sm px-3 py-1.5 ${!isContentTypeSupported(publication.contentType || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          disabled={!isContentTypeSupported(publication.contentType || '')}
+                          className={`text-sm px-3 py-1.5 ${!isContentTypeSupported((publication.contentType || '').toLowerCase()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={!isContentTypeSupported((publication.contentType || '').toLowerCase())}
                           onClick={() => {
                             // Always use publication contentType, not task contentType
                             // Publications can have different content types than the task

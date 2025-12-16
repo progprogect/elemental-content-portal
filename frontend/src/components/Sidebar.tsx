@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskListsApi, TaskList } from '../services/api/tasks'
-import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon, LanguageIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
@@ -85,6 +85,12 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
       name: 'Generate Video from Original Video',
       url: 'https://app.heygen.com/video-agent',
       icon: VideoCameraIcon,
+    },
+    {
+      id: 'translate-video',
+      name: 'Translate Video',
+      url: 'https://app.heygen.com/apps?shortcut=translate-video',
+      icon: LanguageIcon,
     },
   ]
 
