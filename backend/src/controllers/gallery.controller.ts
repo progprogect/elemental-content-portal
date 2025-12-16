@@ -412,9 +412,19 @@ export const addGalleryItem = async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!assetUrl || !assetPath) {
+      console.error('Missing required fields:', { assetUrl, assetPath, body: req.body });
       return res.status(400).json({
         error: 'Missing required fields',
         message: 'assetUrl and assetPath are required',
+      });
+    }
+
+    // Validate that URLs are strings
+    if (typeof assetUrl !== 'string' || typeof assetPath !== 'string') {
+      console.error('Invalid field types:', { assetUrl: typeof assetUrl, assetPath: typeof assetPath });
+      return res.status(400).json({
+        error: 'Invalid field types',
+        message: 'assetUrl and assetPath must be strings',
       });
     }
 

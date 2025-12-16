@@ -99,6 +99,11 @@ export const generatePreviewHandler = async (req: Request, res: Response) => {
     
     const result = await storage.upload(audioBuffer, filename, storagePath);
 
+    // Validate that we got valid URL and path
+    if (!result.url || !result.path) {
+      throw new Error('Failed to upload audio: missing URL or path');
+    }
+
     res.json({
       audioUrl: result.url,
       audioPath: result.path,
