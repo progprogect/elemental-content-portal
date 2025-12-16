@@ -90,7 +90,7 @@ app.use('/api/training-topics/:topicId/test', trainingTestsRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/stock-media', stockMediaRoutes);
 app.use('/api/images', imagesRoutes);
-app.use('/api', speechRoutes);
+app.use('/api/speech', speechRoutes);
 app.use('/api/voices', voicesRoutes);
 
 // Serve React app for all non-API routes (in production)
