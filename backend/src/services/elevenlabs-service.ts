@@ -175,8 +175,10 @@ export async function cloneVoice(
     }
 
     // Save to database
-    const voiceId = clonedVoice.voice_id || clonedVoice.id || clonedVoice.voiceId;
+    // SDK returns camelCase: voiceId, not voice_id
+    const voiceId = clonedVoice.voiceId || clonedVoice.voice_id || clonedVoice.id;
     if (!voiceId) {
+      console.error('Failed to get voice ID from ElevenLabs response:', clonedVoice);
       throw new Error('Failed to get voice ID from ElevenLabs response');
     }
 
