@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../utils/prisma';
 import { createStorageAdapter } from '../storage';
 
@@ -406,36 +407,27 @@ export const deleteGalleryItem = async (req: Request, res: Response) => {
  * Add item to gallery without task/publication context (standalone mode)
  * Used for saving standalone generated images to gallery
  */
+const addGalleryItemSchema = z.object({
+  assetUrl: z.string().url('assetUrl must be a valid URL'),
+  assetPath: z.string().min(1, 'assetPath is required'),
+  source: z.enum(['manual', 'haygen', 'nanobanana', 'elevenlabs']).default('nanobanana'),
+});
+
 export const addGalleryItem = async (req: Request, res: Response) => {
   try {
-    const { assetUrl, assetPath, source = 'nanobanana' } = req.body;
-
-    // Validate required fields
-    if (!assetUrl || !assetPath) {
-      console.error('Missing required fields:', { assetUrl, assetPath, body: req.body });
+    // Validate request body
+    const validationResult = addGalleryItemSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
       return res.status(400).json({
-        error: 'Missing required fields',
-        message: 'assetUrl and assetPath are required',
+        error: 'Validation error',
+        message: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '),
+        details: validationResult.error.errors,
       });
     }
 
-    // Validate that URLs are strings
-    if (typeof assetUrl !== 'string' || typeof assetPath !== 'string') {
-      console.error('Invalid field types:', { assetUrl: typeof assetUrl, assetPath: typeof assetPath });
-      return res.status(400).json({
-        error: 'Invalid field types',
-        message: 'assetUrl and assetPath must be strings',
-      });
-    }
-
-    // Validate source
-    const validSources = ['manual', 'haygen', 'nanobanana', 'elevenlabs'];
-    if (!validSources.includes(source)) {
-      return res.status(400).json({
-        error: 'Invalid source',
-        message: `Source must be one of: ${validSources.join(', ')}`,
-      });
-    }
+    const { assetUrl, assetPath, source } = validationResult.data;
 
     // Create TaskResult with taskId=null and publicationId=null
     const result = await prisma.taskResult.create({
