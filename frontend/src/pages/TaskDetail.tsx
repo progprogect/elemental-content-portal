@@ -17,6 +17,7 @@ import TableCellEditor from '../components/TableCellEditor'
 import PromptSettingsWizard from '../components/PromptSettingsWizard'
 import ImageGenerationModal from '../components/ImageGenerationModal'
 import VideoPromptModal from '../components/VideoPromptModal'
+import TextGenerationModal from '../components/TextGenerationModal'
 
 // Utility function to format date for display
 function formatDateLong(dateString: string): string {
@@ -45,6 +46,8 @@ export default function TaskDetail() {
   const [isPublicationEditorOpen, setIsPublicationEditorOpen] = useState(false)
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState(false)
   const [isVideoPromptModalOpen, setIsVideoPromptModalOpen] = useState(false)
+  const [isTextGenerationModalOpen, setIsTextGenerationModalOpen] = useState(false)
+  const [textGenerationPublicationId, setTextGenerationPublicationId] = useState<string | undefined>(undefined)
   const [promptModalSettings, setPromptModalSettings] = useState<PromptSettings | undefined>()
   const [promptModalPublicationId, setPromptModalPublicationId] = useState<string | undefined>()
   const [editingPublication, setEditingPublication] = useState<TaskPublication | undefined>(undefined)
@@ -379,6 +382,16 @@ export default function TaskDetail() {
                           }}
                         >
                           ➕ Add Result
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="text-sm px-3 py-1.5"
+                          onClick={() => {
+                            setTextGenerationPublicationId(publication.id)
+                            setIsTextGenerationModalOpen(true)
+                          }}
+                        >
+                          ✨ Generate Text
                         </Button>
                       </div>
                     </div>
@@ -768,6 +781,43 @@ export default function TaskDetail() {
           </div>
         )}
       </Modal>
+
+      {/* Text Generation Modal */}
+      {textGenerationPublicationId && id && (
+        <TextGenerationModal
+          isOpen={isTextGenerationModalOpen}
+          onClose={() => {
+            setIsTextGenerationModalOpen(false)
+            setTextGenerationPublicationId(undefined)
+          }}
+          taskId={id}
+          publicationId={textGenerationPublicationId}
+          existingContent={task.publications?.find(p => p.id === textGenerationPublicationId)?.content || null}
+          onInsert={async (newContent, action) => {
+            if (!textGenerationPublicationId) return
+            
+            const publication = task.publications?.find(p => p.id === textGenerationPublicationId)
+            if (!publication) return
+
+            let finalContent: string
+            if (action === 'replace') {
+              finalContent = newContent
+            } else {
+              finalContent = (publication.content || '') + '\n\n' + newContent
+            }
+
+            await updatePublicationMutation.mutateAsync({
+              publicationId: textGenerationPublicationId,
+              data: {
+                content: finalContent,
+              },
+            })
+            
+            setIsTextGenerationModalOpen(false)
+            setTextGenerationPublicationId(undefined)
+          }}
+        />
+      )}
     </div>
   )
 }
