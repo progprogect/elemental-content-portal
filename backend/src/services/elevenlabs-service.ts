@@ -46,13 +46,14 @@ export async function getVoices(): Promise<Voice[]> {
     });
 
     // Transform API voices to our format
+    // SDK returns camelCase: voiceId, not voice_id
     const premiumVoices: Voice[] = apiVoices.map((voice: any) => ({
-      id: voice.voice_id || voice.id,
+      id: voice.voiceId || voice.voice_id || voice.id,
       name: voice.name,
-      elevenlabsId: voice.voice_id || voice.id,
+      elevenlabsId: voice.voiceId || voice.voice_id || voice.id,
       voiceType: 'premium' as const,
       description: voice.description || null,
-      sampleUrl: null, // Premium voices don't have sample URLs in our DB
+      sampleUrl: voice.previewUrl || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }));
@@ -88,13 +89,14 @@ export async function getVoiceById(voiceId: string): Promise<Voice | null> {
     // Try to get voice directly from API
     try {
       const apiVoice: any = await client.voices.get(voiceId);
+      // SDK returns camelCase: voiceId, not voice_id
       return {
-        id: apiVoice.voice_id || apiVoice.id || voiceId,
+        id: apiVoice.voiceId || apiVoice.voice_id || apiVoice.id || voiceId,
         name: apiVoice.name,
-        elevenlabsId: apiVoice.voice_id || apiVoice.id || voiceId,
+        elevenlabsId: apiVoice.voiceId || apiVoice.voice_id || apiVoice.id || voiceId,
         voiceType: 'premium' as const,
         description: apiVoice.description || null,
-        sampleUrl: null,
+        sampleUrl: apiVoice.previewUrl || null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -103,18 +105,19 @@ export async function getVoiceById(voiceId: string): Promise<Voice | null> {
       try {
         const allVoicesResponse: any = await client.voices.getAll();
         const allVoices = allVoicesResponse.voices || [];
+        // SDK returns camelCase: voiceId, not voice_id
         const foundVoice = allVoices.find((v: any) => 
-          (v.voice_id === voiceId) || (v.id === voiceId)
+          (v.voiceId === voiceId) || (v.voice_id === voiceId) || (v.id === voiceId)
         );
         
         if (foundVoice) {
           return {
-            id: foundVoice.voice_id || foundVoice.id || voiceId,
+            id: foundVoice.voiceId || foundVoice.voice_id || foundVoice.id || voiceId,
             name: foundVoice.name,
-            elevenlabsId: foundVoice.voice_id || foundVoice.id || voiceId,
+            elevenlabsId: foundVoice.voiceId || foundVoice.voice_id || foundVoice.id || voiceId,
             voiceType: 'premium' as const,
             description: foundVoice.description || null,
-            sampleUrl: null,
+            sampleUrl: foundVoice.previewUrl || null,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
