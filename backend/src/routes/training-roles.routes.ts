@@ -11,3 +11,5 @@ router.delete('/:id', asyncHandler(trainingRolesController.deleteRole));
 
 export default router;
 
+
+

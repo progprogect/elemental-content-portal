@@ -71,6 +71,7 @@ import trainingTestsRoutes from './routes/training-tests.routes';
 import galleryRoutes from './routes/gallery.routes';
 import stockMediaRoutes from './routes/stock-media.routes';
 import speechRoutes from './routes/speech.routes';
+import voicesRoutes from './routes/voices.routes';
 
 app.use('/api/task-lists', taskListsRoutes);
 app.use('/api/table-columns', tableColumnsRoutes);
@@ -90,6 +91,7 @@ app.use('/api/gallery', galleryRoutes);
 app.use('/api/stock-media', stockMediaRoutes);
 app.use('/api/images', imagesRoutes);
 app.use('/api', speechRoutes);
+app.use('/api/voices', voicesRoutes);
 
 // Serve React app for all non-API routes (in production)
 if (process.env.NODE_ENV === 'production') {

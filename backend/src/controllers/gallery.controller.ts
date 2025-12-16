@@ -5,7 +5,7 @@ import { createStorageAdapter } from '../storage';
 /**
  * Определяет тип медиа по URL или пути файла
  */
-function getMediaType(urlOrPath?: string | null): 'image' | 'video' | 'file' {
+function getMediaType(urlOrPath?: string | null): 'image' | 'video' | 'file' | 'audio' {
   if (!urlOrPath) return 'file';
   
   const lower = urlOrPath.toLowerCase();
@@ -18,6 +18,11 @@ function getMediaType(urlOrPath?: string | null): 'image' | 'video' | 'file' {
   // Проверка расширения видео
   if (lower.match(/\.(mp4|mov|avi|webm|mkv|flv|wmv|m4v)$/i)) {
     return 'video';
+  }
+  
+  // Проверка расширения аудио
+  if (lower.match(/\.(mp3|wav|m4a|ogg|flac|webm|aac)$/i)) {
+    return 'audio';
   }
   
   return 'file';
@@ -160,7 +165,7 @@ export const getGallery = async (req: Request, res: Response) => {
           filename: result.assetPath
             ? result.assetPath.split('/').pop() || undefined
             : undefined,
-          source: result.source as 'manual' | 'haygen' | 'nanobanana',
+          source: result.source as 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs',
           createdAt: result.createdAt.toISOString(),
           task: result.task
             ? {
@@ -414,7 +419,7 @@ export const addGalleryItem = async (req: Request, res: Response) => {
     }
 
     // Validate source
-    const validSources = ['manual', 'haygen', 'nanobanana'];
+    const validSources = ['manual', 'haygen', 'nanobanana', 'elevenlabs'];
     if (!validSources.includes(source)) {
       return res.status(400).json({
         error: 'Invalid source',
@@ -442,7 +447,7 @@ export const addGalleryItem = async (req: Request, res: Response) => {
       mediaUrl,
       mediaType,
       filename: assetPath ? assetPath.split('/').pop() || undefined : undefined,
-      source: result.source as 'manual' | 'haygen' | 'nanobanana',
+      source: result.source as 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs',
       createdAt: result.createdAt.toISOString(),
       task: undefined, // No task for standalone items
       publication: undefined, // No publication for standalone items

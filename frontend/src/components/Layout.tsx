@@ -5,6 +5,8 @@ import Sidebar from './Sidebar'
 import PromptSettingsWizard from './PromptSettingsWizard'
 import VideoPromptModal from './VideoPromptModal'
 import ImageGenerationModal from './ImageGenerationModal'
+import TextToSpeechModal from './TextToSpeechModal'
+import VoiceCloningModal from './VoiceCloningModal'
 import { PromptSettings, ImageGenerationSettings } from '../types/prompt-settings'
 import { imagesApi } from '../services/api/images'
 import { useQueryClient } from '@tanstack/react-query'
@@ -29,6 +31,8 @@ export default function Layout({ children }: LayoutProps) {
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState(false)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   const [isSavingImage, setIsSavingImage] = useState(false)
+  const [isTextToSpeechModalOpen, setIsTextToSpeechModalOpen] = useState(false)
+  const [isVoiceCloningModalOpen, setIsVoiceCloningModalOpen] = useState(false)
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed))
@@ -47,6 +51,8 @@ export default function Layout({ children }: LayoutProps) {
         onMobileClose={() => setIsMobileMenuOpen(false)}
         onOpenVideoWizard={() => setIsGlobalWizardOpen(true)}
         onOpenImageGeneration={() => setIsImageGenerationModalOpen(true)}
+        onOpenTextToSpeech={() => setIsTextToSpeechModalOpen(true)}
+        onOpenVoiceCloning={() => setIsVoiceCloningModalOpen(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -146,6 +152,23 @@ export default function Layout({ children }: LayoutProps) {
             setIsSavingImage(false)
             throw error
           }
+        }}
+      />
+
+      {/* Global Text to Speech Modal for sidebar */}
+      <TextToSpeechModal
+        isOpen={isTextToSpeechModalOpen}
+        onClose={() => {
+          setIsTextToSpeechModalOpen(false)
+        }}
+        mode="standalone"
+      />
+
+      {/* Global Voice Cloning Modal for sidebar */}
+      <VoiceCloningModal
+        isOpen={isVoiceCloningModalOpen}
+        onClose={() => {
+          setIsVoiceCloningModalOpen(false)
         }}
       />
     </div>

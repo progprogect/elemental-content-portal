@@ -227,3 +227,18 @@ model TrainingTest {
   @@index([topicId])
   @@map("training_tests")
 }
+
+model Voice {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(255)
+  elevenlabsId String?  @map("elevenlabs_id") @db.VarChar(255)
+  voiceType   String   @default("cloned") @map("voice_type") @db.VarChar(50)
+  description String?  @db.Text
+  sampleUrl   String?  @map("sample_url") @db.VarChar(1000)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([voiceType])
+  @@index([elevenlabsId])
+  @@map("voices")
+}

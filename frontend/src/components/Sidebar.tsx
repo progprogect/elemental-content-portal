@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskListsApi, TaskList } from '../services/api/tasks'
-import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon, LanguageIcon, FilmIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon, LanguageIcon, FilmIcon, SpeakerWaveIcon, MicrophoneIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
@@ -15,9 +15,11 @@ interface SidebarProps {
   onMobileClose: () => void
   onOpenVideoWizard?: () => void
   onOpenImageGeneration?: () => void
+  onOpenTextToSpeech?: () => void
+  onOpenVoiceCloning?: () => void
 }
 
-export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose, onOpenVideoWizard, onOpenImageGeneration }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose, onOpenVideoWizard, onOpenImageGeneration, onOpenTextToSpeech, onOpenVoiceCloning }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -78,6 +80,18 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
       icon: PhotoIcon,
     },
     {
+      id: 'text-to-speech',
+      name: 'Text to Speech',
+      url: '',
+      icon: SpeakerWaveIcon,
+    },
+    {
+      id: 'clone-voice',
+      name: 'Clone Voice',
+      url: '',
+      icon: MicrophoneIcon,
+    },
+    {
       id: 'talking-head',
       name: 'Generate Talking Head from Photo',
       url: 'https://app.heygen.com/templates?ct=explainer%2520video&shortcut=photo-to-video',
@@ -101,6 +115,14 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
     if (optionId === 'generate-image' && onOpenImageGeneration) {
       // Open image generation modal
       onOpenImageGeneration()
+      onMobileClose()
+    } else if (optionId === 'text-to-speech' && onOpenTextToSpeech) {
+      // Open text to speech modal
+      onOpenTextToSpeech()
+      onMobileClose()
+    } else if (optionId === 'clone-voice' && onOpenVoiceCloning) {
+      // Open voice cloning modal
+      onOpenVoiceCloning()
       onMobileClose()
     } else if (optionId === 'video-from-video' && onOpenVideoWizard) {
       // Open wizard for video generation

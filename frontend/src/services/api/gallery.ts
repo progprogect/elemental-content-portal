@@ -3,9 +3,9 @@ import apiClient from './client'
 export interface GalleryItem {
   id: string
   mediaUrl: string
-  mediaType: 'image' | 'video' | 'file'
+  mediaType: 'image' | 'video' | 'file' | 'audio'
   filename?: string
-  source: 'manual' | 'haygen' | 'nanobanana'
+  source: 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs'
   createdAt: string
   task?: {
     id: string
@@ -26,8 +26,8 @@ export interface GalleryItem {
 }
 
 export interface GalleryFilters {
-  type?: 'all' | 'image' | 'video'
-  source?: 'all' | 'manual' | 'haygen' | 'nanobanana'
+  type?: 'all' | 'image' | 'video' | 'audio'
+  source?: 'all' | 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs'
   taskId?: string
   publicationId?: string
   dateFrom?: string
@@ -48,6 +48,22 @@ export interface GalleryResponse {
 }
 
 export const galleryApi = {
+  /**
+   * Add item to gallery (standalone, without task/publication)
+   */
+  async addItem(data: {
+    assetUrl: string
+    assetPath: string
+    source?: 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs'
+  }): Promise<GalleryItem> {
+    const response = await apiClient.post<GalleryItem>('/gallery/add-item', {
+      assetUrl: data.assetUrl,
+      assetPath: data.assetPath,
+      source: data.source || 'manual',
+    })
+    return response.data
+  },
+
   /**
    * Get gallery items with filters
    */
@@ -88,20 +104,16 @@ export const galleryApi = {
     return response.data
   },
 
+
   /**
-   * Add item to gallery (standalone, without task/publication)
+   * Add item to gallery (legacy method for backward compatibility)
    */
   async addGalleryItem(
     assetUrl: string,
     assetPath: string,
-    source: 'manual' | 'haygen' | 'nanobanana' = 'manual'
+    source: 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs' = 'manual'
   ): Promise<GalleryItem> {
-    const response = await apiClient.post<GalleryItem>('/gallery/add-item', {
-      assetUrl,
-      assetPath,
-      source,
-    })
-    return response.data
+    return this.addItem({ assetUrl, assetPath, source })
   },
 
   /**

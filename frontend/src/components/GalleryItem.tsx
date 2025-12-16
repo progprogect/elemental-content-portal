@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { EllipsisVerticalIcon, CalendarIcon, TagIcon, DocumentIcon } from '@heroicons/react/24/outline'
+import { EllipsisVerticalIcon, CalendarIcon, TagIcon, DocumentIcon, SpeakerWaveIcon } from '@heroicons/react/24/outline'
 import { GalleryItem as GalleryItemType } from '../services/api/gallery'
 
 interface GalleryItemProps {
@@ -61,6 +61,8 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
         return 'Haygen'
       case 'nanobanana':
         return 'NanoBanana'
+      case 'elevenlabs':
+        return 'ElevenLabs'
       case 'manual':
         return 'Manual'
       default:
@@ -102,7 +104,7 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
   }
 
   // Определяем тип медиа только по расширению файла в URL
-  const detectMediaType = (url: string): 'image' | 'video' | 'file' => {
+  const detectMediaType = (url: string): 'image' | 'video' | 'file' | 'audio' => {
     if (!url || url.length === 0) {
       return 'file'
     }
@@ -129,6 +131,11 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
       return 'video'
     }
     
+    // Проверка расширения аудио
+    if (urlWithoutQuery.match(/\.(mp3|wav|m4a|ogg|flac|webm|aac|wma|opus)$/i)) {
+      return 'audio'
+    }
+    
     // Если расширения нет, проверяем по паттернам в URL (для случаев когда файл без расширения)
     // Но только если это явные паттерны типа /image/ или /video/
     if (urlLower.includes('/image/') || urlLower.includes('/img/') || urlLower.includes('/photo/')) {
@@ -137,6 +144,10 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
     
     if (urlLower.includes('/video/') || urlLower.includes('/vid/') || urlLower.includes('/movie/')) {
       return 'video'
+    }
+    
+    if (urlLower.includes('/audio/') || urlLower.includes('/sound/') || urlLower.includes('/speech/')) {
+      return 'audio'
     }
     
     // Если ничего не подошло - возвращаем 'file'
@@ -219,6 +230,18 @@ export default function GalleryItem({ item, onView, onDelete, onDownload }: Gall
               }
             }}
           />
+        ) : displayMediaType === 'audio' ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 p-4">
+            <SpeakerWaveIcon className="h-12 w-12 text-gray-400 mb-3" />
+            <audio controls className="w-full max-w-xs" src={item.mediaUrl}>
+              Your browser does not support the audio element.
+            </audio>
+            {item.filename && (
+              <div className="mt-2 text-xs text-gray-600 truncate max-w-full" title={item.filename}>
+                {item.filename}
+              </div>
+            )}
+          </div>
         ) : (
           // Для файлов без расширения попробуем показать как изображение или видео
           <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50">

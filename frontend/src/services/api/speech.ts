@@ -1,27 +1,51 @@
 import apiClient from './client'
+import { SpeechSettings } from '../../types/prompt-settings'
 
-export interface TranscribeResponse {
+export interface GeneratePreviewData {
   text: string
+  voiceId: string
+  settings?: SpeechSettings
+}
+
+export interface SpeechPreviewResult {
+  audioUrl: string
+  audioPath: string
+}
+
+export interface SaveSpeechResultData {
+  audioUrl: string
+  audioPath: string
+  taskId?: string
+  publicationId?: string
+}
+
+export interface SaveSpeechResultResponse {
+  id: string
+  assetUrl: string
+  assetPath: string
+  source: string
 }
 
 export const speechApi = {
   /**
-   * Transcribe audio to text using OpenAI Whisper API
+   * Generate speech preview (without saving to database)
    */
-  async transcribeAudio(audioBlob: Blob): Promise<string> {
-    const formData = new FormData()
-    formData.append('audio', audioBlob, 'audio.webm')
-
-    const response = await apiClient.post<TranscribeResponse>(
-      '/transcribe',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+  async generatePreview(data: GeneratePreviewData): Promise<SpeechPreviewResult> {
+    const response = await apiClient.post<SpeechPreviewResult>(
+      '/speech/generate-preview',
+      data
     )
-    return response.data.text
+    return response.data
+  },
+
+  /**
+   * Save speech result to gallery/publication
+   */
+  async saveResult(data: SaveSpeechResultData): Promise<SaveSpeechResultResponse> {
+    const response = await apiClient.post<SaveSpeechResultResponse>(
+      '/speech/save-result',
+      data
+    )
+    return response.data
   },
 }
-

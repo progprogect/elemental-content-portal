@@ -11,8 +11,8 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Получаем текущие фильтры из URL
-  const currentType = (searchParams.get('type') || 'all') as 'all' | 'image' | 'video'
-  const currentSource = (searchParams.get('source') || 'all') as 'all' | 'manual' | 'haygen' | 'nanobanana'
+  const currentType = (searchParams.get('type') || 'all') as 'all' | 'image' | 'video' | 'audio'
+  const currentSource = (searchParams.get('source') || 'all') as 'all' | 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs'
   const currentSort = (searchParams.get('sort') || 'newest') as 'newest' | 'oldest' | 'task'
 
   const updateFilters = (updates: Partial<GalleryFiltersType>) => {
@@ -34,8 +34,8 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
     // Вызываем callback с новыми фильтрами
     if (onFiltersChange) {
       const filters: GalleryFiltersType = {
-        type: (newParams.get('type') || 'all') as 'all' | 'image' | 'video',
-        source: (newParams.get('source') || 'all') as 'all' | 'manual' | 'haygen' | 'nanobanana',
+        type: (newParams.get('type') || 'all') as 'all' | 'image' | 'video' | 'audio',
+        source: (newParams.get('source') || 'all') as 'all' | 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs',
         sort: (newParams.get('sort') || 'newest') as 'newest' | 'oldest' | 'task',
         taskId: newParams.get('taskId') || undefined,
         publicationId: newParams.get('publicationId') || undefined,
@@ -48,12 +48,12 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
     }
   }
 
-  const handleTypeFilter = (type: 'all' | 'image' | 'video') => {
+  const handleTypeFilter = (type: 'all' | 'image' | 'video' | 'audio') => {
     updateFilters({ type })
   }
 
   const handleSourceFilter = (source: string) => {
-    updateFilters({ source: source as 'all' | 'manual' | 'haygen' | 'nanobanana' })
+    updateFilters({ source: source as 'all' | 'manual' | 'haygen' | 'nanobanana' | 'elevenlabs' })
   }
 
   const handleSortChange = (sort: string) => {
@@ -85,6 +85,13 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
         >
           Videos
         </Button>
+        <Button
+          variant={currentType === 'audio' ? 'primary' : 'secondary'}
+          onClick={() => handleTypeFilter('audio')}
+          className="text-sm"
+        >
+          Audio
+        </Button>
       </div>
 
       {/* Source and Sort filters */}
@@ -99,6 +106,7 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
               { value: 'manual', label: 'Manual' },
               { value: 'haygen', label: 'Haygen' },
               { value: 'nanobanana', label: 'NanoBanana' },
+              { value: 'elevenlabs', label: 'ElevenLabs' },
             ]}
           />
         </div>

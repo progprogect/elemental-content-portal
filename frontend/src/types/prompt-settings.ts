@@ -49,3 +49,11 @@ export interface ImageGenerationSettings {
   useCurrentResultAsReference?: boolean // Флаг для использования текущего результата как reference
 }
 
+export interface SpeechSettings {
+  stability?: number // 0-1
+  similarityBoost?: number // 0-1
+  style?: number // 0-1 (для Eleven v3)
+  useSpeakerBoost?: boolean
+  modelId?: 'eleven_multilingual_v2' | 'eleven_turbo_v2_5' | 'eleven_monolingual_v1'
+}
+

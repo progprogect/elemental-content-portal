@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { PhotoIcon, VideoCameraIcon, DocumentIcon } from '@heroicons/react/24/outline'
+import { PhotoIcon, VideoCameraIcon, DocumentIcon, SpeakerWaveIcon } from '@heroicons/react/24/outline'
 import Lightbox from './Lightbox'
 
 interface MediaPreviewProps {
   url: string
   filename?: string
-  type?: 'image' | 'video' | 'file'
+  type?: 'image' | 'video' | 'file' | 'audio'
   className?: string
 }
 
@@ -21,7 +21,7 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
   }, [url])
 
   // Determine media type from URL or filename
-  const getMediaType = (): 'image' | 'video' | 'file' => {
+  const getMediaType = (): 'image' | 'video' | 'file' | 'audio' => {
     if (type) return type
     
     const urlLower = url.toLowerCase()
@@ -33,6 +33,9 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
     if (urlLower.match(/\.(mp4|mov|avi|webm)$/i) || filenameLower.match(/\.(mp4|mov|avi|webm)$/i)) {
       return 'video'
     }
+    if (urlLower.match(/\.(mp3|wav|m4a|ogg|flac|webm)$/i) || filenameLower.match(/\.(mp3|wav|m4a|ogg|flac|webm)$/i)) {
+      return 'audio'
+    }
     return 'file'
   }
 
@@ -41,6 +44,9 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
   const handleClick = () => {
     if (mediaType === 'image' || mediaType === 'video') {
       setIsLightboxOpen(true)
+    } else if (mediaType === 'audio') {
+      // Audio files open in new tab for download/playback
+      window.open(url, '_blank')
     } else {
       window.open(url, '_blank')
     }
@@ -120,6 +126,26 @@ export default function MediaPreview({ url, filename, type, className = '' }: Me
           />
         )}
       </>
+    )
+  }
+
+  if (mediaType === 'audio') {
+    return (
+      <div
+        className={`relative cursor-pointer group overflow-hidden rounded-lg bg-gray-100 ${className}`}
+      >
+        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gray-50">
+          <SpeakerWaveIcon className="h-12 w-12 text-gray-400 mb-3" />
+          <audio controls className="w-full max-w-md" src={url}>
+            Your browser does not support the audio element.
+          </audio>
+          {filename && (
+            <div className="mt-2 text-sm text-gray-600 truncate max-w-full">
+              {filename}
+            </div>
+          )}
+        </div>
+      </div>
     )
   }
 

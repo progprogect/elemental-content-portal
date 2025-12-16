@@ -6,5 +6,9 @@ const router = Router();
 
 router.post('/transcribe', speechController.transcribeMiddleware, asyncHandler(speechController.transcribeAudioHandler));
 
+router.post('/generate-preview', asyncHandler(speechController.generatePreviewHandler));
+
+router.post('/save-result', asyncHandler(speechController.saveResultHandler));
+
 export default router;
 

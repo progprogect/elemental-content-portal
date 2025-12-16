@@ -36,3 +36,5 @@ export default function TrainingRoleTags({ roles, maxVisible = 4 }: TrainingRole
   )
 }
 
+
+
