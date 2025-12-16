@@ -85,6 +85,7 @@ export async function getVoiceById(voiceId: string): Promise<Voice | null> {
     }
 
     // If not found in DB, check API for premium voice
+    // Try to get voice directly from API
     try {
       const apiVoice: any = await client.voices.get(voiceId);
       return {
@@ -97,7 +98,30 @@ export async function getVoiceById(voiceId: string): Promise<Voice | null> {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-    } catch {
+    } catch (apiError: any) {
+      // If API call fails, try to find in all voices list
+      try {
+        const allVoicesResponse: any = await client.voices.getAll();
+        const allVoices = allVoicesResponse.voices || [];
+        const foundVoice = allVoices.find((v: any) => 
+          (v.voice_id === voiceId) || (v.id === voiceId)
+        );
+        
+        if (foundVoice) {
+          return {
+            id: foundVoice.voice_id || foundVoice.id || voiceId,
+            name: foundVoice.name,
+            elevenlabsId: foundVoice.voice_id || foundVoice.id || voiceId,
+            voiceType: 'premium' as const,
+            description: foundVoice.description || null,
+            sampleUrl: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }
+      } catch {
+        // Ignore error, will return null
+      }
       return null;
     }
   } catch (error: any) {
