@@ -1023,6 +1023,7 @@ export default function TaskForm() {
                               }
                             }}
                             canDelete={true}
+                            taskId={isEdit ? id : undefined}
                           />
                         )
                       })
@@ -1084,6 +1085,7 @@ export default function TaskForm() {
                               setExpandedPublications(newExpanded)
                             }}
                             canDelete={true}
+                            taskId={isEdit ? id : undefined}
                           />
                         )
                       })
@@ -1187,6 +1189,7 @@ export default function TaskForm() {
           publication={editingPublication}
           platform={editingPlatformCode ? platforms.find(p => p.code === editingPlatformCode) : undefined}
           platforms={platforms}
+          taskId={isEdit ? id : undefined}
         />
       )}
     </div>

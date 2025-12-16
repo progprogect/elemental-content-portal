@@ -4,6 +4,7 @@ import Input from './ui/Input'
 import Select from './ui/Select'
 import MarkdownEditor from './MarkdownEditor'
 import Button from './ui/Button'
+import TextGenerationModal from './TextGenerationModal'
 
 const CONTENT_TYPES = [
   { value: 'video', label: 'Video' },
@@ -40,6 +41,7 @@ interface InlinePublicationEditorProps {
   onDelete?: () => void
   canDelete?: boolean
   allowIndividualSave?: boolean // If false, hide Save/Reset buttons and auto-update on change
+  taskId?: string
 }
 
 export default function InlinePublicationEditor({
@@ -52,6 +54,7 @@ export default function InlinePublicationEditor({
   onDelete,
   canDelete = true,
   allowIndividualSave = true,
+  taskId,
 }: InlinePublicationEditorProps) {
   const [contentType, setContentType] = useState(publication?.contentType || defaultContentType)
   const [customContentType, setCustomContentType] = useState('')
@@ -59,6 +62,7 @@ export default function InlinePublicationEditor({
   const [status, setStatus] = useState<'draft' | 'in_progress' | 'completed' | 'failed'>(publication?.status || 'draft')
   const [note, setNote] = useState(publication?.note || '')
   const [content, setContent] = useState(publication?.content || '')
+  const [isTextGenModalOpen, setIsTextGenModalOpen] = useState(false)
 
   // Sync state with publication prop changes
   // When allowIndividualSave is false, only sync on initial mount or when publication ID changes
@@ -259,12 +263,28 @@ export default function InlinePublicationEditor({
             placeholder="Add a note about this publication..."
           />
 
-          <MarkdownEditor
-            label="Content (optional)"
-            value={content}
-            onChange={(value) => setContent(value || '')}
-            placeholder="Enter markdown content for this publication..."
-          />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Content (optional)
+              </label>
+              {taskId && publication?.id && (
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsTextGenModalOpen(true)}
+                  className="text-sm px-3 py-1"
+                  type="button"
+                >
+                  Generate Text
+                </Button>
+              )}
+            </div>
+            <MarkdownEditor
+              value={content}
+              onChange={(value) => setContent(value || '')}
+              placeholder="Enter markdown content for this publication..."
+            />
+          </div>
 
           {allowIndividualSave && (
             <div className="flex justify-end gap-2 pt-2">
@@ -298,6 +318,25 @@ export default function InlinePublicationEditor({
             </div>
           )}
         </div>
+      )}
+
+      {/* Text Generation Modal */}
+      {taskId && publication?.id && (
+        <TextGenerationModal
+          isOpen={isTextGenModalOpen}
+          onClose={() => setIsTextGenModalOpen(false)}
+          taskId={taskId}
+          publicationId={publication.id}
+          existingContent={content}
+          onInsert={(newContent, action) => {
+            if (action === 'replace') {
+              setContent(newContent)
+            } else {
+              setContent((content || '') + '\n\n' + newContent)
+            }
+            setIsTextGenModalOpen(false)
+          }}
+        />
       )}
     </div>
   )

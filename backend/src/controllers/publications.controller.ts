@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
+import { generatePromptForPublication } from '../services/prompt-generator';
+import { generateText } from '../services/text-generator';
 
 // Helper function to update task status based on publication statuses
 async function updateTaskStatusFromPublications(taskId: string) {
@@ -196,5 +198,49 @@ export const deletePublication = async (req: Request, res: Response) => {
   await updateTaskStatusFromPublications(taskId);
 
   res.status(204).send();
+};
+
+export const generateContent = async (req: Request, res: Response) => {
+  const { id: taskId, publicationId } = req.params;
+  const { additionalInstructions, tone, length } = req.body;
+
+  // Validate task and publication exist
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  const publication = await prisma.taskPublication.findUnique({
+    where: { id: publicationId },
+  });
+  if (!publication || publication.taskId !== taskId) {
+    return res.status(404).json({ error: 'Publication not found' });
+  }
+
+  try {
+    // Get base prompt from task and publication context
+    const promptData = await generatePromptForPublication(taskId, publicationId);
+    const basePrompt = promptData.prompt;
+
+    // Generate text using text-generator service
+    const generatedContent = await generateText({
+      basePrompt,
+      additionalInstructions: additionalInstructions || undefined,
+      tone: tone || undefined,
+      length: length || undefined,
+    });
+
+    // Return generated content and prompt (for debugging)
+    res.json({
+      content: generatedContent,
+      prompt: basePrompt, // Include for debugging purposes
+    });
+  } catch (error: any) {
+    console.error('Error generating content:', error);
+    res.status(500).json({
+      error: 'Failed to generate content',
+      message: error.message || 'Unknown error',
+    });
+  }
 };
 

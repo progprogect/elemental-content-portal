@@ -26,10 +26,17 @@ const updatePublicationSchema = z.object({
   orderIndex: z.number().int().optional(),
 });
 
+const generateContentSchema = z.object({
+  additionalInstructions: z.string().optional(),
+  tone: z.enum(['casual', 'professional', 'engaging', 'formal']).optional(),
+  length: z.enum(['short', 'medium', 'long']).optional(),
+});
+
 router.get('/', asyncHandler(publicationsController.getPublications));
 router.post('/', validate(createPublicationSchema), asyncHandler(publicationsController.createPublication));
 router.put('/:publicationId', validate(updatePublicationSchema), asyncHandler(publicationsController.updatePublication));
 router.delete('/:publicationId', asyncHandler(publicationsController.deletePublication));
+router.post('/:publicationId/generate-content', validate(generateContentSchema), asyncHandler(publicationsController.generateContent));
 
 export default router;
 

@@ -5,6 +5,7 @@ import Input from './ui/Input'
 import Select from './ui/Select'
 import Button from './ui/Button'
 import MarkdownEditor from './MarkdownEditor'
+import TextGenerationModal from './TextGenerationModal'
 import { getErrorMessage } from '../utils/error-handler'
 
 const CONTENT_TYPES = [
@@ -39,6 +40,7 @@ interface PublicationEditorProps {
   publication?: TaskPublication
   platform?: Platform
   platforms?: Platform[]
+  taskId?: string
 }
 
 export default function PublicationEditor({
@@ -48,6 +50,7 @@ export default function PublicationEditor({
   publication,
   platform,
   platforms = [],
+  taskId,
 }: PublicationEditorProps) {
   const [platformCode, setPlatformCode] = useState(publication?.platform || platform?.code || '')
   const [contentType, setContentType] = useState(publication?.contentType || 'video')
@@ -58,6 +61,7 @@ export default function PublicationEditor({
   const [content, setContent] = useState(publication?.content || '')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isTextGenModalOpen, setIsTextGenModalOpen] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -242,13 +246,48 @@ export default function PublicationEditor({
           placeholder="Add a note about this publication..."
         />
 
-        <MarkdownEditor
-          label="Content (optional)"
-          value={content}
-          onChange={(value) => setContent(value || '')}
-          placeholder="Enter markdown content for this publication..."
-        />
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Content (optional)
+            </label>
+            {taskId && publication?.id && (
+              <Button
+                variant="secondary"
+                onClick={() => setIsTextGenModalOpen(true)}
+                className="text-sm px-3 py-1"
+                type="button"
+              >
+                Generate Text
+              </Button>
+            )}
+          </div>
+          <MarkdownEditor
+            value={content}
+            onChange={(value) => setContent(value || '')}
+            placeholder="Enter markdown content for this publication..."
+          />
+        </div>
       </div>
+
+      {/* Text Generation Modal */}
+      {taskId && publication?.id && (
+        <TextGenerationModal
+          isOpen={isTextGenModalOpen}
+          onClose={() => setIsTextGenModalOpen(false)}
+          taskId={taskId}
+          publicationId={publication.id}
+          existingContent={content}
+          onInsert={(newContent, action) => {
+            if (action === 'replace') {
+              setContent(newContent)
+            } else {
+              setContent((content || '') + '\n\n' + newContent)
+            }
+            setIsTextGenModalOpen(false)
+          }}
+        />
+      )}
     </Modal>
   )
 }

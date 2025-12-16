@@ -404,5 +404,21 @@ export const publicationsApi = {
   deletePublication: async (taskId: string, publicationId: string) => {
     await apiClient.delete(`/tasks/${taskId}/publications/${publicationId}`)
   },
+
+  generateContent: async (
+    taskId: string,
+    publicationId: string,
+    options: {
+      additionalInstructions?: string
+      tone?: 'casual' | 'professional' | 'engaging' | 'formal'
+      length?: 'short' | 'medium' | 'long'
+    }
+  ) => {
+    const response = await apiClient.post<{
+      content: string
+      prompt: string
+    }>(`/tasks/${taskId}/publications/${publicationId}/generate-content`, options)
+    return response.data
+  },
 }
 

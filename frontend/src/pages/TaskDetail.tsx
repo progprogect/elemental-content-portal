@@ -442,6 +442,7 @@ export default function TaskDetail() {
           }}
           publication={editingPublication}
           platforms={platforms}
+          taskId={id}
         />
       )}
 
