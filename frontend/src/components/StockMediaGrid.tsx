@@ -3,18 +3,14 @@ import StockMediaItem from './StockMediaItem'
 
 interface StockMediaGridProps {
   items: StockMediaItemType[]
+  onItemView: (item: StockMediaItemType) => void
   onAddToGallery: (item: StockMediaItemType) => void
   addingItemId?: string | null
 }
 
-export default function StockMediaGrid({ items, onAddToGallery, addingItemId }: StockMediaGridProps) {
+export default function StockMediaGrid({ items, onItemView, onAddToGallery, addingItemId }: StockMediaGridProps) {
   if (items.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <p className="text-lg">Ничего не найдено</p>
-        <p className="text-sm mt-2">Попробуйте изменить параметры поиска</p>
-      </div>
-    )
+    return null // Empty state is handled by parent component
   }
 
   return (
@@ -23,6 +19,7 @@ export default function StockMediaGrid({ items, onAddToGallery, addingItemId }: 
         <StockMediaItem
           key={item.id}
           item={item}
+          onView={onItemView}
           onAddToGallery={onAddToGallery}
           isAdding={addingItemId === item.id}
         />

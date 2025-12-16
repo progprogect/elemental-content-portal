@@ -46,7 +46,7 @@ export default function StockMediaItem({ item, onView, onAddToGallery, isAdding 
             {!imageError ? (
               <img
                 src={item.thumbnailUrl || item.url}
-                alt={item.description || 'Stock media'}
+                alt={item.description || 'Stock photo'}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 onError={() => setImageError(true)}
