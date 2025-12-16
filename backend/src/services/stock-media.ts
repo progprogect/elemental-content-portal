@@ -12,8 +12,8 @@ export interface StockMediaItem {
   url: string
   thumbnailUrl?: string
   downloadUrl: string
-  width: number
-  height: number
+  width?: number
+  height?: number
   photographer?: string
   photographerUrl?: string
   duration?: number // for videos
@@ -77,7 +77,7 @@ export async function searchPexels(params: StockMediaSearchParams): Promise<Stoc
     throw new Error(`Pexels API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
 
   if (type === 'video') {
     const items: StockMediaItem[] = (data.videos || []).map((video: any) => {
@@ -176,7 +176,7 @@ export async function searchUnsplash(params: StockMediaSearchParams): Promise<St
     throw new Error(`Unsplash API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
 
   const items: StockMediaItem[] = (data.results || []).map((photo: any) => ({
     id: `unsplash-${photo.id}`,
@@ -238,7 +238,7 @@ export async function searchPixabay(params: StockMediaSearchParams): Promise<Sto
     throw new Error(`Pixabay API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
 
   if (type === 'video') {
     const items: StockMediaItem[] = (data.hits || []).map((video: any) => ({

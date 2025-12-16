@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { searchStockMedia, downloadStockMedia, StockMediaItem } from '../services/stock-media';
+import { searchStockMedia as searchStockMediaService, downloadStockMedia, StockMediaItem } from '../services/stock-media';
 import { prisma } from '../utils/prisma';
 import { z } from 'zod';
 
@@ -32,7 +32,7 @@ export const searchStockMedia = async (req: Request, res: Response) => {
       perPage: validated.perPage ? parseInt(validated.perPage, 10) : 20,
     };
 
-    const result = await searchStockMedia(params);
+    const result = await searchStockMediaService(params);
     res.json(result);
   } catch (error) {
     console.error('Error searching stock media:', error);
