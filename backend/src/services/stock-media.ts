@@ -138,10 +138,14 @@ export async function searchPexels(params: StockMediaSearchParams): Promise<Stoc
  * Documentation: https://unsplash.com/documentation
  */
 export async function searchUnsplash(params: StockMediaSearchParams): Promise<StockMediaSearchResponse> {
-  // Try both naming conventions for compatibility
-  const accessKey = process.env.Unsplash_Access_Key || process.env.UNSPLASH_ACCESS_KEY;
+  // Unsplash uses Application ID (also called Access Key) in Authorization header
+  // Try multiple naming conventions for compatibility
+  const accessKey = process.env.Unsplash_Access_Key 
+    || process.env.Unsplash_Application_ID 
+    || process.env.UNSPLASH_ACCESS_KEY
+    || process.env.UNSPLASH_APPLICATION_ID;
   if (!accessKey) {
-    throw new Error('Unsplash_Access_Key or UNSPLASH_ACCESS_KEY is not configured');
+    throw new Error('Unsplash_Access_Key or Unsplash_Application_ID is not configured');
   }
 
   const { query, orientation, color, page = 1, perPage = 20 } = params;
