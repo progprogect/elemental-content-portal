@@ -274,23 +274,25 @@ export default function TasksList() {
                     onDelete={handleDeleteColumn}
                   />
                 ))}
-                <TableColumnManager onColumnChange={() => queryClient.invalidateQueries({ queryKey: ['table-columns'] })} />
                 {/* Platform columns */}
                 {sortedPlatforms.map((platform, index) => (
                   <th
                     key={platform.id}
-                    className={`px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 min-w-[180px] ${
+                    className={`px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 min-w-[180px] ${
                       index === 0 ? 'border-l-2 border-gray-400' : ''
                     } ${
                       index === sortedPlatforms.length - 1 ? 'border-r-2 border-gray-400' : 'border-r border-gray-200'
                     }`}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-base">{platform.icon || '📱'}</span>
-                      <span className="truncate">{platform.name}</span>
+                    <div className="flex flex-col items-start gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">{platform.icon || '📱'}</span>
+                        <span className="truncate">{platform.name}</span>
+                      </div>
                     </div>
                   </th>
                 ))}
+                <TableColumnManager onColumnChange={() => queryClient.invalidateQueries({ queryKey: ['table-columns'] })} />
                 <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[120px] bg-gray-100 border-l-2 border-gray-300">
                   Actions
                 </th>
@@ -369,8 +371,6 @@ export default function TasksList() {
                             </td>
                           )
                         })}
-                        {/* Empty cell for Add Column button column */}
-                        <td className="px-6 py-4 min-w-[200px] bg-gray-50 border-r border-gray-200"></td>
                         {/* Platform columns */}
                         {sortedPlatforms.map((platform) => {
                           const publication = task.publications?.find(p => p.platform === platform.code)
@@ -388,6 +388,8 @@ export default function TasksList() {
                             />
                           )
                         })}
+                        {/* Empty cell for Add Column button column */}
+                        <td className="px-6 py-4 min-w-[200px] bg-gray-50 border-r border-gray-200"></td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-gray-50 border-l-2 border-gray-300">
                           <button
                             onClick={() => deleteMutation.mutate(task.id)}

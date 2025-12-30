@@ -23,8 +23,8 @@ export default function PlatformPublicationCell({
 }: PlatformPublicationCellProps) {
   if (!publication) {
     return (
-      <td className="px-4 py-3 border-l border-r border-gray-200 min-w-[180px] bg-white text-center">
-        <div className="flex flex-col items-center gap-1">
+      <td className="px-4 py-3 border-l border-r border-gray-200 min-w-[180px] bg-white">
+        <div className="flex flex-col items-start gap-1">
           <div className="flex items-center gap-1.5">
             <span className="text-base">{platform.icon || '📱'}</span>
             <span className="text-xs font-semibold text-gray-700">{platform.name}</span>
