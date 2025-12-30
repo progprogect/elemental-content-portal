@@ -29,6 +29,95 @@ export interface ImportResult {
  */
 export async function generateTemplate(): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
+  
+  // Create instructions sheet
+  const instructionsSheet = workbook.addWorksheet('Instructions');
+  instructionsSheet.columns = [{ width: 100 }];
+  
+  // Get platforms for instructions
+  const platforms = await prisma.platform.findMany({
+    where: { isActive: true },
+    orderBy: { orderIndex: 'asc' },
+  });
+  const platformCodes = platforms.map(p => p.code).join(', ');
+  
+  const instructions = [
+    'CONTENT PLAN TEMPLATE - IMPORT RULES',
+    '',
+    'REQUIRED FIELDS:',
+    '  • Task Title - Required, max 500 characters',
+    '  • Task Content Type - Required (examples: video, image, talking_head, text)',
+    '  • Scheduled Date - Required, format: YYYY-MM-DD (e.g., 2025-01-15)',
+    '  • Platform - Required, must exist in system',
+    '',
+    'FIELD VALIDATION RULES:',
+    '',
+    '1. PLATFORM:',
+    `   Valid values: ${platformCodes || 'tiktok, youtube, instagram, facebook, linkedin'}`,
+    '   • Must match exactly (case-sensitive)',
+    '   • Platform must be active in the system',
+    '',
+    '2. TASK STATUS:',
+    '   Valid values: draft, in_progress, completed, failed',
+    '   • Default: draft (if not specified)',
+    '',
+    '3. TASK EXECUTION TYPE:',
+    '   Valid values: manual, generated',
+    '   • Default: manual (if not specified)',
+    '',
+    '4. PUBLICATION STATUS:',
+    '   Valid values: draft, in_progress, completed, failed',
+    '   • Default: draft (if not specified)',
+    '',
+    '5. PUBLICATION EXECUTION TYPE:',
+    '   Valid values: manual, generated',
+    '   • Default: manual (if not specified)',
+    '',
+    '6. CONTENT TYPE:',
+    '   Examples: video, image, talking_head, text, audio',
+    '   • Free text field, but should match content type configs',
+    '',
+    '7. SCHEDULED DATE:',
+    '   Format: YYYY-MM-DD (e.g., 2025-01-15)',
+    '   • Must be valid date',
+    '',
+    'IMPORTANT NOTES:',
+    '  • One row = one publication',
+    '  • Tasks with same Title + Scheduled Date will be grouped',
+    '  • Multiple publications can share the same task',
+    '  • Empty rows will be skipped',
+    '  • Dynamic fields (custom columns) are optional',
+    '',
+    'ERROR HANDLING:',
+    '  • Invalid values will cause row import to fail',
+    '  • Error messages will show row number and issue',
+    '  • Partial imports are allowed (successful rows will be imported)',
+  ];
+  
+  instructions.forEach((instruction, index) => {
+    const row = instructionsSheet.getRow(index + 1);
+    row.getCell(1).value = instruction;
+    if (index === 0) {
+      row.font = { bold: true, size: 14 };
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4472C4' },
+      };
+      row.getCell(1).font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    } else if (instruction.startsWith('  •') || instruction.startsWith('   •')) {
+      row.getCell(1).font = { italic: true };
+    } else if (instruction.endsWith(':') && !instruction.startsWith(' ')) {
+      row.font = { bold: true };
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE7E6E6' },
+      };
+    }
+  });
+  
+  // Create main data sheet
   const worksheet = workbook.addWorksheet('Content Plan');
 
   // Get table columns for dynamic fields
@@ -36,7 +125,7 @@ export async function generateTemplate(): Promise<ExcelJS.Workbook> {
     orderBy: { orderIndex: 'asc' },
   });
 
-  // Define fixed columns
+  // Define fixed columns with comments/notes
   const fixedColumns = [
     { header: 'Task Title', key: 'taskTitle', width: 30 },
     { header: 'Task Content Type', key: 'taskContentType', width: 20 },
@@ -70,6 +159,30 @@ export async function generateTemplate(): Promise<ExcelJS.Workbook> {
     pattern: 'solid',
     fgColor: { argb: 'FFE0E0E0' },
   };
+  
+  // Add comments to header cells with validation rules
+  const headerComments: Record<string, string> = {
+    'Task Title': 'Required. Max 500 characters.',
+    'Task Content Type': 'Required. Examples: video, image, talking_head, text',
+    'Scheduled Date': 'Required. Format: YYYY-MM-DD (e.g., 2025-01-15)',
+    'Task Status': 'Optional. Values: draft, in_progress, completed, failed. Default: draft',
+    'Task Execution Type': 'Optional. Values: manual, generated. Default: manual',
+    'Platform': `Required. Must exist in system. Valid: ${platformCodes || 'tiktok, youtube, instagram, facebook, linkedin'}`,
+    'Publication Content Type': 'Optional. Examples: video, image, text. Defaults to Task Content Type',
+    'Publication Status': 'Optional. Values: draft, in_progress, completed, failed. Default: draft',
+    'Publication Note': 'Optional. Description or notes for this publication',
+    'Publication Content': 'Optional. Actual content text/script',
+    'Publication Execution Type': 'Optional. Values: manual, generated. Default: manual',
+    'Result URL': 'Optional. URL to published result',
+    'Result Download URL': 'Optional. URL to download result file',
+  };
+  
+  fixedColumns.forEach((col, index) => {
+    const cell = headerRow.getCell(index + 1);
+    if (headerComments[col.header]) {
+      cell.note = headerComments[col.header];
+    }
+  });
 
   // Add example rows
   const exampleRows = [
