@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
-import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, platformsApi, publicationsApi, TableColumn, Task } from '../services/api/tasks'
+import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, platformsApi, TableColumn, Task } from '../services/api/tasks'
 import Button from '../components/ui/Button'
 import TableColumnManager from '../components/TableColumnManager'
 import TableColumnHeader from '../components/TableColumnHeader'
