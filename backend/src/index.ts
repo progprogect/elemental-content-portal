@@ -76,8 +76,9 @@ import voicesRoutes from './routes/voices.routes';
 
 app.use('/api/task-lists', taskListsRoutes);
 app.use('/api/table-columns', tableColumnsRoutes);
-app.use('/api/tasks', tasksRoutes);
+// Register import/export routes BEFORE tasks routes to avoid /:id catching /template, /export, /import
 app.use('/api/tasks', importExportRoutes);
+app.use('/api/tasks', tasksRoutes);
 app.use('/api/tasks/:id/fields', fieldsRoutes);
 app.use('/api/tasks/:id/results', resultsRoutes);
 app.use('/api/tasks/:id/publications', publicationsRoutes);
