@@ -443,10 +443,17 @@ export const importExportApi = {
     const contentDisposition = response.headers['content-disposition']
     let filename = 'content-plan-export.xlsx'
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i)
-      if (filenameMatch) {
-        filename = filenameMatch[1]
+      // Parse filename from Content-Disposition header
+      // Format: attachment; filename=filename.xlsx or attachment; filename="filename.xlsx"
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i)
+      if (filenameMatch && filenameMatch[1]) {
+        // Remove quotes if present
+        filename = filenameMatch[1].replace(/^["']|["']$/g, '')
       }
+    }
+    // Ensure .xlsx extension
+    if (!filename.endsWith('.xlsx')) {
+      filename = filename.replace(/\.[^.]*$/, '') + '.xlsx'
     }
     link.setAttribute('download', filename)
     document.body.appendChild(link)

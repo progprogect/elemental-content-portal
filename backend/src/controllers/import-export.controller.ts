@@ -35,7 +35,7 @@ export const exportTasksHandler = async (req: Request, res: Response) => {
     // Set response headers
     const filename = `content-plan-export-${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
     // Stream workbook to response
     await workbook.xlsx.write(res);
@@ -55,7 +55,7 @@ export const downloadTemplateHandler = async (req: Request, res: Response) => {
 
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="content-plan-template.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename=content-plan-template.xlsx');
 
     // Stream workbook to response
     await workbook.xlsx.write(res);
