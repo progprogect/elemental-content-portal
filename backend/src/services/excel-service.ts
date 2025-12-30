@@ -339,7 +339,16 @@ export async function exportTasks(listId?: string | null): Promise<ExcelJS.Workb
     if (task.publications && task.publications.length > 0) {
       // One row per publication
       for (const publication of task.publications) {
-        const result = publication.results?.[0] || null;
+        // Get the latest result for this publication
+        // First try publication-specific results, then fallback to task-level results
+        let result = null;
+        if (publication.results && publication.results.length > 0) {
+          result = publication.results[0];
+        } else if (task.results && task.results.length > 0) {
+          // Fallback to task-level results if no publication-specific results
+          result = task.results[0];
+        }
+        
         const row: any = {
           taskTitle: task.title,
           taskContentType: task.contentType,
@@ -352,15 +361,17 @@ export async function exportTasks(listId?: string | null): Promise<ExcelJS.Workb
           publicationNote: publication.note || '',
           publicationContent: publication.content || '',
           publicationExecutionType: publication.executionType,
-          resultUrl: result?.resultUrl || '',
-          resultDownloadUrl: result?.downloadUrl || '',
+          resultUrl: result?.resultUrl || result?.assetUrl || '',
+          resultDownloadUrl: result?.downloadUrl || result?.assetPath || '',
           ...fieldValues,
         };
         worksheet.addRow(row);
       }
     } else {
       // Task without publications - still create a row
-      const result = task.results?.[0] || null;
+      const result = task.results && task.results.length > 0 
+        ? task.results[0] 
+        : null;
       const row: any = {
         taskTitle: task.title,
         taskContentType: task.contentType,
