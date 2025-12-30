@@ -13,6 +13,8 @@ NODE_ENV=production
 
 # Database (Railway автоматически создаст PostgreSQL и предоставит DATABASE_URL)
 DATABASE_URL=<автоматически из Railway PostgreSQL>
+# Если DATABASE_URL указывает на postgres.railway.internal и не работает, используйте публичный URL:
+DATABASE_PUBLIC_URL=postgresql://postgres:password@host.proxy.rlwy.net:port/railway
 
 # Storage Provider (cloudinary, r2, or s3)
 STORAGE_PROVIDER=cloudinary
