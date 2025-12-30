@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskListsApi, TaskList } from '../services/api/tasks'
-import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon, LanguageIcon, FilmIcon, SpeakerWaveIcon, MicrophoneIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, PlusIcon, Cog6ToothIcon, PhotoIcon, VideoCameraIcon, AcademicCapIcon, Squares2X2Icon, LanguageIcon, FilmIcon, SpeakerWaveIcon, MicrophoneIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
+import ContextMenu, { MenuOption } from './ui/ContextMenu'
 import logo from '../assets/logo.jpeg'
 
 interface SidebarProps {
@@ -25,6 +26,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [newListName, setNewListName] = useState('')
+  const [editingListId, setEditingListId] = useState<string | null>(null)
+  const [editingListName, setEditingListName] = useState('')
+  const [deletingListId, setDeletingListId] = useState<string | null>(null)
 
   const { data: lists, isLoading } = useQuery({
     queryKey: ['task-lists'],
@@ -37,6 +41,37 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
       queryClient.invalidateQueries({ queryKey: ['task-lists'] })
       setIsCreateModalOpen(false)
       setNewListName('')
+    },
+  })
+
+  const updateListMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => taskListsApi.updateList(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-lists'] })
+      setEditingListId(null)
+      setEditingListName('')
+    },
+    onError: (error: any) => {
+      console.error('Update error:', error)
+      alert(error.response?.data?.error || 'Failed to update project')
+    },
+  })
+
+  const deleteListMutation = useMutation({
+    mutationFn: taskListsApi.deleteList,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-lists'] })
+      // If deleted project was active, redirect to home
+      // Use deletingListId from closure before it's cleared
+      const deletedId = deletingListId
+      if (deletedId === currentListId) {
+        navigate('/')
+      }
+      setDeletingListId(null)
+    },
+    onError: (error: any) => {
+      console.error('Delete error:', error)
+      alert(error.response?.data?.error || 'Failed to delete project')
     },
   })
 
@@ -65,6 +100,25 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   const handleCreateList = () => {
     if (!newListName.trim()) return
     createListMutation.mutate({ name: newListName.trim() })
+  }
+
+  const handleEditClick = (list: TaskList) => {
+    setEditingListId(list.id)
+    setEditingListName(list.name)
+  }
+
+  const handleDeleteClick = (list: TaskList) => {
+    setDeletingListId(list.id)
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingListName.trim() || !editingListId) return
+    updateListMutation.mutate({ id: editingListId, name: editingListName.trim() })
+  }
+
+  const handleConfirmDelete = () => {
+    if (!deletingListId) return
+    deleteListMutation.mutate(deletingListId)
   }
 
   const getTotalTaskCount = (list: TaskList) => {
@@ -190,30 +244,61 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
                   const isActive = currentListId === list.id
                   const taskCount = getTotalTaskCount(list)
 
+                  const menuOptions: MenuOption[] = [
+                    {
+                      label: 'Edit',
+                      onClick: () => handleEditClick(list),
+                      variant: 'default',
+                    },
+                    {
+                      label: 'Delete',
+                      onClick: () => handleDeleteClick(list),
+                      variant: 'danger',
+                    },
+                  ]
+
                   return (
-                    <li key={list.id}>
-                      <button
-                        onClick={() => handleListClick(list.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        {list.icon && <span className="text-lg flex-shrink-0">{list.icon}</span>}
+                    <li key={list.id} className="group">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleListClick(list.id)}
+                          className={`flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {list.icon && <span className="text-lg flex-shrink-0">{list.icon}</span>}
+                          {!isCollapsed && (
+                            <>
+                              <span className="flex-1 text-left truncate">{list.name}</span>
+                              {taskCount > 0 && (
+                                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                  isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+                                }`}>
+                                  {taskCount}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </button>
                         {!isCollapsed && (
-                          <>
-                            <span className="flex-1 text-left truncate">{list.name}</span>
-                            {taskCount > 0 && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
-                                isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
-                              }`}>
-                                {taskCount}
-                              </span>
-                            )}
-                          </>
+                          <ContextMenu
+                            options={menuOptions}
+                            position="right"
+                            className="flex-shrink-0"
+                            trigger={
+                              <button
+                                className="p-1 rounded hover:bg-gray-200 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                aria-label="Project options"
+                                type="button"
+                              >
+                                <EllipsisVerticalIcon className="h-4 w-4 text-gray-600" />
+                              </button>
+                            }
+                          />
                         )}
-                      </button>
+                      </div>
                     </li>
                   )
                 })}
@@ -408,6 +493,88 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
             }
           }}
         />
+      </Modal>
+
+      {/* Edit List Modal */}
+      <Modal
+        isOpen={editingListId !== null}
+        onClose={() => {
+          setEditingListId(null)
+          setEditingListName('')
+        }}
+        title="Edit Project"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setEditingListId(null)
+                setEditingListName('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSaveEdit}
+              disabled={!editingListName.trim() || updateListMutation.isPending}
+              className="ml-3"
+            >
+              {updateListMutation.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </>
+        }
+      >
+        <Input
+          label="Project Name"
+          value={editingListName}
+          onChange={(e) => setEditingListName(e.target.value)}
+          placeholder="e.g., Social Media, Learning"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && editingListName.trim() && !updateListMutation.isPending) {
+              handleSaveEdit()
+            }
+            if (e.key === 'Escape') {
+              setEditingListId(null)
+              setEditingListName('')
+            }
+          }}
+          autoFocus
+        />
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deletingListId !== null}
+        onClose={() => setDeletingListId(null)}
+        title="Delete Project"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setDeletingListId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleConfirmDelete}
+              disabled={deleteListMutation.isPending}
+              className="ml-3"
+            >
+              {deleteListMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-gray-700">
+            Are you sure you want to delete this project? This action cannot be undone.
+          </p>
+          <p className="text-sm text-gray-500">
+            Tasks in this project will remain but will no longer be associated with this project.
+          </p>
+        </div>
       </Modal>
     </>
   )
