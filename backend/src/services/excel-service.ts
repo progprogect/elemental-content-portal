@@ -204,15 +204,16 @@ export async function exportTasks(listId?: string | null): Promise<ExcelJS.Workb
     const fieldValues: Record<string, any> = {};
     tableColumns.forEach((col) => {
       const field = task.fields.find((f) => f.fieldName === col.fieldName);
-      if (field) {
+      if (field && field.fieldValue) {
+        const fieldValue = field.fieldValue as any;
         if (col.fieldType === 'checkbox') {
-          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.checked ? 'true' : 'false';
+          fieldValues[`field_${col.fieldName}`] = fieldValue?.checked ? 'true' : 'false';
         } else if (col.fieldType === 'url') {
-          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.value || '';
+          fieldValues[`field_${col.fieldName}`] = fieldValue?.value || '';
         } else if (col.fieldType === 'file') {
-          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.url || '';
+          fieldValues[`field_${col.fieldName}`] = fieldValue?.url || '';
         } else {
-          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.value || '';
+          fieldValues[`field_${col.fieldName}`] = fieldValue?.value || '';
         }
       } else {
         fieldValues[`field_${col.fieldName}`] = '';
@@ -273,9 +274,13 @@ export async function exportTasks(listId?: string | null): Promise<ExcelJS.Workb
 /**
  * Parse Excel file and return structured data for import
  */
-export async function parseImportFile(buffer: Buffer): Promise<ImportRow[]> {
+export async function parseImportFile(buffer: Buffer | ArrayBuffer): Promise<ImportRow[]> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  // Convert to Buffer if needed - ExcelJS expects Node.js Buffer
+  const bufferData: Buffer = Buffer.isBuffer(buffer) 
+    ? buffer 
+    : Buffer.from(buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer);
+  await workbook.xlsx.load(bufferData as any);
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {
