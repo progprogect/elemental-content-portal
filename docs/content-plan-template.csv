@@ -1,0 +1,8 @@
+Task Title,Task Content Type,Scheduled Date,Task Status,Task Execution Type,Platform,Publication Content Type,Publication Status,Publication Note,Publication Content,Result URL,Result Download URL
+Q1 Marketing Video,video,2025-01-15,draft,manual,linkedin,video,draft,Focus on B2B audience,,,
+Q1 Marketing Video,video,2025-01-15,draft,manual,instagram,image,draft,Square format for Instagram,,,
+Product Launch Post,text,2025-01-20,draft,generated,linkedin,text,in_progress,Professional tone,Post content here...,,
+Product Launch Post,text,2025-01-20,draft,generated,facebook,text,draft,Casual and engaging,,,
+Social Media Image,image,2025-01-25,in_progress,manual,instagram,image,completed,Promotional image,https://example.com/image.jpg,https://example.com/download/image.jpg
+Social Media Image,image,2025-01-25,in_progress,manual,facebook,image,in_progress,Same image for Facebook,,,
+

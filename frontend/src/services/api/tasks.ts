@@ -422,3 +422,66 @@ export const publicationsApi = {
   },
 }
 
+export interface ImportResult {
+  success: number
+  failed: number
+  errors: Array<{ row: number; message: string }>
+}
+
+export const importExportApi = {
+  exportTasks: async (listId?: string) => {
+    const params = listId ? { listId } : {}
+    const response = await apiClient.get('/tasks/export', {
+      params,
+      responseType: 'blob',
+    })
+    
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    const contentDisposition = response.headers['content-disposition']
+    let filename = 'content-plan-export.xlsx'
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  },
+
+  downloadTemplate: async () => {
+    const response = await apiClient.get('/tasks/template', {
+      responseType: 'blob',
+    })
+    
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'content-plan-template.xlsx')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  },
+
+  importTasks: async (listId: string, file: File): Promise<ImportResult> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await apiClient.post<ImportResult>(`/tasks/import?listId=${listId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    
+    return response.data
+  },
+}
+

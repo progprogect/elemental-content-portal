@@ -1,0 +1,369 @@
+import ExcelJS from 'exceljs';
+import { prisma } from '../utils/prisma';
+
+export interface ImportRow {
+  taskTitle: string;
+  taskContentType: string;
+  scheduledDate: string;
+  taskStatus?: string;
+  taskExecutionType?: string;
+  platform: string;
+  publicationContentType?: string;
+  publicationStatus?: string;
+  publicationNote?: string;
+  publicationContent?: string;
+  publicationExecutionType?: string;
+  resultUrl?: string;
+  resultDownloadUrl?: string;
+  dynamicFields: Record<string, any>;
+}
+
+export interface ImportResult {
+  success: number;
+  failed: number;
+  errors: Array<{ row: number; message: string }>;
+}
+
+/**
+ * Generate Excel template with current TableColumns
+ */
+export async function generateTemplate(): Promise<ExcelJS.Workbook> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Content Plan');
+
+  // Get table columns for dynamic fields
+  const tableColumns = await prisma.tableColumn.findMany({
+    orderBy: { orderIndex: 'asc' },
+  });
+
+  // Define fixed columns
+  const fixedColumns = [
+    { header: 'Task Title', key: 'taskTitle', width: 30 },
+    { header: 'Task Content Type', key: 'taskContentType', width: 20 },
+    { header: 'Scheduled Date', key: 'scheduledDate', width: 15 },
+    { header: 'Task Status', key: 'taskStatus', width: 15 },
+    { header: 'Task Execution Type', key: 'taskExecutionType', width: 20 },
+    { header: 'Platform', key: 'platform', width: 15 },
+    { header: 'Publication Content Type', key: 'publicationContentType', width: 25 },
+    { header: 'Publication Status', key: 'publicationStatus', width: 20 },
+    { header: 'Publication Note', key: 'publicationNote', width: 30 },
+    { header: 'Publication Content', key: 'publicationContent', width: 40 },
+    { header: 'Publication Execution Type', key: 'publicationExecutionType', width: 25 },
+    { header: 'Result URL', key: 'resultUrl', width: 40 },
+    { header: 'Result Download URL', key: 'resultDownloadUrl', width: 40 },
+  ];
+
+  // Add dynamic field columns
+  const dynamicColumns = tableColumns.map((col) => ({
+    header: col.fieldName,
+    key: `field_${col.fieldName}`,
+    width: 20,
+  }));
+
+  worksheet.columns = [...fixedColumns, ...dynamicColumns];
+
+  // Style header row
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE0E0E0' },
+  };
+
+  // Add example rows
+  const exampleRows = [
+    {
+      taskTitle: 'Q1 Marketing Video',
+      taskContentType: 'video',
+      scheduledDate: '2025-01-15',
+      taskStatus: 'draft',
+      taskExecutionType: 'manual',
+      platform: 'linkedin',
+      publicationContentType: 'video',
+      publicationStatus: 'draft',
+      publicationNote: 'Focus on B2B audience',
+      publicationContent: '',
+      publicationExecutionType: 'manual',
+      resultUrl: '',
+      resultDownloadUrl: '',
+    },
+    {
+      taskTitle: 'Q1 Marketing Video',
+      taskContentType: 'video',
+      scheduledDate: '2025-01-15',
+      taskStatus: 'draft',
+      taskExecutionType: 'manual',
+      platform: 'instagram',
+      publicationContentType: 'image',
+      publicationStatus: 'draft',
+      publicationNote: 'Square format for Instagram',
+      publicationContent: '',
+      publicationExecutionType: 'manual',
+      resultUrl: '',
+      resultDownloadUrl: '',
+    },
+  ];
+
+  exampleRows.forEach((row) => {
+    const excelRow: any = { ...row };
+    // Add empty dynamic fields
+    tableColumns.forEach((col) => {
+      excelRow[`field_${col.fieldName}`] = '';
+    });
+    worksheet.addRow(excelRow);
+  });
+
+  return workbook;
+}
+
+/**
+ * Export tasks to Excel format (one row per publication)
+ */
+export async function exportTasks(listId?: string | null): Promise<ExcelJS.Workbook> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Content Plan');
+
+  // Build where clause
+  const where: any = {};
+  if (listId) {
+    if (listId === 'null' || listId === 'unassigned') {
+      where.listId = null;
+    } else {
+      where.listId = listId;
+    }
+  }
+
+  // Fetch all tasks with publications and results
+  const tasks = await prisma.task.findMany({
+    where,
+    include: {
+      fields: {
+        orderBy: { orderIndex: 'asc' },
+      },
+      publications: {
+        orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }],
+        include: {
+          results: {
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      },
+      results: {
+        orderBy: { createdAt: 'desc' },
+      },
+    },
+    orderBy: [
+      { scheduledDate: 'asc' },
+      { createdAt: 'desc' },
+    ],
+  });
+
+  // Get table columns for dynamic fields
+  const tableColumns = await prisma.tableColumn.findMany({
+    orderBy: { orderIndex: 'asc' },
+  });
+
+  // Define columns
+  const fixedColumns = [
+    { header: 'Task Title', key: 'taskTitle', width: 30 },
+    { header: 'Task Content Type', key: 'taskContentType', width: 20 },
+    { header: 'Scheduled Date', key: 'scheduledDate', width: 15 },
+    { header: 'Task Status', key: 'taskStatus', width: 15 },
+    { header: 'Task Execution Type', key: 'taskExecutionType', width: 20 },
+    { header: 'Platform', key: 'platform', width: 15 },
+    { header: 'Publication Content Type', key: 'publicationContentType', width: 25 },
+    { header: 'Publication Status', key: 'publicationStatus', width: 20 },
+    { header: 'Publication Note', key: 'publicationNote', width: 30 },
+    { header: 'Publication Content', key: 'publicationContent', width: 40 },
+    { header: 'Publication Execution Type', key: 'publicationExecutionType', width: 25 },
+    { header: 'Result URL', key: 'resultUrl', width: 40 },
+    { header: 'Result Download URL', key: 'resultDownloadUrl', width: 40 },
+  ];
+
+  const dynamicColumns = tableColumns.map((col) => ({
+    header: col.fieldName,
+    key: `field_${col.fieldName}`,
+    width: 20,
+  }));
+
+  worksheet.columns = [...fixedColumns, ...dynamicColumns];
+
+  // Style header row
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE0E0E0' },
+  };
+
+  // Create rows (one per publication)
+  for (const task of tasks) {
+    // Get dynamic field values
+    const fieldValues: Record<string, any> = {};
+    tableColumns.forEach((col) => {
+      const field = task.fields.find((f) => f.fieldName === col.fieldName);
+      if (field) {
+        if (col.fieldType === 'checkbox') {
+          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.checked ? 'true' : 'false';
+        } else if (col.fieldType === 'url') {
+          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.value || '';
+        } else if (col.fieldType === 'file') {
+          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.url || '';
+        } else {
+          fieldValues[`field_${col.fieldName}`] = field.fieldValue?.value || '';
+        }
+      } else {
+        fieldValues[`field_${col.fieldName}`] = '';
+      }
+    });
+
+    // Format scheduled date
+    const scheduledDate = task.scheduledDate.toISOString().split('T')[0];
+
+    if (task.publications && task.publications.length > 0) {
+      // One row per publication
+      for (const publication of task.publications) {
+        const result = publication.results?.[0] || null;
+        const row: any = {
+          taskTitle: task.title,
+          taskContentType: task.contentType,
+          scheduledDate,
+          taskStatus: task.status,
+          taskExecutionType: task.executionType,
+          platform: publication.platform,
+          publicationContentType: publication.contentType,
+          publicationStatus: publication.status,
+          publicationNote: publication.note || '',
+          publicationContent: publication.content || '',
+          publicationExecutionType: publication.executionType,
+          resultUrl: result?.resultUrl || '',
+          resultDownloadUrl: result?.downloadUrl || '',
+          ...fieldValues,
+        };
+        worksheet.addRow(row);
+      }
+    } else {
+      // Task without publications - still create a row
+      const result = task.results?.[0] || null;
+      const row: any = {
+        taskTitle: task.title,
+        taskContentType: task.contentType,
+        scheduledDate,
+        taskStatus: task.status,
+        taskExecutionType: task.executionType,
+        platform: '',
+        publicationContentType: '',
+        publicationStatus: '',
+        publicationNote: '',
+        publicationContent: '',
+        publicationExecutionType: '',
+        resultUrl: result?.resultUrl || '',
+        resultDownloadUrl: result?.downloadUrl || '',
+        ...fieldValues,
+      };
+      worksheet.addRow(row);
+    }
+  }
+
+  return workbook;
+}
+
+/**
+ * Parse Excel file and return structured data for import
+ */
+export async function parseImportFile(buffer: Buffer): Promise<ImportRow[]> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
+    throw new Error('Excel file must contain at least one worksheet');
+  }
+
+  const rows: ImportRow[] = [];
+  const headerRow = worksheet.getRow(1);
+  const headers: Record<number, string> = {};
+
+  // Map header columns
+  headerRow.eachCell((cell, colNumber) => {
+    if (cell.value) {
+      headers[colNumber] = String(cell.value).trim();
+    }
+  });
+
+  // Get table columns for dynamic fields
+  const tableColumns = await prisma.tableColumn.findMany({
+    orderBy: { orderIndex: 'asc' },
+  });
+
+  // Process data rows
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Skip header
+
+    const rowData: any = {};
+    row.eachCell((cell, colNumber) => {
+      const headerName = headers[colNumber];
+      if (headerName) {
+        // Handle Excel date objects - convert to ISO string if Date
+        if (cell.value instanceof Date) {
+          rowData[headerName] = cell.value.toISOString().split('T')[0];
+        } else {
+          rowData[headerName] = cell.value;
+        }
+      }
+    });
+
+    // Skip completely empty rows
+    const taskTitle = String(rowData['Task Title'] || '').trim();
+    const taskContentType = String(rowData['Task Content Type'] || '').trim();
+    const scheduledDate = String(rowData['Scheduled Date'] || '').trim();
+    
+    if (!taskTitle && !taskContentType && !scheduledDate) {
+      return; // Skip empty row
+    }
+
+    // Extract fixed fields
+    const importRow: ImportRow = {
+      taskTitle,
+      taskContentType,
+      scheduledDate,
+      taskStatus: rowData['Task Status'] ? String(rowData['Task Status']).trim() : undefined,
+      taskExecutionType: rowData['Task Execution Type'] ? String(rowData['Task Execution Type']).trim() : undefined,
+      platform: String(rowData['Platform'] || '').trim(),
+      publicationContentType: rowData['Publication Content Type'] ? String(rowData['Publication Content Type']).trim() : undefined,
+      publicationStatus: rowData['Publication Status'] ? String(rowData['Publication Status']).trim() : undefined,
+      publicationNote: rowData['Publication Note'] ? String(rowData['Publication Note']).trim() : undefined,
+      publicationContent: rowData['Publication Content'] ? String(rowData['Publication Content']).trim() : undefined,
+      publicationExecutionType: rowData['Publication Execution Type'] ? String(rowData['Publication Execution Type']).trim() : undefined,
+      resultUrl: rowData['Result URL'] ? String(rowData['Result URL']).trim() : undefined,
+      resultDownloadUrl: rowData['Result Download URL'] ? String(rowData['Result Download URL']).trim() : undefined,
+      dynamicFields: {},
+    };
+
+    // Extract dynamic fields
+    tableColumns.forEach((col) => {
+      const value = rowData[col.fieldName];
+      if (value !== undefined && value !== null && value !== '') {
+        if (col.fieldType === 'checkbox') {
+          const strValue = String(value).toLowerCase().trim();
+          importRow.dynamicFields[col.fieldName] = {
+            checked: strValue === 'true' || strValue === 'yes' || strValue === '1',
+          };
+        } else if (col.fieldType === 'url') {
+          importRow.dynamicFields[col.fieldName] = { value: String(value).trim() };
+        } else if (col.fieldType === 'file') {
+          importRow.dynamicFields[col.fieldName] = { value: String(value).trim() };
+        } else {
+          importRow.dynamicFields[col.fieldName] = { value: String(value).trim() };
+        }
+      }
+    });
+
+    rows.push(importRow);
+  });
+
+  return rows;
+}
+

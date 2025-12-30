@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
-import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, platformsApi, TableColumn, Task } from '../services/api/tasks'
+import { tasksApi, taskListsApi, tableColumnsApi, fieldsApi, platformsApi, importExportApi, TableColumn, Task } from '../services/api/tasks'
 import Button from '../components/ui/Button'
 import TableColumnManager from '../components/TableColumnManager'
 import TableColumnHeader from '../components/TableColumnHeader'
@@ -9,6 +9,7 @@ import TableCellEditor from '../components/TableCellEditor'
 import Modal from '../components/ui/Modal'
 import FieldEditor from '../components/FieldEditor'
 import PlatformPublicationCell from '../components/PlatformPublicationCell'
+import ImportExportModal from '../components/ImportExportModal'
 
 // Utility function to group tasks by month
 function groupTasksByMonth(tasks: Task[]): Array<{ monthKey: string; monthLabel: string; tasks: Task[] }> {
@@ -78,6 +79,8 @@ export default function TasksList() {
   const [editingColumn, setEditingColumn] = useState<TableColumn | null>(null)
   const [deleteConfirmColumn, setDeleteConfirmColumn] = useState<TableColumn | null>(null)
   const [isColumnEditorOpen, setIsColumnEditorOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   // Get current list info
   const { data: currentList } = useQuery({
@@ -179,6 +182,23 @@ export default function TasksList() {
     }
   }
 
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      await importExportApi.exportTasks(listId || undefined)
+    } catch (error) {
+      console.error('Export failed:', error)
+      alert('Failed to export tasks. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleImportComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    setIsImportModalOpen(false)
+  }
+
   const tasks = data?.tasks || []
   const pagination = data?.pagination
   const groupedTasks = groupTasksByMonth(tasks)
@@ -217,7 +237,7 @@ export default function TasksList() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold">
             {currentList ? (
@@ -240,9 +260,26 @@ export default function TasksList() {
             </div>
           )}
         </div>
-        <Button onClick={() => navigate('/tasks/new')}>
-          + New Task
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            variant="secondary"
+            onClick={() => setIsImportModalOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            Import
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="w-full sm:w-auto"
+          >
+            {isExporting ? 'Exporting...' : 'Export'}
+          </Button>
+          <Button onClick={() => navigate('/tasks/new')} className="w-full sm:w-auto">
+            + New Task
+          </Button>
+        </div>
       </div>
 
       {/* Desktop Table */}
@@ -544,6 +581,14 @@ export default function TasksList() {
           Внимание: Все значения этой колонки будут удалены у всех задач.
         </p>
       </Modal>
+
+      {/* Import Modal */}
+      <ImportExportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        listId={listId || undefined}
+        onImportComplete={handleImportComplete}
+      />
     </div>
   )
 }

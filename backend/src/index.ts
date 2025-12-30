@@ -55,6 +55,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 import tasksRoutes from './routes/tasks.routes';
+import importExportRoutes from './routes/import-export.routes';
 import fieldsRoutes from './routes/fields.routes';
 import resultsRoutes from './routes/results.routes';
 import filesRoutes from './routes/files.routes';
@@ -76,6 +77,7 @@ import voicesRoutes from './routes/voices.routes';
 app.use('/api/task-lists', taskListsRoutes);
 app.use('/api/table-columns', tableColumnsRoutes);
 app.use('/api/tasks', tasksRoutes);
+app.use('/api/tasks', importExportRoutes);
 app.use('/api/tasks/:id/fields', fieldsRoutes);
 app.use('/api/tasks/:id/results', resultsRoutes);
 app.use('/api/tasks/:id/publications', publicationsRoutes);
