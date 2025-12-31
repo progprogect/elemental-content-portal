@@ -244,7 +244,7 @@ export async function generateTemplate(): Promise<ExcelJS.Workbook> {
   const headerComments: Record<string, string> = {
     'Task Title': 'Required. Max 500 characters.',
     'Task Content Type': 'Required. Examples: video, image, talking_head, text',
-    'Scheduled Date': 'Required. Format: YYYY-MM-DD (e.g., 2025-01-15)',
+    'Scheduled Date': 'Required. Formats: YYYY-MM-DD, M/D/YYYY, MM/DD/YYYY, M-D-YYYY (e.g., 2025-01-15 or 1/2/2026)',
     'Task Status': 'Optional. Values: draft, in_progress, completed, failed. Default: draft',
     'Task Execution Type': 'Optional. Values: manual, generated. Default: manual',
     'Platform': `Required. Must exist in system. Valid: ${platformCodes || 'tiktok, youtube, instagram, facebook, linkedin'}`,
