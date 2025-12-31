@@ -396,15 +396,147 @@ export async function exportTasks(listId?: string | null): Promise<ExcelJS.Workb
 }
 
 /**
- * Parse Excel file and return structured data for import
+ * Parse CSV file and return structured data for import
  */
-export async function parseImportFile(buffer: Buffer | ArrayBuffer): Promise<ImportRow[]> {
-  const workbook = new ExcelJS.Workbook();
-  // Convert to Buffer if needed - ExcelJS expects Node.js Buffer
+async function parseCSVFile(buffer: Buffer): Promise<ImportRow[]> {
+  const content = buffer.toString('utf8');
+  const lines = content.split('\n').filter(line => line.trim().length > 0);
+  
+  if (lines.length === 0) {
+    throw new Error('CSV file is empty');
+  }
+  
+  // Parse header row
+  const headerLine = lines[0];
+  const headers = headerLine.split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+  const headerMap: Record<string, number> = {};
+  headers.forEach((header, index) => {
+    headerMap[header] = index;
+  });
+  
+  // Get table columns for dynamic fields
+  const tableColumns = await prisma.tableColumn.findMany({
+    orderBy: { orderIndex: 'asc' },
+  });
+  
+  const rows: ImportRow[] = [];
+  
+  // Parse data rows
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    // Parse CSV line (handle quoted values)
+    const values: string[] = [];
+    let currentValue = '';
+    let inQuotes = false;
+    
+    for (let j = 0; j < line.length; j++) {
+      const char = line[j];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        values.push(currentValue.trim());
+        currentValue = '';
+      } else {
+        currentValue += char;
+      }
+    }
+    values.push(currentValue.trim()); // Add last value
+    
+    // Map values to headers
+    const rowData: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      rowData[header] = values[index]?.replace(/^["']|["']$/g, '') || '';
+    });
+    
+    // Skip completely empty rows
+    const taskTitle = String(rowData['Task Title'] || '').trim();
+    const taskContentType = String(rowData['Task Content Type'] || '').trim();
+    const scheduledDate = String(rowData['Scheduled Date'] || '').trim();
+    
+    if (!taskTitle && !taskContentType && !scheduledDate) {
+      continue; // Skip empty row
+    }
+    
+    // Extract fixed fields
+    const importRow: ImportRow = {
+      taskTitle,
+      taskContentType,
+      scheduledDate,
+      taskStatus: rowData['Task Status'] ? String(rowData['Task Status']).trim() : undefined,
+      taskExecutionType: rowData['Task Execution Type'] ? String(rowData['Task Execution Type']).trim() : undefined,
+      platform: String(rowData['Platform'] || '').trim(),
+      publicationContentType: rowData['Publication Content Type'] ? String(rowData['Publication Content Type']).trim() : undefined,
+      publicationStatus: rowData['Publication Status'] ? String(rowData['Publication Status']).trim() : undefined,
+      publicationNote: rowData['Publication Note'] ? String(rowData['Publication Note']).trim() : undefined,
+      publicationContent: rowData['Publication Content'] ? String(rowData['Publication Content']).trim() : undefined,
+      publicationExecutionType: rowData['Publication Execution Type'] ? String(rowData['Publication Execution Type']).trim() : undefined,
+      resultUrl: rowData['Result URL'] ? String(rowData['Result URL']).trim() : undefined,
+      resultDownloadUrl: rowData['Result Download URL'] ? String(rowData['Result Download URL']).trim() : undefined,
+      dynamicFields: {},
+    };
+    
+    // Extract dynamic fields
+    tableColumns.forEach((col) => {
+      const value = rowData[col.fieldName];
+      if (value !== undefined && value !== null && value !== '') {
+        if (col.fieldType === 'checkbox') {
+          const strValue = String(value).toLowerCase().trim();
+          importRow.dynamicFields[col.fieldName] = {
+            checked: strValue === 'true' || strValue === 'yes' || strValue === '1',
+          };
+        } else if (col.fieldType === 'url') {
+          importRow.dynamicFields[col.fieldName] = { value: String(value).trim() };
+        } else if (col.fieldType === 'file') {
+          importRow.dynamicFields[col.fieldName] = { value: String(value).trim() };
+        } else {
+          importRow.dynamicFields[col.fieldName] = { value: String(value).trim() };
+        }
+      }
+    });
+    
+    rows.push(importRow);
+  }
+  
+  return rows;
+}
+
+/**
+ * Parse Excel or CSV file and return structured data for import
+ */
+export async function parseImportFile(buffer: Buffer | ArrayBuffer, filename?: string): Promise<ImportRow[]> {
+  // Convert to Buffer if needed
   const bufferData: Buffer = Buffer.isBuffer(buffer) 
     ? buffer 
     : Buffer.from(buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer);
-  await workbook.xlsx.load(bufferData as any);
+  
+  // Check if file is empty
+  if (!bufferData || bufferData.length === 0) {
+    throw new Error('File is empty or corrupted');
+  }
+  
+  // Detect file type by extension or content
+  const isCSV = filename?.toLowerCase().endsWith('.csv') || 
+                bufferData.toString('utf8', 0, Math.min(100, bufferData.length)).includes(',');
+  
+  if (isCSV) {
+    return parseCSVFile(bufferData);
+  }
+  
+  // Try to parse as Excel file
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(bufferData as any);
+  } catch (error) {
+    // If Excel parsing fails, check if it might be CSV
+    const contentStart = bufferData.toString('utf8', 0, Math.min(500, bufferData.length));
+    if (contentStart.includes(',') && !contentStart.includes('PK')) {
+      // Likely CSV file misidentified
+      return parseCSVFile(bufferData);
+    }
+    throw new Error(`Failed to parse file as Excel. ${error instanceof Error ? error.message : 'Invalid file format. Please ensure the file is a valid .xlsx or .xls file.'}`);
+  }
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {

@@ -80,8 +80,8 @@ export const importTasksHandler = async (req: Request, res: Response) => {
   const finalListId = listId === 'null' || listId === 'unassigned' ? null : listId || null;
 
   try {
-    // Parse Excel file
-    const rows = await parseImportFile(req.file.buffer);
+    // Parse Excel or CSV file
+    const rows = await parseImportFile(req.file.buffer, req.file.originalname);
 
     if (rows.length === 0) {
       return res.status(400).json({ error: 'Excel file is empty or contains no data rows' });
