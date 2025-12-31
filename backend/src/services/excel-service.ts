@@ -1,6 +1,84 @@
 import ExcelJS from 'exceljs';
 import { prisma } from '../utils/prisma';
 
+/**
+ * Parse date string in various formats and convert to YYYY-MM-DD
+ */
+export function parseDate(dateStr: string): string {
+  if (!dateStr || typeof dateStr !== 'string') {
+    throw new Error(`Invalid date: "${dateStr}"`);
+  }
+  
+  const trimmed = dateStr.trim();
+  
+  // Already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const date = new Date(trimmed);
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid date: "${dateStr}"`);
+    }
+    return trimmed;
+  }
+  
+  // Try parsing various date formats
+  // M/D/YYYY, MM/DD/YYYY, M-D-YYYY, etc.
+  const dateFormats = [
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,  // M/D/YYYY or MM/DD/YYYY
+    /^(\d{1,2})-(\d{1,2})-(\d{4})$/,   // M-D-YYYY or MM-DD-YYYY
+    /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/,  // YYYY/M/D or YYYY/MM/DD
+    /^(\d{4})-(\d{1,2})-(\d{1,2})$/,    // YYYY-M-D or YYYY-MM-DD (already handled above)
+    /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/,  // M.D.YYYY or MM.DD.YYYY (European format)
+  ];
+  
+  for (const format of dateFormats) {
+    const match = trimmed.match(format);
+    if (match) {
+      let year: number, month: number, day: number;
+      
+      if (match[3] && match[3].length === 4) {
+        // Format: M/D/YYYY or M-D-YYYY or M.D.YYYY
+        month = parseInt(match[1], 10);
+        day = parseInt(match[2], 10);
+        year = parseInt(match[3], 10);
+      } else if (match[1] && match[1].length === 4) {
+        // Format: YYYY/M/D or YYYY-M-D
+        year = parseInt(match[1], 10);
+        month = parseInt(match[2], 10);
+        day = parseInt(match[3], 10);
+      } else {
+        continue;
+      }
+      
+      // Validate month and day
+      if (month < 1 || month > 12 || day < 1 || day > 31) {
+        continue;
+      }
+      
+      // Create date and validate
+      const date = new Date(year, month - 1, day);
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        continue; // Invalid date (e.g., Feb 30)
+      }
+      
+      // Format as YYYY-MM-DD
+      const formattedMonth = String(month).padStart(2, '0');
+      const formattedDay = String(day).padStart(2, '0');
+      return `${year}-${formattedMonth}-${formattedDay}`;
+    }
+  }
+  
+  // Try native Date parsing as fallback
+  const date = new Date(trimmed);
+  if (!isNaN(date.getTime())) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  throw new Error(`Invalid date format: "${dateStr}". Expected formats: YYYY-MM-DD, M/D/YYYY, MM/DD/YYYY, M-D-YYYY, or MM-DD-YYYY`);
+}
+
 export interface ImportRow {
   taskTitle: string;
   taskContentType: string;
@@ -47,7 +125,7 @@ export async function generateTemplate(): Promise<ExcelJS.Workbook> {
     'REQUIRED FIELDS:',
     '  • Task Title - Required, max 500 characters',
     '  • Task Content Type - Required (examples: video, image, talking_head, text)',
-    '  • Scheduled Date - Required, format: YYYY-MM-DD (e.g., 2025-01-15)',
+    '  • Scheduled Date - Required, formats: YYYY-MM-DD, M/D/YYYY, MM/DD/YYYY, M-D-YYYY (e.g., 2025-01-15 or 1/2/2026)',
     '  • Platform - Required, must exist in system',
     '',
     'FIELD VALIDATION RULES:',
@@ -78,8 +156,10 @@ export async function generateTemplate(): Promise<ExcelJS.Workbook> {
     '   • Free text field, but should match content type configs',
     '',
     '7. SCHEDULED DATE:',
-    '   Format: YYYY-MM-DD (e.g., 2025-01-15)',
+    '   Supported formats: YYYY-MM-DD, M/D/YYYY, MM/DD/YYYY, M-D-YYYY, MM-DD-YYYY',
+    '   Examples: 2025-01-15, 1/2/2026, 01/02/2026, 1-2-2026',
     '   • Must be valid date',
+    '   • Will be normalized to YYYY-MM-DD format',
     '',
     'IMPORTANT NOTES:',
     '  • One row = one publication',
@@ -720,10 +800,21 @@ export async function parseImportFile(buffer: Buffer | ArrayBuffer, filename?: s
     // Skip completely empty rows
     const taskTitle = String(rowData['Task Title'] || '').trim();
     const taskContentType = String(rowData['Task Content Type'] || '').trim();
-    const scheduledDate = String(rowData['Scheduled Date'] || '').trim();
+    const scheduledDateRaw = String(rowData['Scheduled Date'] || '').trim();
     
-    if (!taskTitle && !taskContentType && !scheduledDate) {
+    if (!taskTitle && !taskContentType && !scheduledDateRaw) {
       return; // Skip empty row
+    }
+    
+    // Parse and normalize date format
+    let scheduledDate = scheduledDateRaw;
+    if (scheduledDateRaw) {
+      try {
+        scheduledDate = parseDate(scheduledDateRaw);
+      } catch (error) {
+        // Keep original if parsing fails - will be validated later
+        scheduledDate = scheduledDateRaw;
+      }
     }
 
     // Extract fixed fields

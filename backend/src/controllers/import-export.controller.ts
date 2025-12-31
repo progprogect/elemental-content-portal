@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
-import { exportTasks, generateTemplate, parseImportFile, ImportRow, ImportResult } from '../services/excel-service';
+import { exportTasks, generateTemplate, parseImportFile, parseDate, ImportRow, ImportResult } from '../services/excel-service';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -141,24 +141,29 @@ export const importTasksHandler = async (req: Request, res: Response) => {
         return;
       }
 
-      // Validate date format and parse
-      const dateRegex = /^\d{4}-\d{2}-\d{2}/;
-      if (!dateRegex.test(row.scheduledDate)) {
+      // Validate and parse date (accepts multiple formats)
+      try {
+        // Use parseDate function to normalize date format
+        const normalizedDate = parseDate(row.scheduledDate);
+        
+        // Validate normalized date
+        const testDate = new Date(normalizedDate);
+        if (isNaN(testDate.getTime())) {
+          result.failed++;
+          result.errors.push({
+            row: index + 2,
+            message: `Invalid date: "${row.scheduledDate}"`,
+          });
+          return;
+        }
+        
+        // Update row with normalized date
+        row.scheduledDate = normalizedDate;
+      } catch (error) {
         result.failed++;
         result.errors.push({
           row: index + 2,
-          message: `Invalid date format: "${row.scheduledDate}". Expected format: YYYY-MM-DD`,
-        });
-        return;
-      }
-
-      // Validate date is actually valid
-      const testDate = new Date(row.scheduledDate);
-      if (isNaN(testDate.getTime())) {
-        result.failed++;
-        result.errors.push({
-          row: index + 2,
-          message: `Invalid date: "${row.scheduledDate}"`,
+          message: error instanceof Error ? error.message : `Invalid date: "${row.scheduledDate}"`,
         });
         return;
       }
