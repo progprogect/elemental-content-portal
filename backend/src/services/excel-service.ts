@@ -503,6 +503,44 @@ async function parseCSVFile(buffer: Buffer): Promise<ImportRow[]> {
 }
 
 /**
+ * Detect file type by magic bytes and extension
+ */
+function detectFileType(buffer: Buffer, filename?: string): 'xlsx' | 'xls' | 'csv' | 'unknown' {
+  // Check file signature (magic bytes)
+  const signature = buffer.toString('hex', 0, Math.min(8, buffer.length));
+  const textStart = buffer.toString('utf8', 0, Math.min(100, buffer.length));
+  
+  // .xlsx files start with PK (ZIP signature: 50 4B 03 04 or 50 4B 05 06)
+  if (signature.startsWith('504b03') || signature.startsWith('504b05') || signature.startsWith('504b07')) {
+    return 'xlsx';
+  }
+  
+  // .xls files start with D0 CF 11 E0 (OLE2 signature)
+  if (signature.startsWith('d0cf11e0')) {
+    return 'xls';
+  }
+  
+  // Check extension
+  const ext = filename?.toLowerCase().split('.').pop();
+  if (ext === 'csv') {
+    return 'csv';
+  }
+  if (ext === 'xlsx') {
+    return 'xlsx';
+  }
+  if (ext === 'xls') {
+    return 'xls';
+  }
+  
+  // Check content for CSV (has commas, no ZIP signature)
+  if (textStart.includes(',') && !signature.startsWith('504b')) {
+    return 'csv';
+  }
+  
+  return 'unknown';
+}
+
+/**
  * Parse Excel or CSV file and return structured data for import
  */
 export async function parseImportFile(buffer: Buffer | ArrayBuffer, filename?: string): Promise<ImportRow[]> {
@@ -513,29 +551,44 @@ export async function parseImportFile(buffer: Buffer | ArrayBuffer, filename?: s
   
   // Check if file is empty
   if (!bufferData || bufferData.length === 0) {
-    throw new Error('File is empty or corrupted');
+    throw new Error('File is empty or corrupted. Please ensure the file was uploaded correctly.');
   }
   
-  // Detect file type by extension or content
-  const isCSV = filename?.toLowerCase().endsWith('.csv') || 
-                bufferData.toString('utf8', 0, Math.min(100, bufferData.length)).includes(',');
+  // Detect file type
+  const fileType = detectFileType(bufferData, filename);
   
-  if (isCSV) {
+  // Handle CSV files
+  if (fileType === 'csv') {
     return parseCSVFile(bufferData);
   }
   
-  // Try to parse as Excel file
+  // Handle .xls files (old Excel format) - ExcelJS doesn't support .xls directly
+  if (fileType === 'xls') {
+    throw new Error('Old Excel format (.xls) is not supported. Please save your file as .xlsx format (Excel 2007+) or export as CSV.');
+  }
+  
+  // Try to parse as Excel .xlsx file
   const workbook = new ExcelJS.Workbook();
   try {
     await workbook.xlsx.load(bufferData as any);
   } catch (error) {
-    // If Excel parsing fails, check if it might be CSV
+    // Provide more helpful error messages
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Check if file might be CSV
     const contentStart = bufferData.toString('utf8', 0, Math.min(500, bufferData.length));
-    if (contentStart.includes(',') && !contentStart.includes('PK')) {
+    if (contentStart.includes(',') && !bufferData.toString('hex', 0, 4).startsWith('504b')) {
       // Likely CSV file misidentified
+      console.warn('File appears to be CSV but was not detected. Attempting CSV parsing...');
       return parseCSVFile(bufferData);
     }
-    throw new Error(`Failed to parse file as Excel. ${error instanceof Error ? error.message : 'Invalid file format. Please ensure the file is a valid .xlsx or .xls file.'}`);
+    
+    // Check if file is corrupted or wrong format
+    if (errorMessage.includes('end of central directory') || errorMessage.includes('zip')) {
+      throw new Error(`Invalid Excel file format. The file may be corrupted or not a valid .xlsx file. Please try: 1) Re-saving the file in Excel as .xlsx format, 2) Exporting as CSV instead, or 3) Downloading our template and using that format. Original error: ${errorMessage}`);
+    }
+    
+    throw new Error(`Failed to parse Excel file: ${errorMessage}. Please ensure the file is a valid .xlsx file (Excel 2007 or newer format).`);
   }
 
   const worksheet = workbook.worksheets[0];
