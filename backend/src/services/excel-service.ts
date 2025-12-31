@@ -396,23 +396,119 @@ export async function exportTasks(listId?: string | null): Promise<ExcelJS.Workb
 }
 
 /**
+ * Parse CSV line properly handling quoted values, escaped quotes, and multiline values
+ */
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let currentValue = '';
+  let inQuotes = false;
+  let i = 0;
+  
+  while (i < line.length) {
+    const char = line[i];
+    const nextChar = i + 1 < line.length ? line[i + 1] : null;
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote (double quote inside quoted value)
+        currentValue += '"';
+        i += 2; // Skip both quotes
+        continue;
+      } else if (inQuotes && (nextChar === ',' || nextChar === null || nextChar === '\r' || nextChar === '\n')) {
+        // End of quoted value
+        inQuotes = false;
+        i++;
+        continue;
+      } else if (!inQuotes) {
+        // Start of quoted value
+        inQuotes = true;
+        i++;
+        continue;
+      } else {
+        // Single quote inside quoted value (shouldn't happen in valid CSV, but handle it)
+        currentValue += char;
+        i++;
+        continue;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Field separator
+      values.push(currentValue);
+      currentValue = '';
+      i++;
+      continue;
+    } else {
+      // Regular character
+      currentValue += char;
+      i++;
+    }
+  }
+  
+  // Add last value
+  values.push(currentValue);
+  
+  return values;
+}
+
+/**
  * Parse CSV file and return structured data for import
  */
 async function parseCSVFile(buffer: Buffer): Promise<ImportRow[]> {
-  const content = buffer.toString('utf8');
-  const lines = content.split('\n').filter(line => line.trim().length > 0);
+  // Remove BOM if present
+  let content = buffer.toString('utf8');
+  if (content.charCodeAt(0) === 0xFEFF) {
+    content = content.slice(1);
+  }
   
-  if (lines.length === 0) {
+  // Normalize line endings and split into lines
+  content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // Parse CSV properly handling multiline values
+  const lines: string[] = [];
+  let currentLine = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const nextChar = i + 1 < content.length ? content[i + 1] : null;
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        currentLine += '"';
+        i++; // Skip next quote
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+        currentLine += char;
+      }
+    } else if (char === '\n' && !inQuotes) {
+      // End of line (only if not inside quotes)
+      lines.push(currentLine);
+      currentLine = '';
+    } else {
+      currentLine += char;
+    }
+  }
+  
+  // Add last line if not empty
+  if (currentLine.trim().length > 0) {
+    lines.push(currentLine);
+  }
+  
+  // Filter out empty lines
+  const nonEmptyLines = lines.filter(line => line.trim().length > 0);
+  
+  if (nonEmptyLines.length === 0) {
     throw new Error('CSV file is empty');
   }
   
   // Parse header row
-  const headerLine = lines[0];
-  const headers = headerLine.split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
-  const headerMap: Record<string, number> = {};
-  headers.forEach((header, index) => {
-    headerMap[header] = index;
-  });
+  const headerLine = nonEmptyLines[0];
+  const headers = parseCSVLine(headerLine).map(h => h.trim().replace(/^["']|["']$/g, ''));
+  
+  if (headers.length === 0) {
+    throw new Error('CSV file has no headers');
+  }
   
   // Get table columns for dynamic fields
   const tableColumns = await prisma.tableColumn.findMany({
@@ -422,32 +518,24 @@ async function parseCSVFile(buffer: Buffer): Promise<ImportRow[]> {
   const rows: ImportRow[] = [];
   
   // Parse data rows
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
+  for (let i = 1; i < nonEmptyLines.length; i++) {
+    const line = nonEmptyLines[i].trim();
     if (!line) continue;
     
-    // Parse CSV line (handle quoted values)
-    const values: string[] = [];
-    let currentValue = '';
-    let inQuotes = false;
+    // Parse CSV line properly
+    const values = parseCSVLine(line);
     
-    for (let j = 0; j < line.length; j++) {
-      const char = line[j];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(currentValue.trim());
-        currentValue = '';
-      } else {
-        currentValue += char;
-      }
+    // Ensure we have enough values (pad with empty strings if needed)
+    while (values.length < headers.length) {
+      values.push('');
     }
-    values.push(currentValue.trim()); // Add last value
     
     // Map values to headers
     const rowData: Record<string, string> = {};
     headers.forEach((header, index) => {
-      rowData[header] = values[index]?.replace(/^["']|["']$/g, '') || '';
+      const value = values[index] || '';
+      // Remove surrounding quotes and trim
+      rowData[header] = value.replace(/^["']|["']$/g, '').trim();
     });
     
     // Skip completely empty rows
