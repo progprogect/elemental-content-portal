@@ -119,8 +119,18 @@ router.get(
 router.get(
   '/:generationId',
   asyncHandler(async (req, res) => {
-    const result = await sceneGenerationClient.getGenerationStatus(req.params.generationId);
-    res.json(result);
+    try {
+      const result = await sceneGenerationClient.getGenerationStatus(req.params.generationId);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes('not available')) {
+        return res.status(503).json({
+          error: 'Scene Generation Service is not available',
+          message: 'The Scene Generation Service is currently unavailable. Please ensure it is running and configured correctly.',
+        });
+      }
+      throw error;
+    }
   })
 );
 
@@ -134,8 +144,18 @@ router.get(
 router.get(
   '/:generationId/scenario',
   asyncHandler(async (req, res) => {
-    const result = await sceneGenerationClient.getScenario(req.params.generationId);
-    res.json(result);
+    try {
+      const result = await sceneGenerationClient.getScenario(req.params.generationId);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes('not available')) {
+        return res.status(503).json({
+          error: 'Scene Generation Service is not available',
+          message: 'The Scene Generation Service is currently unavailable. Please ensure it is running and configured correctly.',
+        });
+      }
+      throw error;
+    }
   })
 );
 
@@ -150,11 +170,21 @@ router.put(
   '/:generationId/scenario',
   validate(updateScenarioSchema),
   asyncHandler(async (req, res) => {
-    const result = await sceneGenerationClient.updateScenario(
-      req.params.generationId,
-      req.body.scenario
-    );
-    res.json(result);
+    try {
+      const result = await sceneGenerationClient.updateScenario(
+        req.params.generationId,
+        req.body.scenario
+      );
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes('not available')) {
+        return res.status(503).json({
+          error: 'Scene Generation Service is not available',
+          message: 'The Scene Generation Service is currently unavailable. Please ensure it is running and configured correctly.',
+        });
+      }
+      throw error;
+    }
   })
 );
 
@@ -168,8 +198,18 @@ router.put(
 router.delete(
   '/:generationId',
   asyncHandler(async (req, res) => {
-    const result = await sceneGenerationClient.cancelGeneration(req.params.generationId);
-    res.json(result);
+    try {
+      const result = await sceneGenerationClient.cancelGeneration(req.params.generationId);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes('not available')) {
+        return res.status(503).json({
+          error: 'Scene Generation Service is not available',
+          message: 'The Scene Generation Service is currently unavailable. Please ensure it is running and configured correctly.',
+        });
+      }
+      throw error;
+    }
   })
 );
 
