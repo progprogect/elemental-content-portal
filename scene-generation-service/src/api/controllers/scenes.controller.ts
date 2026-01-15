@@ -152,7 +152,6 @@ export async function listGenerations(req: Request, res: Response) {
     include: {
       scenes: {
         orderBy: { orderIndex: 'asc' },
-        take: 1, // Just to check if scenes exist
       },
     },
   });
@@ -308,12 +307,19 @@ export async function cancelGeneration(req: Request, res: Response) {
     },
   });
 
-  // Cancel job in queue
-  const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
-  const jobs = await sceneGenerationQueue.getJobs(['active', 'waiting', 'delayed']);
-  const job = jobs.find((j) => j.data.generationId === generationId);
-  if (job) {
-    await job.remove();
+  // Cancel job in queue (if available)
+  try {
+    const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
+    if (sceneGenerationQueue && typeof sceneGenerationQueue.getJobs === 'function') {
+      const jobs = await sceneGenerationQueue.getJobs(['active', 'waiting', 'delayed']);
+      const job = jobs.find((j) => j.data?.generationId === generationId);
+      if (job) {
+        await job.remove();
+      }
+    }
+  } catch (error: any) {
+    // Queue may not be available (Redis down), but cancellation is still successful
+    logger.warn({ error: error.message, generationId }, 'Failed to cancel job in queue, but generation status updated');
   }
 
   res.json({
@@ -377,15 +383,61 @@ export async function regenerateScene(req: Request, res: Response) {
     return res.status(400).json({ error: 'Scene project not found' });
   }
 
-  // Add job to queue for scene regeneration
-  const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
-  await sceneGenerationQueue.add('regenerate-scene', {
-    generationId,
-    sceneId: scene.id,
-    sceneProject,
-  });
+  // Add job to queue for scene regeneration (or execute directly if queue unavailable)
+  try {
+    const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
+    await sceneGenerationQueue.add('regenerate-scene', {
+      generationId,
+      sceneId: scene.id,
+      sceneProject,
+    });
+    logger.info({ generationId, sceneId }, 'Scene regeneration queued');
+  } catch (queueError: any) {
+    // If queue is unavailable, execute directly
+    if (queueError.message?.includes('Redis') || queueError.message?.includes('not available')) {
+      logger.warn({ generationId, sceneId }, 'Queue unavailable, executing scene regeneration directly');
+      const { pipelineRegistry } = await import('../../pipelines/pipeline-registry');
+      const { createStorageAdapter } = await import('@elemental-content/shared-ai-lib');
+      const { emitSceneComplete } = await import('../../websocket/scene-generation-socket');
+      const os = await import('os');
+      const path = await import('path');
+      const fs = await import('fs');
 
-  logger.info({ generationId, sceneId }, 'Scene regeneration queued');
+      const storage = createStorageAdapter();
+      const tempDir = path.join(os.tmpdir(), `regeneration-${generationId}-${scene.id}`);
+
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      try {
+        const renderContext = { storage, tempDir };
+        const renderedScene = await pipelineRegistry.render(sceneProject, renderContext);
+        await prisma.scene.update({
+          where: { id: scene.id },
+          data: {
+            status: 'completed',
+            progress: 100,
+            renderedAssetPath: renderedScene.renderedAssetPath,
+            renderedAssetUrl: renderedScene.renderedAssetUrl,
+            error: null,
+          },
+        });
+        emitSceneComplete(generationId, renderedScene.sceneId, renderedScene.renderedAssetUrl);
+        logger.info({ generationId, sceneId }, 'Scene regeneration completed directly');
+      } finally {
+        try {
+          if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+          }
+        } catch (cleanupError) {
+          logger.warn({ error: cleanupError, tempDir }, 'Failed to cleanup temp directory');
+        }
+      }
+    } else {
+      throw queueError;
+    }
+  }
 
   res.json({
     id: scene.id,
