@@ -9,10 +9,22 @@ import { prisma } from '../database/prisma';
 const parseRedisUrl = (url: string) => {
   try {
     const parsed = new URL(url);
-    return {
+    const connection: any = {
       host: parsed.hostname || 'localhost',
       port: parseInt(parsed.port || '6379', 10),
     };
+    
+    // Extract password if present (format: redis://:password@host:port or redis://username:password@host:port)
+    if (parsed.password) {
+      connection.password = parsed.password;
+    }
+    
+    // Extract username if present
+    if (parsed.username && parsed.username !== 'default' && parsed.username !== '') {
+      connection.username = parsed.username;
+    }
+    
+    return connection;
   } catch {
     return {
       host: 'localhost',
@@ -138,11 +150,21 @@ try {
   });
 
   sceneGenerationWorker.on('error', (err) => {
-    logger.error({ error: err }, 'Scene generation worker error');
+    // Log as warning if it's a connection issue, error otherwise
+    if (err.message?.includes('connect') || err.message?.includes('ECONNREFUSED') || err.code === 'ECONNREFUSED') {
+      logger.warn({ error: err.message || err }, 'Scene generation worker Redis connection issue (will retry)');
+    } else {
+      logger.error({ error: err }, 'Scene generation worker error');
+    }
   });
 
   sceneGenerationQueue.on('error', (err) => {
-    logger.error({ error: err }, 'Scene generation queue error');
+    // Log as warning if it's a connection issue, error otherwise
+    if (err.message?.includes('connect') || err.message?.includes('ECONNREFUSED') || err.code === 'ECONNREFUSED') {
+      logger.warn({ error: err.message || err }, 'Scene generation queue Redis connection issue (will retry)');
+    } else {
+      logger.error({ error: err }, 'Scene generation queue error');
+    }
   });
 
   logger.info('Scene generation queue and worker initialized');

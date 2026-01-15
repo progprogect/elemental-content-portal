@@ -120,7 +120,7 @@ export function startSceneGenerationService(port: number = 3001) {
       logger.warn(`Job worker initialization skipped: ${jobError.message}`);
     }
 
-    httpServer.listen(port, () => {
+    httpServer.listen(port, '0.0.0.0', () => {
       logger.info(`Scene Generation Service started on internal port ${port}`);
     });
 
