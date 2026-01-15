@@ -62,12 +62,26 @@ export async function generateScenes(req: Request, res: Response) {
       },
     });
 
-    // Add job to queue
-    const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
-    await sceneGenerationQueue.add('generate', {
-      generationId: generation.id,
-      request: data,
-    });
+    // Add job to queue (or execute directly if Redis unavailable)
+    try {
+      const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
+      await sceneGenerationQueue.add('generate', {
+        generationId: generation.id,
+        request: data,
+      });
+    } catch (queueError: any) {
+      // If queue is unavailable, execute directly
+      if (queueError.message?.includes('Redis') || queueError.message?.includes('not available')) {
+        logger.warn({ generationId: generation.id }, 'Queue unavailable, executing generation directly');
+        const { executeGeneration } = await import('../../services/orchestrator');
+        // Execute in background (don't await)
+        executeGeneration(generation.id, data).catch((err) => {
+          logger.error({ error: err, generationId: generation.id }, 'Direct generation execution failed');
+        });
+      } else {
+        throw queueError;
+      }
+    }
 
     logger.info({ generationId: generation.id }, 'Scene generation created and queued');
 

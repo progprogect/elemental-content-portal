@@ -40,7 +40,7 @@ model SceneGeneration {
 model Scene {
   id                  String   @id @default(uuid())
   sceneGenerationId   String   @map("scene_generation_id")
-  sceneId             String   // ID из scenario timeline
+  sceneId             String   @map("scene_id") @db.VarChar(255) // ID из scenario timeline
   kind                String   @db.VarChar(50) // banner, video, overlay, pip
   status              String   @default("pending") // pending, processing, completed, failed
   progress            Int      @default(0)
