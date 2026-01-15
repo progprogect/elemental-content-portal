@@ -43,7 +43,7 @@ export default function ScenarioEditor({ scenario, onSave, onCancel }: ScenarioE
   }
 
   const deleteTimelineItem = (index: number) => {
-    const newTimeline = editedScenario.timeline.filter((_, i) => i !== index)
+    const newTimeline = editedScenario.timeline.filter((_item: TimelineItem, i: number) => i !== index)
     setEditedScenario({ ...editedScenario, timeline: newTimeline })
   }
 
