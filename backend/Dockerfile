@@ -63,7 +63,7 @@ COPY --from=deps /app/packages/shared-ai-lib/node_modules ./packages/shared-ai-l
 COPY --from=deps /app/packages/shared-ai-lib/dist ./packages/shared-ai-lib/dist
 COPY packages/shared-ai-lib/package.json ./packages/shared-ai-lib/
 COPY packages/shared-ai-lib/src ./packages/shared-ai-lib/src/
-COPY packages/shared-ai-lib/tsconfig.json ./packages/shared-ai-lib/ 2>/dev/null || true
+COPY packages/shared-ai-lib/tsconfig.json ./packages/shared-ai-lib/
 
 # Copy scene-generation-service files
 COPY --from=deps /app/scene-generation-service/node_modules ./scene-generation-service/node_modules
