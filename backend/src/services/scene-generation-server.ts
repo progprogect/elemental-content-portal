@@ -39,13 +39,66 @@ export function startSceneGenerationService(port: number = 3001) {
       res.json({ status: 'ok', service: 'scene-generation', timestamp: new Date().toISOString() });
     });
 
-    // Import routes dynamically
-    // Using relative path from backend/dist to scene-generation-service/dist
-    const scenesRoutes = require('../../scene-generation-service/dist/api/routes/scenes.routes').default;
-    sceneGenerationApp.use('/api/v1/scenes', scenesRoutes);
+    // Import middleware and routes dynamically
+    try {
+      // Try to import middleware (optional - may fail if dependencies missing)
+      try {
+        const requestLogger = require('../../scene-generation-service/dist/api/middleware/request-logger').requestLogger;
+        if (requestLogger) {
+          sceneGenerationApp.use(requestLogger);
+        }
+      } catch (e) {
+        // Use simple request logging if scene-generation logger not available
+        sceneGenerationApp.use((req, res, next) => {
+          const start = Date.now();
+          res.on('finish', () => {
+            logger.info(`${req.method} ${req.path} - ${res.statusCode} (${Date.now() - start}ms)`);
+          });
+          next();
+        });
+      }
 
-    // 404 handler (only if error handler wasn't added)
-    // Note: error handler from scene-generation-service should handle 404s
+      try {
+        const apiRateLimiter = require('../../scene-generation-service/dist/api/middleware/rate-limiter').apiRateLimiter;
+        if (apiRateLimiter) {
+          sceneGenerationApp.use(apiRateLimiter);
+        }
+      } catch (e) {
+        // Rate limiter not available, skip
+        logger.warn('Rate limiter not available for Scene Generation Service');
+      }
+
+      // Import routes
+      const scenesRoutes = require('../../scene-generation-service/dist/api/routes/scenes.routes').default;
+      sceneGenerationApp.use('/api/v1/scenes', scenesRoutes);
+
+      // Error handler must be last
+      try {
+        const errorHandler = require('../../scene-generation-service/dist/api/middleware/error-handler').errorHandler;
+        if (errorHandler) {
+          sceneGenerationApp.use(errorHandler);
+        }
+      } catch (e) {
+        // Fallback error handler
+        sceneGenerationApp.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+          logger.error(`Scene Generation Service error: ${err.message}`);
+          res.status(err.status || 500).json({
+            error: err.message || 'Internal server error',
+          });
+        });
+      }
+
+      // 404 handler (before error handler)
+      sceneGenerationApp.use((req, res) => {
+        res.status(404).json({
+          error: 'Not found',
+          message: `Scene Generation Service: Route ${req.method} ${req.path} not found`,
+        });
+      });
+    } catch (routeError: any) {
+      logger.error(`Failed to load Scene Generation Service routes: ${routeError.message}`);
+      throw routeError;
+    }
 
     // Create HTTP server for Socket.IO
     const httpServer = createServer(sceneGenerationApp);
