@@ -75,6 +75,14 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
+# Install runtime libraries for canvas (without dev dependencies)
+RUN apk add --no-cache \
+    cairo \
+    jpeg \
+    pango \
+    giflib \
+    pixman
+
 ENV NODE_ENV=production
 
 # Copy necessary files
