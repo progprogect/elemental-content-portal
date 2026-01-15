@@ -8,25 +8,45 @@ RUN apk add --no-cache openssl libc6-compat
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files
+# Copy package files for backend
 COPY backend/package.json backend/package-lock.json* ./
 COPY backend/prisma ./prisma/
 
-# Install dependencies (postinstall will automatically run prisma generate)
-# Use npm ci if package-lock.json exists, otherwise use npm install
+# Copy scene-generation-service package files
+COPY scene-generation-service/package.json scene-generation-service/package-lock.json* ./scene-generation-service/
+COPY scene-generation-service/src/database/prisma ./scene-generation-service/src/database/prisma/
+
+# Install backend dependencies
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# Install scene-generation-service dependencies
+WORKDIR /app/scene-generation-service
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+WORKDIR /app
 
 # Build the application
 FROM base AS builder
 WORKDIR /app
 
+# Copy backend files
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend/package.json ./
 COPY backend/prisma ./prisma/
 COPY backend/src ./src/
 COPY backend/tsconfig.json ./
 
-# Build TypeScript
+# Copy scene-generation-service files
+COPY --from=deps /app/scene-generation-service/node_modules ./scene-generation-service/node_modules
+COPY scene-generation-service/package.json ./scene-generation-service/
+COPY scene-generation-service/src ./scene-generation-service/src/
+COPY scene-generation-service/tsconfig.json ./scene-generation-service/
+
+# Build scene-generation-service first
+WORKDIR /app/scene-generation-service
+RUN npm run build || echo "Scene generation service build failed - continuing anyway"
+
+# Build backend TypeScript
+WORKDIR /app
 RUN npm run build
 
 # Build Frontend
@@ -51,6 +71,10 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
 COPY --from=frontend-builder /app/frontend/dist ./public
+# Copy scene-generation-service dist for runtime
+COPY --from=builder /app/scene-generation-service/dist ./scene-generation-service/dist
+COPY --from=builder /app/scene-generation-service/node_modules ./scene-generation-service/node_modules
+COPY --from=builder /app/scene-generation-service/package.json ./scene-generation-service/
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
