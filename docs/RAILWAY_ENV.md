@@ -35,6 +35,11 @@ CLOUDINARY_FOLDER=elemental-portal  # опционально, папка для 
 # CORS - URL вашего Frontend (Railway или другой хостинг)
 FRONTEND_URL=https://your-frontend-domain.com
 
+# Scene Generation Service URL (если используется отдельный микросервис)
+# Если Scene Generation Service развернут отдельно, укажите его URL:
+SCENE_GENERATION_SERVICE_URL=https://your-scene-generation-service.railway.app
+# Если Scene Generation Service не используется, можно оставить пустым или не устанавливать
+
 # Nano Banana API Configuration
 NANOBANANA_API_KEY=your_api_key_here
 # Опционально, если endpoint отличается от стандартного

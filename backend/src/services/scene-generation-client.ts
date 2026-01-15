@@ -69,7 +69,13 @@ class SceneGenerationClient {
       clearTimeout(timeoutId);
 
       if (error.name === 'AbortError') {
-        throw new Error('Request timeout');
+        throw new Error('Scene Generation Service request timeout');
+      }
+
+      // Check if it's a connection error
+      if (error.code === 'ECONNREFUSED' || error.cause?.code === 'ECONNREFUSED') {
+        logger.error({ error, path, baseUrl: this.baseUrl }, 'Scene Generation Service is not available');
+        throw new Error('Scene Generation Service is not available. Please check if the service is running and SCENE_GENERATION_SERVICE_URL is configured correctly.');
       }
 
       logger.error({ error, path }, 'Scene Generation Service request failed');
