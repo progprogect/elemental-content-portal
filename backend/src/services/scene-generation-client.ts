@@ -24,15 +24,21 @@ class SceneGenerationClient {
 
   private async request<T>(
     path: string,
-    options: RequestOptions = {}
+    options: RequestOptions & { params?: Record<string, string> } = {}
   ): Promise<T> {
-    const { method = 'GET', body, timeout = this.defaultTimeout } = options;
+    const { method = 'GET', body, timeout = this.defaultTimeout, params } = options;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const response = await fetch(`${this.baseUrl}${path}`, {
+      let url = `${this.baseUrl}${path}`;
+      if (params && Object.keys(params).length > 0) {
+        const searchParams = new URLSearchParams(params);
+        url += `?${searchParams.toString()}`;
+      }
+
+      const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -86,6 +92,13 @@ class SceneGenerationClient {
       method: 'POST',
       body: data,
     });
+  }
+
+  async getGenerations(filters?: { status?: string; phase?: string }) {
+    const params: Record<string, string> = {};
+    if (filters?.status) params.status = filters.status;
+    if (filters?.phase) params.phase = filters.phase;
+    return this.request('/api/v1/scenes', { params });
   }
 
   async getGenerationStatus(generationId: string) {

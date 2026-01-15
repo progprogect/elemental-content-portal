@@ -66,6 +66,31 @@ router.post(
 
 /**
  * @swagger
+ * /api/scene-generation:
+ *   get:
+ *     summary: List scene generations (proxy to Scene Generation Service)
+ *     tags: [Scene Generation]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: phase
+ *         schema:
+ *           type: string
+ */
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const filters = req.query as { status?: string; phase?: string };
+    const result = await sceneGenerationClient.getGenerations(filters);
+    res.json(result);
+  })
+);
+
+/**
+ * @swagger
  * /api/scene-generation/{generationId}:
  *   get:
  *     summary: Get generation status (proxy to Scene Generation Service)
