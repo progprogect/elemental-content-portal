@@ -31,7 +31,7 @@ COPY scene-generation-service/src/database/prisma ./scene-generation-service/src
 # Copy shared-ai-lib package files (needed by scene-generation-service)
 COPY packages/shared-ai-lib/package.json packages/shared-ai-lib/package-lock.json* ./packages/shared-ai-lib/
 COPY packages/shared-ai-lib/src ./packages/shared-ai-lib/src/
-COPY packages/shared-ai-lib/tsconfig.json* ./packages/shared-ai-lib/ || true
+COPY packages/shared-ai-lib/tsconfig.json ./packages/shared-ai-lib/
 
 # Install backend dependencies
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
