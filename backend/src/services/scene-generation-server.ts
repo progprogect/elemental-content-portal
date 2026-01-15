@@ -72,6 +72,14 @@ export function startSceneGenerationService(port: number = 3001) {
       const scenesRoutes = require('../../scene-generation-service/dist/api/routes/scenes.routes').default;
       sceneGenerationApp.use('/api/v1/scenes', scenesRoutes);
 
+      // 404 handler (must be before error handler)
+      sceneGenerationApp.use((req, res) => {
+        res.status(404).json({
+          error: 'Not found',
+          message: `Scene Generation Service: Route ${req.method} ${req.path} not found`,
+        });
+      });
+
       // Error handler must be last
       try {
         const errorHandler = require('../../scene-generation-service/dist/api/middleware/error-handler').errorHandler;
@@ -87,14 +95,6 @@ export function startSceneGenerationService(port: number = 3001) {
           });
         });
       }
-
-      // 404 handler (before error handler)
-      sceneGenerationApp.use((req, res) => {
-        res.status(404).json({
-          error: 'Not found',
-          message: `Scene Generation Service: Route ${req.method} ${req.path} not found`,
-        });
-      });
     } catch (routeError: any) {
       logger.error(`Failed to load Scene Generation Service routes: ${routeError.message}`);
       throw routeError;
