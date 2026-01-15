@@ -11,6 +11,7 @@ import Gallery from './pages/Gallery'
 import StockMedia from './pages/StockMedia'
 import SceneGeneration from './pages/SceneGeneration'
 import SceneGenerationDetail from './pages/SceneGenerationDetail'
+import ScenarioReview from './pages/ScenarioReview'
 
 function App() {
   return (

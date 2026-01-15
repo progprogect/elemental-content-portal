@@ -2,7 +2,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sceneGenerationApi } from '../services/api/scene-generation'
 import { useSceneGenerationSocket } from '../hooks/useSceneGenerationSocket'
-import ScenePreview from '../components/scene-generation/ScenePreview'
 import Button from '../components/ui/Button'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
@@ -16,8 +15,9 @@ export default function SceneGenerationDetail() {
     queryKey: ['scene-generation', id],
     queryFn: () => sceneGenerationApi.getStatus(id!),
     enabled: !!id,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Refetch every 5 seconds if still processing (WebSocket will handle real-time updates)
+      const data = query.state.data
       if (data?.status === 'processing' || data?.status === 'queued') {
         return 5000
       }
@@ -183,7 +183,6 @@ export default function SceneGenerationDetail() {
           {phases.map((phase, index) => {
             const isCompleted = index < currentPhaseIndex
             const isCurrent = index === currentPhaseIndex
-            const isPending = index > currentPhaseIndex
 
             return (
               <div key={phase} className="flex items-center gap-3">

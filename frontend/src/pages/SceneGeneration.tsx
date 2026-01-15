@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { sceneGenerationApi, SceneGeneration } from '../services/api/scene-generation'
+import { sceneGenerationApi, type SceneGeneration } from '../services/api/scene-generation'
 import Button from '../components/ui/Button'
 import { PlusIcon } from '@heroicons/react/24/outline'
 

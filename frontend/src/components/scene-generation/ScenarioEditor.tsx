@@ -1,7 +1,31 @@
-import { useState, useEffect } from 'react'
-import { Scenario, TimelineItem } from '../../../scene-generation-service/src/types/scene-generation'
+import { useState } from 'react'
 import Button from '../ui/Button'
 import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
+
+// Types from API
+export interface TimelineItem {
+  id: string
+  kind: 'banner' | 'video' | 'overlay' | 'pip' | 'transition' | 'blank'
+  durationSeconds?: number
+  sourceVideoId?: string
+  fromSeconds?: number
+  toSeconds?: number
+  detailedRequest: {
+    goal?: string
+    description: string
+    visualStyle?: string[]
+    layoutHint?: string
+    textContent?: string
+    imageHints?: string[]
+    audioStrategy?: string
+    animationHints?: string[]
+    [key: string]: any
+  }
+}
+
+export interface Scenario {
+  timeline: TimelineItem[]
+}
 
 interface ScenarioEditorProps {
   scenario: Scenario

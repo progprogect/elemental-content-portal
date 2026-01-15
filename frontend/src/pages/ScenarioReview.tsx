@@ -1,10 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sceneGenerationApi } from '../services/api/scene-generation'
-import ScenarioEditor from '../components/scene-generation/ScenarioEditor'
+import ScenarioEditor, { type Scenario } from '../components/scene-generation/ScenarioEditor'
 import Button from '../components/ui/Button'
 import { ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/outline'
-import { Scenario } from '../../../scene-generation-service/src/types/scene-generation'
 
 export default function ScenarioReview() {
   const { id } = useParams<{ id: string }>()

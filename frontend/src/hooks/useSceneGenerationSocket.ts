@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { logger } from '../utils/logger'
 
-const SOCKET_URL = process.env.VITE_SCENE_GENERATION_SERVICE_URL || 'http://localhost:3001'
+const SOCKET_URL = import.meta.env.VITE_SCENE_GENERATION_SERVICE_URL || 'http://localhost:3001'
 
 export interface SceneGenerationSocketEvents {
   progress: (data: { generationId: string; progress: number; phase: string }) => void

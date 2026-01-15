@@ -22,7 +22,7 @@ export const logger = {
     }
   },
   debug: (message: string, meta?: any) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       if (meta) {
         console.debug(`[DEBUG] ${message}`, meta)
       } else {
