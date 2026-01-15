@@ -49,104 +49,139 @@ try {
   sceneGenerationWorker = new Worker(
     'scene-generation',
     async (job) => {
-    logger.info({ jobId: job.id, jobName: job.name }, 'Processing scene generation job');
+      logger.info({ jobId: job.id, jobName: job.name }, 'Processing scene generation job');
 
-    try {
-      if (job.name === 'regenerate-scene') {
-        // Handle scene regeneration
-        const { generationId, sceneId, sceneProject } = job.data as {
-          generationId: string;
-          sceneId: string;
-          sceneProject: any;
-        };
-
-        const { pipelineRegistry } = await import('../pipelines/pipeline-registry');
-        const { createStorageAdapter } = await import('@elemental-content/shared-ai-lib');
-        const { emitSceneComplete } = await import('../websocket/scene-generation-socket');
-        const os = await import('os');
-        const path = await import('path');
-
-        const storage = createStorageAdapter();
-        const tempDir = path.join(os.tmpdir(), `regeneration-${generationId}-${sceneId}`);
-        const fs = await import('fs');
-
-        // Create temp directory if it doesn't exist
-        if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
-        }
-
-        try {
-          const renderContext = {
-            storage,
-            tempDir,
+      try {
+        if (job.name === 'regenerate-scene') {
+          // Handle scene regeneration
+          const { generationId, sceneId, sceneProject } = job.data as {
+            generationId: string;
+            sceneId: string;
+            sceneProject: any;
           };
 
-          // Render scene
-          const renderedScene = await pipelineRegistry.render(sceneProject, renderContext);
+          const { pipelineRegistry } = await import('../pipelines/pipeline-registry');
+          const { createStorageAdapter } = await import('@elemental-content/shared-ai-lib');
+          const { emitSceneComplete } = await import('../websocket/scene-generation-socket');
+          const os = await import('os');
+          const path = await import('path');
 
-          // Update scene with rendered asset
-          await prisma.scene.update({
-            where: { id: sceneId },
-            data: {
-              status: 'completed',
-              progress: 100,
-              renderedAssetPath: renderedScene.renderedAssetPath,
-              renderedAssetUrl: renderedScene.renderedAssetUrl,
-              error: null,
-            },
-          });
+          const storage = createStorageAdapter();
+          const tempDir = path.join(os.tmpdir(), `regeneration-${generationId}-${sceneId}`);
+          const fs = await import('fs');
 
-          emitSceneComplete(generationId, renderedScene.sceneId, renderedScene.renderedAssetUrl);
-          logger.info({ jobId: job.id, sceneId }, 'Scene regeneration completed');
-        } finally {
-          // Cleanup temp directory
-          try {
-            if (fs.existsSync(tempDir)) {
-              fs.rmSync(tempDir, { recursive: true, force: true });
-            }
-          } catch (cleanupError) {
-            logger.warn({ error: cleanupError, tempDir }, 'Failed to cleanup temp directory');
+          // Create temp directory if it doesn't exist
+          if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
           }
+
+          try {
+            const renderContext = {
+              storage,
+              tempDir,
+            };
+
+            // Render scene
+            const renderedScene = await pipelineRegistry.render(sceneProject, renderContext);
+
+            // Update scene with rendered asset
+            await prisma.scene.update({
+              where: { id: sceneId },
+              data: {
+                status: 'completed',
+                progress: 100,
+                renderedAssetPath: renderedScene.renderedAssetPath,
+                renderedAssetUrl: renderedScene.renderedAssetUrl,
+                error: null,
+              },
+            });
+
+            emitSceneComplete(generationId, renderedScene.sceneId, renderedScene.renderedAssetUrl);
+            logger.info({ jobId: job.id, sceneId }, 'Scene regeneration completed');
+          } finally {
+            // Cleanup temp directory
+            try {
+              if (fs.existsSync(tempDir)) {
+                fs.rmSync(tempDir, { recursive: true, force: true });
+              }
+            } catch (cleanupError) {
+              logger.warn({ error: cleanupError, tempDir }, 'Failed to cleanup temp directory');
+            }
+          }
+        } else {
+          // Handle full generation
+          const { generationId, request } = job.data as {
+            generationId: string;
+            request: GenerationRequest;
+          };
+
+          await executeGeneration(generationId, request);
+          logger.info({ jobId: job.id, generationId }, 'Scene generation job completed');
         }
-      } else {
-        // Handle full generation
-        const { generationId, request } = job.data as {
-          generationId: string;
-          request: GenerationRequest;
-        };
-
-        await executeGeneration(generationId, request);
-        logger.info({ jobId: job.id, generationId }, 'Scene generation job completed');
+      } catch (error: any) {
+        logger.error({ error, jobId: job.id, jobName: job.name }, 'Scene generation job failed');
+        throw error;
       }
-    } catch (error: any) {
-      logger.error({ error, jobId: job.id, jobName: job.name }, 'Scene generation job failed');
-      throw error;
+    },
+    {
+      connection,
+      concurrency: 1, // Process one job at a time for now
     }
-  },
-  {
-    connection,
-    concurrency: 1, // Process one job at a time for now
-  }
-);
+  );
 
-sceneGenerationWorker.on('completed', (job) => {
-  logger.info({ jobId: job.id }, 'Job completed');
-});
+  sceneGenerationWorker.on('completed', (job) => {
+    logger.info({ jobId: job.id }, 'Job completed');
+  });
 
-sceneGenerationWorker.on('failed', (job, err) => {
-  logger.error({ jobId: job?.id, error: err }, 'Job failed');
-});
+  sceneGenerationWorker.on('failed', (job, err) => {
+    logger.error({ jobId: job?.id, error: err }, 'Job failed');
+  });
+
+  sceneGenerationWorker.on('error', (err) => {
+    logger.error({ error: err }, 'Scene generation worker error');
+  });
+
+  sceneGenerationQueue.on('error', (err) => {
+    logger.error({ error: err }, 'Scene generation queue error');
+  });
+
+  logger.info('Scene generation queue and worker initialized');
+} catch (error: any) {
+  logger.error({ error: error.message }, 'Failed to initialize Redis connection for scene generation');
+  logger.warn('Scene generation will work in synchronous mode (without queue)');
+  
+  // Create dummy queue and worker that will fail gracefully
+  sceneGenerationQueue = {
+    add: async () => {
+      throw new Error('Redis not available - scene generation queue is disabled');
+    },
+    close: async () => {},
+  } as any;
+  
+  sceneGenerationWorker = {
+    close: async () => {},
+  } as any;
+}
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('Shutting down scene generation worker');
-  await sceneGenerationWorker.close();
-  await sceneGenerationQueue.close();
+  try {
+    await sceneGenerationWorker.close();
+    await sceneGenerationQueue.close();
+  } catch (error) {
+    logger.error({ error }, 'Error during worker shutdown');
+  }
 });
 
 process.on('SIGINT', async () => {
   logger.info('Shutting down scene generation worker');
-  await sceneGenerationWorker.close();
-  await sceneGenerationQueue.close();
+  try {
+    await sceneGenerationWorker.close();
+    await sceneGenerationQueue.close();
+  } catch (error) {
+    logger.error({ error }, 'Error during worker shutdown');
+  }
 });
 
+export { sceneGenerationQueue, sceneGenerationWorker };
