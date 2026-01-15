@@ -135,7 +135,24 @@ if (process.env.NODE_ENV === 'production') {
 import { errorHandler } from './middleware/error-handler';
 app.use(errorHandler);
 
+// Start Scene Generation Service on internal port (if enabled)
+const SCENE_GENERATION_ENABLED = process.env.SCENE_GENERATION_ENABLED !== 'false';
+const SCENE_GENERATION_PORT = parseInt(process.env.SCENE_GENERATION_PORT || '3001', 10);
+
+if (SCENE_GENERATION_ENABLED) {
+  try {
+    const { startSceneGenerationService } = require('./services/scene-generation-server');
+    startSceneGenerationService(SCENE_GENERATION_PORT);
+  } catch (error: any) {
+    console.warn('Scene Generation Service could not be started:', error.message);
+    console.warn('Main backend will continue without Scene Generation Service');
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  if (SCENE_GENERATION_ENABLED) {
+    console.log(`Scene Generation Service will start on internal port ${SCENE_GENERATION_PORT}`);
+  }
 });
 

@@ -1,7 +1,9 @@
 import { logger } from '../utils/logger';
 
+// Use localhost for internal communication when running on same server
 const SCENE_GENERATION_SERVICE_URL =
-  process.env.SCENE_GENERATION_SERVICE_URL || 'http://localhost:3001';
+  process.env.SCENE_GENERATION_SERVICE_URL || 
+  (process.env.NODE_ENV === 'production' ? 'http://localhost:3001' : 'http://localhost:3001');
 const SCENE_GENERATION_TIMEOUT = parseInt(
   process.env.SCENE_GENERATION_TIMEOUT || '30000',
   10
