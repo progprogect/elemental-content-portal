@@ -60,5 +60,10 @@ router.delete(
   asyncHandler(scenesController.cancelGeneration)
 );
 
+router.post(
+  '/:generationId/scenes/:sceneId/regenerate',
+  asyncHandler(scenesController.regenerateScene)
+);
+
 export default router;
 

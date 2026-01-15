@@ -91,7 +91,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   
   // Check if Stock Media page is active
   const isStockMediaActive = location.pathname === '/stock-media'
-  
+
   // Check if Scene Generation page is active
   const isSceneGenerationActive = location.pathname.startsWith('/scene-generation')
 

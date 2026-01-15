@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import swaggerUi from 'swagger-ui-express';
 import { config } from './config/env';
 import { logger } from './config/logger';
@@ -10,6 +11,7 @@ import { requestLogger } from './api/middleware/request-logger';
 import { apiRateLimiter } from './api/middleware/rate-limiter';
 import { healthCheck } from './health/health-check';
 import scenesRoutes from './api/routes/scenes.routes';
+import { initializeSocketIO } from './websocket/scene-generation-socket';
 import './jobs/scene-generation.job'; // Initialize worker
 
 // dotenv.config() is called in config/env.ts
@@ -60,7 +62,13 @@ app.use(errorHandler);
 
 const PORT = config.PORT;
 
-app.listen(PORT, () => {
+// Create HTTP server for Socket.IO
+const httpServer = createServer(app);
+
+// Initialize Socket.IO
+initializeSocketIO(httpServer);
+
+httpServer.listen(PORT, () => {
   logger.info({ port: PORT }, 'Scene Generation Service started');
 });
 

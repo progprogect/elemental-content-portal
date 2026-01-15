@@ -245,3 +245,75 @@ export async function cancelGeneration(req: Request, res: Response) {
   });
 }
 
+/**
+ * @swagger
+ * /api/v1/scenes/{generationId}/scenes/{sceneId}/regenerate:
+ *   post:
+ *     summary: Regenerate a specific scene
+ *     tags: [Scenes]
+ *     parameters:
+ *       - in: path
+ *         name: generationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: sceneId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Scene regeneration started
+ */
+export async function regenerateScene(req: Request, res: Response) {
+  const { generationId, sceneId } = req.params;
+
+  const scene = await prisma.scene.findFirst({
+    where: {
+      sceneGenerationId: generationId,
+      sceneId: sceneId,
+    },
+    include: {
+      sceneGeneration: true,
+    },
+  });
+
+  if (!scene) {
+    return res.status(404).json({ error: 'Scene not found' });
+  }
+
+  // Update scene status to pending
+  await prisma.scene.update({
+    where: { id: scene.id },
+    data: {
+      status: 'pending',
+      progress: 0,
+      error: null,
+    },
+  });
+
+  // Get scene project from scene data
+  const sceneProject = scene.sceneProject as any;
+
+  if (!sceneProject) {
+    return res.status(400).json({ error: 'Scene project not found' });
+  }
+
+  // Add job to queue for scene regeneration
+  const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
+  await sceneGenerationQueue.add('regenerate-scene', {
+    generationId,
+    sceneId: scene.id,
+    sceneProject,
+  });
+
+  logger.info({ generationId, sceneId }, 'Scene regeneration queued');
+
+  res.json({
+    id: scene.id,
+    sceneId: scene.sceneId,
+    status: 'pending',
+  });
+}
+

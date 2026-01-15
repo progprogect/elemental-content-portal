@@ -16,6 +16,7 @@ export { generateImage, buildImagePrompt } from './image-generator';
 export { generateText } from './text-generator';
 export { transcribeAudio } from './speech-to-text';
 export { generateSpeech } from './speech-generator';
+export { analyzeImage } from './vision-analyzer';
 
 // Storage
 export * from './storage';

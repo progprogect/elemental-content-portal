@@ -3,6 +3,7 @@ import { config } from '../config/env';
 import { logger } from '../config/logger';
 import { executeGeneration } from '../services/orchestrator';
 import { GenerationRequest } from '../types/scene-generation';
+import { prisma } from '../database/prisma';
 
 // Parse Redis URL
 const parseRedisUrl = (url: string) => {
@@ -43,18 +44,77 @@ export const sceneGenerationQueue = new Queue('scene-generation', {
 export const sceneGenerationWorker = new Worker(
   'scene-generation',
   async (job) => {
-    const { generationId, request } = job.data as {
-      generationId: string;
-      request: GenerationRequest;
-    };
-
-    logger.info({ jobId: job.id, generationId }, 'Processing scene generation job');
+    logger.info({ jobId: job.id, jobName: job.name }, 'Processing scene generation job');
 
     try {
-      await executeGeneration(generationId, request);
-      logger.info({ jobId: job.id, generationId }, 'Scene generation job completed');
+      if (job.name === 'regenerate-scene') {
+        // Handle scene regeneration
+        const { generationId, sceneId, sceneProject } = job.data as {
+          generationId: string;
+          sceneId: string;
+          sceneProject: any;
+        };
+
+        const { pipelineRegistry } = await import('../pipelines/pipeline-registry');
+        const { createStorageAdapter } = await import('@elemental-content/shared-ai-lib');
+        const { emitSceneComplete } = await import('../websocket/scene-generation-socket');
+        const os = await import('os');
+        const path = await import('path');
+
+        const storage = createStorageAdapter();
+        const tempDir = path.join(os.tmpdir(), `regeneration-${generationId}-${sceneId}`);
+        const fs = await import('fs');
+
+        // Create temp directory if it doesn't exist
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        try {
+          const renderContext = {
+            storage,
+            tempDir,
+          };
+
+          // Render scene
+          const renderedScene = await pipelineRegistry.render(sceneProject, renderContext);
+
+          // Update scene with rendered asset
+          await prisma.scene.update({
+            where: { id: sceneId },
+            data: {
+              status: 'completed',
+              progress: 100,
+              renderedAssetPath: renderedScene.renderedAssetPath,
+              renderedAssetUrl: renderedScene.renderedAssetUrl,
+              error: null,
+            },
+          });
+
+          emitSceneComplete(generationId, renderedScene.sceneId, renderedScene.renderedAssetUrl);
+          logger.info({ jobId: job.id, sceneId }, 'Scene regeneration completed');
+        } finally {
+          // Cleanup temp directory
+          try {
+            if (fs.existsSync(tempDir)) {
+              fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+          } catch (cleanupError) {
+            logger.warn({ error: cleanupError, tempDir }, 'Failed to cleanup temp directory');
+          }
+        }
+      } else {
+        // Handle full generation
+        const { generationId, request } = job.data as {
+          generationId: string;
+          request: GenerationRequest;
+        };
+
+        await executeGeneration(generationId, request);
+        logger.info({ jobId: job.id, generationId }, 'Scene generation job completed');
+      }
     } catch (error: any) {
-      logger.error({ error, jobId: job.id, generationId }, 'Scene generation job failed');
+      logger.error({ error, jobId: job.id, jobName: job.name }, 'Scene generation job failed');
       throw error;
     }
   },

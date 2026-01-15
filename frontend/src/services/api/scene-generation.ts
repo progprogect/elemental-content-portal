@@ -75,5 +75,18 @@ export const sceneGenerationApi = {
     const response = await axios.delete(`${API_BASE_URL}/api/scene-generation/${generationId}`)
     return response.data
   },
+
+  getScenario: async (generationId: string): Promise<{ id: string; scenario: any; status: string; phase: string }> => {
+    const response = await axios.get(`${API_BASE_URL}/api/scene-generation/${generationId}/scenario`)
+    return response.data
+  },
+
+  updateScenario: async (generationId: string, scenario: any): Promise<void> => {
+    await axios.put(`${API_BASE_URL}/api/scene-generation/${generationId}/scenario`, { scenario })
+  },
+
+  regenerateScene: async (generationId: string, sceneId: string): Promise<void> => {
+    await axios.post(`${API_BASE_URL}/api/scene-generation/${generationId}/scenes/${sceneId}/regenerate`)
+  },
 }
 

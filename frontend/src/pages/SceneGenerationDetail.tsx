@@ -1,12 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sceneGenerationApi } from '../services/api/scene-generation'
+import { useSceneGenerationSocket } from '../hooks/useSceneGenerationSocket'
+import ScenePreview from '../components/scene-generation/ScenePreview'
 import Button from '../components/ui/Button'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 export default function SceneGenerationDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+
   const queryClient = useQueryClient()
 
   const { data: generation, isLoading, error } = useQuery({
@@ -14,11 +17,71 @@ export default function SceneGenerationDetail() {
     queryFn: () => sceneGenerationApi.getStatus(id!),
     enabled: !!id,
     refetchInterval: (data) => {
-      // Refetch every 2 seconds if still processing
+      // Refetch every 5 seconds if still processing (WebSocket will handle real-time updates)
       if (data?.status === 'processing' || data?.status === 'queued') {
-        return 2000
+        return 5000
       }
       return false
+    },
+  })
+
+  // WebSocket for real-time updates
+  useSceneGenerationSocket(id, {
+    progress: (data) => {
+      if (data.generationId === id) {
+        queryClient.setQueryData(['scene-generation', id], (old: any) => {
+          if (!old) return old
+          return {
+            ...old,
+            progress: data.progress,
+            phase: data.phase,
+          }
+        })
+      }
+    },
+    'phase-change': (data) => {
+      if (data.generationId === id) {
+        queryClient.setQueryData(['scene-generation', id], (old: any) => {
+          if (!old) return old
+          return {
+            ...old,
+            phase: data.phase,
+            progress: data.progress,
+          }
+        })
+      }
+    },
+    'scene-complete': (data) => {
+      if (data.generationId === id) {
+        // Invalidate to refetch scenes
+        queryClient.invalidateQueries({ queryKey: ['scene-generation', id] })
+      }
+    },
+    'generation-complete': (data) => {
+      if (data.generationId === id) {
+        queryClient.setQueryData(['scene-generation', id], (old: any) => {
+          if (!old) return old
+          return {
+            ...old,
+            status: 'completed',
+            progress: 100,
+            phase: 'phase4',
+            resultUrl: data.resultUrl,
+          }
+        })
+      }
+    },
+    error: (data) => {
+      if (data.generationId === id) {
+        queryClient.setQueryData(['scene-generation', id], (old: any) => {
+          if (!old) return old
+          return {
+            ...old,
+            status: 'failed',
+            error: data.error,
+          }
+        })
+      }
     },
   })
 

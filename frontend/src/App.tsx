@@ -26,8 +26,9 @@ function App() {
           <Route path="/learning-materials/:id" element={<TrainingTopicDetail />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/stock-media" element={<StockMedia />} />
-          <Route path="/scene-generation" element={<SceneGeneration />} />
-          <Route path="/scene-generation/:id" element={<SceneGenerationDetail />} />
+              <Route path="/scene-generation" element={<SceneGeneration />} />
+              <Route path="/scene-generation/:id" element={<SceneGenerationDetail />} />
+              <Route path="/scene-generation/:id/review-scenario" element={<ScenarioReview />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
