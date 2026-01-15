@@ -47,6 +47,13 @@ COPY backend/prisma ./prisma/
 COPY backend/src ./src/
 COPY backend/tsconfig.json ./
 
+# Copy shared-ai-lib files (needed by scene-generation-service)
+COPY --from=deps /app/packages/shared-ai-lib/node_modules ./packages/shared-ai-lib/node_modules
+COPY --from=deps /app/packages/shared-ai-lib/dist ./packages/shared-ai-lib/dist
+COPY packages/shared-ai-lib/package.json ./packages/shared-ai-lib/
+COPY packages/shared-ai-lib/src ./packages/shared-ai-lib/src/
+COPY packages/shared-ai-lib/tsconfig.json ./packages/shared-ai-lib/ 2>/dev/null || true
+
 # Copy scene-generation-service files
 COPY --from=deps /app/scene-generation-service/node_modules ./scene-generation-service/node_modules
 COPY scene-generation-service/package.json ./scene-generation-service/
