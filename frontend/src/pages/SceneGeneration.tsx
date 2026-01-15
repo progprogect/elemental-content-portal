@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { sceneGenerationApi, type SceneGeneration } from '../services/api/scene-generation'
 import Button from '../components/ui/Button'
+import SceneGenerationForm from '../components/scene-generation/SceneGenerationForm'
 import { PlusIcon } from '@heroicons/react/24/outline'
 
 export default function SceneGeneration() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [isCreating, setIsCreating] = useState(false)
+  const [showForm, setShowForm] = useState(false)
 
   const { data: generations, isLoading } = useQuery({
     queryKey: ['scene-generations'],
@@ -19,17 +20,25 @@ export default function SceneGeneration() {
     mutationFn: sceneGenerationApi.generate,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['scene-generations'] })
+      setShowForm(false)
       navigate(`/scene-generation/${data.id}`)
     },
   })
 
   const handleCreateNew = () => {
-    setIsCreating(true)
-    // For MVP, create with a simple prompt
-    // Later, this will open a wizard
-    createMutation.mutate({
-      prompt: 'Generate a video scene',
-    })
+    setShowForm(true)
+  }
+
+  const handleFormSubmit = (data: {
+    prompt: string
+    videos?: Array<{ id: string; path: string }>
+    images?: Array<{ id: string; path: string }>
+    references?: Array<{ id: string; pathOrUrl: string }>
+    aspectRatio?: number
+    reviewScenario?: boolean
+    reviewScenes?: boolean
+  }) => {
+    createMutation.mutate(data)
   }
 
   return (
@@ -39,11 +48,24 @@ export default function SceneGeneration() {
           <h1 className="text-2xl font-bold text-gray-900">Scene Generation</h1>
           <p className="text-gray-600 mt-1">Generate videos from text prompts and resources</p>
         </div>
-        <Button onClick={handleCreateNew} disabled={isCreating || createMutation.isPending}>
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Create New Generation
-        </Button>
+        {!showForm && (
+          <Button onClick={handleCreateNew} disabled={createMutation.isPending}>
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Create New Generation
+          </Button>
+        )}
       </div>
+
+      {showForm && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Scene Generation</h2>
+          <SceneGenerationForm
+            onSubmit={handleFormSubmit}
+            onCancel={() => setShowForm(false)}
+            isLoading={createMutation.isPending}
+          />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center py-12">
@@ -84,15 +106,15 @@ export default function SceneGeneration() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : !showForm ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <p className="text-gray-500 mb-4">No generations yet</p>
-          <Button onClick={handleCreateNew} disabled={isCreating || createMutation.isPending}>
+          <Button onClick={handleCreateNew} disabled={createMutation.isPending}>
             <PlusIcon className="h-5 w-5 mr-2" />
             Create Your First Generation
           </Button>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

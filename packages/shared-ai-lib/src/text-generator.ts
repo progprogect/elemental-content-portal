@@ -84,10 +84,14 @@ ${options.basePrompt}`;
       },
     ],
     generationConfig: {
-      temperature: 0.7,
+      temperature: 0.3, // Lower temperature for more structured output
       topK: 40,
       topP: 0.95,
       maxOutputTokens: 8192,
+      // Try to use responseSchema if the prompt indicates JSON output
+      ...(options.basePrompt.toLowerCase().includes('json') || options.basePrompt.toLowerCase().includes('scenario') 
+        ? { responseMimeType: 'application/json' as const }
+        : {}),
     },
   };
   
