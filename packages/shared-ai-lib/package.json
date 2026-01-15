@@ -1,0 +1,38 @@
+{
+  "name": "@elemental-content/shared-ai-lib",
+  "version": "1.0.0",
+  "description": "Shared AI library for image generation, text generation, speech synthesis and transcription",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "image-generation",
+    "text-generation",
+    "speech",
+    "shared-library"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.490.0",
+    "@elevenlabs/elevenlabs-js": "^2.28.0",
+    "cloudinary": "^1.41.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "zod": "^3.22.4"
+  },
+  "files": [
+    "dist",
+    "src"
+  ]
+}
+
