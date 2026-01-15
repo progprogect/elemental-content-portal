@@ -113,6 +113,10 @@ COPY --from=frontend-builder /app/frontend/dist ./public
 COPY --from=builder /app/scene-generation-service/dist ./scene-generation-service/dist
 COPY --from=builder /app/scene-generation-service/node_modules ./scene-generation-service/node_modules
 COPY --from=builder /app/scene-generation-service/package.json ./scene-generation-service/
+# Copy shared-ai-lib for runtime (needed by scene-generation-service)
+COPY --from=builder /app/packages/shared-ai-lib/dist ./packages/shared-ai-lib/dist
+COPY --from=builder /app/packages/shared-ai-lib/node_modules ./packages/shared-ai-lib/node_modules
+COPY --from=builder /app/packages/shared-ai-lib/package.json ./packages/shared-ai-lib/
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
