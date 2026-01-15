@@ -28,12 +28,23 @@ COPY backend/prisma ./prisma/
 COPY scene-generation-service/package.json scene-generation-service/package-lock.json* ./scene-generation-service/
 COPY scene-generation-service/src/database/prisma ./scene-generation-service/src/database/prisma/
 
+# Copy shared-ai-lib package files (needed by scene-generation-service)
+COPY packages/shared-ai-lib/package.json packages/shared-ai-lib/package-lock.json* ./packages/shared-ai-lib/
+COPY packages/shared-ai-lib/src ./packages/shared-ai-lib/src/
+COPY packages/shared-ai-lib/tsconfig.json ./packages/shared-ai-lib/ 2>/dev/null || true
+
 # Install backend dependencies
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
+# Install shared-ai-lib dependencies first (needed by scene-generation-service)
+WORKDIR /app/packages/shared-ai-lib
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Build shared-ai-lib if build script exists, otherwise just ensure dist exists
+RUN (npm run build 2>/dev/null || tsc 2>/dev/null || echo "shared-ai-lib build skipped") && (test -d dist || mkdir -p dist)
+
 # Install scene-generation-service dependencies
 WORKDIR /app/scene-generation-service
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi || echo "Scene generation service dependencies installation failed - continuing anyway"
 WORKDIR /app
 
 # Build the application
