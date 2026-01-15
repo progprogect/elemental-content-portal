@@ -40,6 +40,11 @@ router.post(
 );
 
 router.get(
+  '/',
+  asyncHandler(scenesController.listGenerations)
+);
+
+router.get(
   '/:generationId',
   asyncHandler(scenesController.getGenerationStatus)
 );

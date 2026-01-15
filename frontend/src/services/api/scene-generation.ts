@@ -51,8 +51,13 @@ export interface Scene {
 }
 
 export const sceneGenerationApi = {
-  generate: async (data: GenerationRequest): Promise<SceneGeneration> => {
+  generate: async (data: GenerationRequest): Promise<{ id: string; status: string; phase: string; progress: number }> => {
     const response = await axios.post(`${API_BASE_URL}/api/scene-generation/generate`, data)
+    return response.data
+  },
+
+  getList: async (filters?: { status?: string; phase?: string }): Promise<SceneGeneration[]> => {
+    const response = await axios.get(`${API_BASE_URL}/api/scene-generation`, { params: filters })
     return response.data
   },
 
@@ -71,22 +76,13 @@ export const sceneGenerationApi = {
     return response.data
   },
 
+  regenerateScene: async (generationId: string, sceneId: string): Promise<void> => {
+    await axios.post(`${API_BASE_URL}/api/scene-generation/${generationId}/scenes/${sceneId}/regenerate`)
+  },
+
   cancel: async (generationId: string): Promise<{ id: string; status: string }> => {
     const response = await axios.delete(`${API_BASE_URL}/api/scene-generation/${generationId}`)
     return response.data
-  },
-
-  getScenario: async (generationId: string): Promise<{ id: string; scenario: any; status: string; phase: string }> => {
-    const response = await axios.get(`${API_BASE_URL}/api/scene-generation/${generationId}/scenario`)
-    return response.data
-  },
-
-  updateScenario: async (generationId: string, scenario: any): Promise<void> => {
-    await axios.put(`${API_BASE_URL}/api/scene-generation/${generationId}/scenario`, { scenario })
-  },
-
-  regenerateScene: async (generationId: string, sceneId: string): Promise<void> => {
-    await axios.post(`${API_BASE_URL}/api/scene-generation/${generationId}/scenes/${sceneId}/regenerate`)
   },
 }
 

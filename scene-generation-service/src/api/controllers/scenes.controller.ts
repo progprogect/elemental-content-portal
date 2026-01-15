@@ -99,6 +99,69 @@ export async function generateScenes(req: Request, res: Response) {
  *       200:
  *         description: Generation status
  */
+/**
+ * @swagger
+ * /api/v1/scenes:
+ *   get:
+ *     summary: List scene generations
+ *     tags: [Scenes]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filter by status
+ *       - in: query
+ *         name: phase
+ *         schema:
+ *           type: string
+ *         description: Filter by phase
+ *     responses:
+ *       200:
+ *         description: List of scene generations
+ */
+export async function listGenerations(req: Request, res: Response) {
+  const { status, phase } = req.query;
+
+  const where: any = {};
+  if (status) {
+    where.status = status;
+  }
+  if (phase) {
+    where.phase = phase;
+  }
+
+  const generations = await prisma.sceneGeneration.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: 100, // Limit to 100 most recent
+    include: {
+      scenes: {
+        orderBy: { orderIndex: 'asc' },
+        take: 1, // Just to check if scenes exist
+      },
+    },
+  });
+
+  res.json(generations);
+}
+
+/**
+ * @swagger
+ * /api/v1/scenes/{generationId}:
+ *   get:
+ *     summary: Get generation status
+ *     tags: [Scenes]
+ *     parameters:
+ *       - in: path
+ *         name: generationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Generation status
+ */
 export async function getGenerationStatus(req: Request, res: Response) {
   const { generationId } = req.params;
 

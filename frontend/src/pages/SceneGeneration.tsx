@@ -10,14 +10,9 @@ export default function SceneGeneration() {
   const queryClient = useQueryClient()
   const [isCreating, setIsCreating] = useState(false)
 
-  // TODO: Implement list query when backend supports it
-  // For now, we'll just show a placeholder
   const { data: generations, isLoading } = useQuery({
     queryKey: ['scene-generations'],
-    queryFn: async () => {
-      // Placeholder - will be implemented when backend supports listing
-      return []
-    },
+    queryFn: () => sceneGenerationApi.getList(),
   })
 
   const createMutation = useMutation({
