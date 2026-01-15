@@ -1,8 +1,20 @@
 # Use Node.js LTS version
 FROM node:20-alpine AS base
 
-# Install OpenSSL, libc6-compat for Prisma, and FFmpeg for video processing
-RUN apk add --no-cache openssl libc6-compat ffmpeg
+# Install OpenSSL, libc6-compat for Prisma, FFmpeg for video processing,
+# and build dependencies for canvas (Python, make, g++, cairo, pango, etc.)
+RUN apk add --no-cache \
+    openssl \
+    libc6-compat \
+    ffmpeg \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev
 
 # Install dependencies only when needed
 FROM base AS deps
