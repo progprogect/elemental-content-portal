@@ -17,6 +17,8 @@ export { generateText } from './text-generator';
 export { transcribeAudio } from './speech-to-text';
 export { generateSpeech } from './speech-generator';
 export { analyzeImage } from './vision-analyzer';
+export { generateJSON } from './json-generator';
+export type { JSONGenerationOptions } from './json-generator';
 
 // Storage
 export * from './storage';
