@@ -1,0 +1,486 @@
+**Назначение:** модуль генерирует из текстового запроса и набора ресурсов (видео, изображения, референсы) общий сценарий (таймлайн) и набор сцен, а затем по ним собирает итоговое видео (или анимированные баннеры).
+
+**Интеграция:** как инкапсулированный модуль внутри существующей CMS / контент-платформы.  
+**Цель документа:** описать, как модуль работает технически на уровне архитектуры, данных и пайплайнов, без излишнего зацементирования реализации.
+
+---
+
+## 1. Общая архитектура и поток
+
+Высокоуровневый pipeline:
+
+```text
+Phase 0: Resource Understanding (Context Enrichment)
+Phase 1: Scenario Generation (Timeline + per-scene descriptions)
+Phase 2: Scene Project Construction (per-scene configs)
+Phase 3: Scene Pipelines (rendering / composition per scene)
+Phase 4: Final Composition (concat, transitions, audio)
+````
+
+Ключевая идея:
+
+> Сначала понимаем, что у нас есть (ресурсы), потом строим общий сценарий (timeline + описание сцен), и уже затем для каждой сцены запускаем свой пайплайн.
+
+---
+
+## 2. Phase 0 — Resource Understanding (Context Enrichment)
+
+### 2.1. Цель
+
+Собрать максимум информации о ресурсах (видео, изображениях, референсах), чтобы потом LLM в Phase 1 мог строить сценарий **на основе реального содержимого**, а не наугад.
+
+Важно:
+Phase 0 **не обязана возвращать строгий JSON наружу**. Это внутренний шаг, который готовит «сырьё для мышления» последующей LLM-фазы.
+
+### 2.2. Вход
+
+* `prompt: string` — текстовый запрос пользователя.
+* `videos: VideoInput[]` — список видеороликов.
+* `images: ImageInput[]` — изображения.
+* `references: ReferenceInput[]` — референсы (картинки/ссылки).
+* `aspectRatio?: number` — целевое соотношение сторон (по умолчанию, например, 5.83).
+
+Пример (TypeScript-подобный тип, для ориентировки):
+
+```ts
+type VideoInput = {
+  id: string;
+  path: string;
+};
+
+type ImageInput = {
+  id: string;
+  path: string;
+};
+
+type ReferenceInput = {
+  id: string;
+  pathOrUrl: string;
+};
+```
+
+### 2.3. Обработка (примерная)
+
+* Для видео:
+
+  * читаем метаданные (длительность, fps, размеры),
+  * при необходимости — транскрибируем речь (Whisper или аналог),
+  * можем определить язык, наличие речи, примерные темы.
+* Для изображений:
+
+  * через vision-модель получаем описания: кто/что изображён, фон, заметные детали,
+  * помечаем стили (например, tech, минимализм, «слайд-презентация»).
+* Для референсов:
+
+  * если это картинка или скриншот — анализируем стиль (цвета, композиция),
+  * если это текст — извлекаем ключевые указания по стилю/тону.
+
+### 2.4. Выход (внутренний контекст)
+
+На уровне реализации можем держать это как объект:
+
+```ts
+type EnrichedContext = {
+  prompt: string;
+  videoTranscripts: Record<string, string>;     // videoId → полный текст
+  videoMetadata: Record<string, { duration: number; fps: number; width: number; height: number }>;
+  imageCaptions: Record<string, string>;        // imageId → описательный текст
+  referenceNotes: string;                       // агрегированный текст о стиле и референсах
+};
+```
+
+Но главное — это **текст и факты**, которые передаются в LLM при генерации сценария:
+
+* фрагменты транскриптов,
+* описания изображений,
+* заметки о референсах.
+
+---
+
+## 3. Phase 1 — Scenario Generation (Timeline + per-scene descriptions)
+
+### 3.1. Цель
+
+Построить **общий сценарий**:
+
+* список сцен (таймлайн),
+* тип каждой сцены,
+* примерная длительность,
+* источники (если сцена связана с видео),
+* **описание каждой сцены** (детальный текст для последующей обработки).
+
+### 3.2. Вход
+
+* исходный `prompt`
+* `EnrichedContext` из Phase 0 (как текстовый контекст для LLM)
+
+Пример orchestration-функции:
+
+```ts
+async function generateScenario(
+  prompt: string,
+  ctx: EnrichedContext
+): Promise<Scenario> {
+  // 1) собираем системный промпт + контекст
+  // 2) вызываем LLM (structured output / JSON-мод)
+  // 3) получаем Scenario (timeline + per-scene descriptions)
+}
+```
+
+### 3.3. Выход: Scenario (примерная структура)
+
+```ts
+type SceneKind = "banner" | "video" | "overlay" | "pip" | "transition" | "blank";
+
+type DetailedSceneRequest = {
+  goal?: string;           // цель: intro, explain, highlight, outro, etc.
+  description: string;     // текстовое объяснение, что должно происходить
+  // дальше — опциональные поля, зависящие от типа сцены:
+  visualStyle?: string[];        // ["tech", "minimal", "blue"]
+  layoutHint?: string;           // "left_image_right_text", "side_panel_right", ...
+  textContent?: string;          // текст для баннера/титров
+  imageHints?: string[];         // пожелания по картинкам
+  audioStrategy?: string;        // "keep", "mute", "bgm_under_voice", ...
+  animationHints?: string[];     // ["fade-in", "typewriter", ...]
+  [key: string]: any;            // позволяем расширять
+};
+
+type TimelineItem = {
+  id: string;
+  kind: SceneKind;
+  // для баннерных сцен может быть только duration
+  durationSeconds?: number;
+  // для видео-сцен:
+  sourceVideoId?: string;
+  fromSeconds?: number;
+  toSeconds?: number;
+  detailedRequest: DetailedSceneRequest;
+};
+
+type Scenario = {
+  timeline: TimelineItem[];
+};
+```
+
+Это **пример**, а не строгий контракт.
+Главное — у нас есть:
+
+* **последовательность сцен**,
+* **тип сцены**,
+* **примерные временные параметры**,
+* **описание “что хотим от этой сцены”**.
+
+### 3.4. Пример сценария (в JSON-стиле)
+
+```json
+{
+  "timeline": [
+    {
+      "id": "scene_intro",
+      "kind": "banner",
+      "durationSeconds": 4,
+      "detailedRequest": {
+        "goal": "intro",
+        "description": "Интро-баннер: Маск слева, крупный заголовок справа на синем фоне",
+        "visualStyle": ["tech", "blue", "minimal"],
+        "layoutHint": "left_image_right_text",
+        "textContent": "Почему Илон Маск важен?",
+        "animationHints": ["fade-in", "typewriter"]
+      }
+    },
+    {
+      "id": "scene_main",
+      "kind": "video",
+      "sourceVideoId": "video1",
+      "fromSeconds": 10,
+      "toSeconds": 28,
+      "detailedRequest": {
+        "goal": "show main speech",
+        "description": "Фрагмент, где он говорит про SpaceX и Tesla",
+        "audioStrategy": "keep",
+        "animationHints": ["simple_cut"]
+      }
+    },
+    {
+      "id": "scene_overlay",
+      "kind": "overlay",
+      "sourceVideoId": "video1",
+      "fromSeconds": 28,
+      "toSeconds": 50,
+      "detailedRequest": {
+        "goal": "highlight key points",
+        "description": "Видео на фоне, справа появляется панель с 3 тезисами",
+        "layoutHint": "side_panel_right",
+        "visualStyle": ["tech", "minimal"],
+        "animationHints": ["staggered_bullets"]
+      }
+    }
+  ]
+}
+```
+
+### 3.5. Review (опционально)
+
+Если включён режим «review»:
+
+* показываем пользователю:
+
+  * список сцен,
+  * тип,
+  * длительность,
+  * краткое описание.
+* предоставляем возможность:
+
+  * поменять порядок,
+  * поправить длительности,
+  * уточнить текст/описания сцен,
+  * удалить/добавить сцену.
+
+---
+
+## 4. Phase 2 — Scene Project Construction
+
+### 4.1. Цель
+
+На основе `TimelineItem` + общего контекста собрать **конфигурацию для каждой сцены**, удобную для конкретных рендер-пайплайнов.
+
+Можно думать об этом как о:
+
+> “Превратить общую идею сцены в конкретный config для кода”.
+
+### 4.2. Примерная структура Scene Project
+
+```ts
+type SceneProject = {
+  sceneId: string;
+  kind: SceneKind;
+  scenarioItem: TimelineItem;  // исходный элемент таймлайна
+  renderContext: {
+    aspectRatio: number;       // например 5.83
+    width: number;             // пиксели
+    height: number;            // пиксели
+    fps: number;               // кадры/сек
+  };
+  // всё, что нужно пайплайну:
+  inputs: {
+    video?: {
+      id: string;
+      fromSeconds: number;
+      toSeconds: number;
+    };
+    images?: string[];
+  };
+  // дополнительные настройки под конкретные пайплайны:
+  extra?: Record<string, any>;
+};
+```
+
+Пример `SceneProject` для баннер-сцены:
+
+```ts
+{
+  sceneId: "scene_intro",
+  kind: "banner",
+  scenarioItem: { ... },      // TimelineItem из Phase 1
+  renderContext: { aspectRatio: 5.83, width: 1920, height: 329, fps: 30 },
+  inputs: { images: ["elonPortrait"] },
+  extra: { layoutPreset: "left_image_right_text" }
+}
+```
+
+---
+
+## 5. Phase 3 — Scene Pipelines (по типам сцен)
+
+На этой фазе для каждой сцены запускается **свой** пайплайн.
+Тип сцены (`kind`) определяет, какой пайплайн используется.
+
+Ниже — возможные варианты, **как они могут работать**.
+
+---
+
+### 5.1. Banner Scene Pipeline
+
+**Назначение:** создать анимированный баннер/сцену только из графики, изображений и текста.
+
+**Примерный pipeline:**
+
+```text
+SceneProject (kind=banner)
+ → LLM Layout Planning (предложить компоновку и порядок слоёв)
+ → (optional) Image Generation (если нужны новые изображения)
+ → Layout Refinement (учёт картинок, свободного места)
+ → Style Application (шрифты, цвета, размеры)
+ → Animation Planning (появление, тайминги)
+ → Render (HTML/Canvas/React → кадры)
+```
+
+**Возможности в этой сцене:**
+
+* Фон:
+
+  * цветной,
+  * градиент,
+  * изображение (заданное или сгенерированное).
+* Слои:
+
+  * изображения (портрет, продукт),
+  * текст (заголовок, подзаголовок, буллеты),
+  * декоративные элементы.
+* Примеры анимаций:
+
+  * плавное появление,
+  * сдвиг, скролл,
+  * эффект «набор текста»,
+  * лёгкий zoom.
+
+---
+
+### 5.2. Video Scene Pipeline
+
+**Назначение:** показать фрагмент исходного видео.
+
+**Примерный pipeline:**
+
+```text
+SceneProject (kind=video)
+ → VideoTrim (from/to)
+ → (optional) Crop under target aspect ratio
+ → (optional) Stabilization / light color correction
+ → Export либо в кадры, либо в временный клип
+```
+
+**Возможности:**
+
+* Отрезать нужный фрагмент по времени.
+* Привести кадр к нужному аспекту 5.83:1 (обрезка по центру / по лицу).
+* Сохранить или отключить аудио.
+
+---
+
+### 5.3. Overlay Scene Pipeline (Video + Text/HTML Overlay)
+
+**Назначение:** совместить видео и графический слой (панель с текстом, speech bubble и т.д.).
+
+**Примерный pipeline:**
+
+```text
+SceneProject (kind=overlay)
+ → Используем транскрипт видео (из Phase 0)
+ → (optional) LLM: извлечь ключевые тезисы с таймкодами
+ → LLM/Layout Engine: спланировать панель (layout, текст, позиция)
+ → Generate Scene DSL (video слой + overlay-слои)
+ → Render (композиция видеокадра и overlay → кадры)
+```
+
+**Возможности:**
+
+* Видео слева/сзади; панель справа или слева.
+* Текстовые блоки (тезисы, цитаты) с привязкой к таймкодам.
+* Появление текста по мере речи.
+* Разный дизайн панели (сплошной фон, полупрозрачный, с рамкой).
+
+---
+
+### 5.4. PiP (Picture-in-Picture) Scene Pipeline
+
+**Назначение:** показать два видео одновременно (одно — основное, второе — в маленьком окне).
+
+**Примерный pipeline:**
+
+```text
+SceneProject (kind=pip)
+ → Trim both main and pip videos
+ → Place main video as background
+ → Place pip video in corner (position from config)
+ → Render кадры с двумя слоями
+```
+
+**Возможности:**
+
+* Выбор позиции PiP (углы).
+* Размер PiP (маленький/средний).
+* Оформление (рамка, тень, скругление).
+
+---
+
+### 5.5. Transition Scene Pipeline
+
+**Назначение:** визуальные переходы между сценами.
+
+**Примерный подход:**
+
+* Не обязательно делать их отдельной сценой — можно как атрибут перехода между двумя сценами.
+* При необходимости можно описывать через `kind="transition"` и параметры.
+
+---
+
+## 6. Phase 4 — Final Composition
+
+После того, как для всех сцен:
+
+* получены кадры (или клипы),
+* известны их длительности,
+
+можно:
+
+1. Собрать финальный ролик:
+
+   * склеить сегменты по таймлайну,
+   * применить переходы (через ffmpeg или свой рендер),
+2. Смиксовать аудио:
+
+   * выбрать, где звучит голос,
+   * добавить музыку, если нужно,
+   * сделать crossfade между кусками.
+
+Примерно:
+
+```text
+for scene in scenario.timeline:
+  take rendered segment for scene
+  append to final sequence (с учётом переходов)
+
+run ffmpeg (concat + filters)
+output final.mp4
+```
+
+---
+
+## 7. User-in-the-loop (опционально)
+
+Модуль может поддерживать режим с промежуточным согласованием:
+
+* После Phase 1: пользователь утверждает/редактирует сценарий (список сцен + описания).
+* После Phase 2/3: пользователь может посмотреть превью отдельной сцены и попросить:
+
+  * изменить текст,
+  * поменять стиль,
+  * увеличить/уменьшить длительность,
+  * пересобрать сцену.
+
+Это удобно держать как флаги:
+
+```ts
+type GenerationOptions = {
+  reviewScenario?: boolean;
+  reviewScenes?: boolean;
+};
+```
+
+---
+
+## 8. Итоговое резюме
+
+1. **Phase 0**: читаем и «раскрываем» ресурсы (видео, изображения, референсы) в текст и метаданные. Никаких жёстких структур наружу — это просто контекст для LLM.
+2. **Phase 1**: LLM строит **Scenario** — таймлайн сцен + детальные описания того, что в каждой сцене должно происходить.
+3. **Phase 2**: на основе Scenario и настроек рендера создаются **Scene Projects**, удобные для кода.
+4. **Phase 3**: для каждой сцены запускается свой пайплайн:
+
+   * баннеры,
+   * чистые видео-фрагменты,
+   * видео + оверлеи,
+   * PiP и т.д.
+5. **Phase 4**: все отрендеренные сцены собираются в единое видео (concat + transitions + audio mix).
+
+Документ описывает **как это может работать технически**, давая примеры структур и пайплайнов, но не фиксирует реализацию жёстко — это оставляет место для эволюции и адаптации под конкретный стек (Node/TS, Python и т.д.).

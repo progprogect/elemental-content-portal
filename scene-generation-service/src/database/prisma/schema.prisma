@@ -1,0 +1,61 @@
+// This is your Prisma schema file for Scene Generation Service
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SceneGeneration {
+  id            String   @id @default(uuid())
+  taskId        String?  @map("task_id")
+  publicationId String?  @map("publication_id")
+  status        String   @default("queued") // queued, processing, completed, failed, cancelled
+  phase         String   @default("phase0") // phase0, phase1, phase2, phase3, phase4
+  progress      Int      @default(0)        // 0-100
+  prompt        String?  @db.Text
+  enrichedContext Json?  @map("enriched_context") // Phase 0 output
+  scenario      Json?    // Phase 1 output
+  sceneProjects Json?    @map("scene_projects") // Phase 2 output
+  resultUrl     String?  @map("result_url") @db.VarChar(1000)
+  resultPath    String?  @map("result_path") @db.VarChar(1000)
+  error         String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  completedAt   DateTime? @map("completed_at")
+  
+  scenes        Scene[]
+  
+  @@index([taskId])
+  @@index([publicationId])
+  @@index([status])
+  @@index([phase])
+  @@map("scene_generations")
+}
+
+model Scene {
+  id                  String   @id @default(uuid())
+  sceneGenerationId   String   @map("scene_generation_id")
+  sceneId             String   // ID из scenario timeline
+  kind                String   @db.VarChar(50) // banner, video, overlay, pip
+  status              String   @default("pending") // pending, processing, completed, failed
+  progress            Int      @default(0)
+  sceneProject        Json?    @map("scene_project") // Phase 2 output
+  renderedAssetPath   String?  @map("rendered_asset_path") @db.VarChar(1000)
+  renderedAssetUrl    String?  @map("rendered_asset_url") @db.VarChar(1000)
+  error               String?  @db.Text
+  orderIndex          Int      @default(0) @map("order_index")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  sceneGeneration     SceneGeneration @relation(fields: [sceneGenerationId], references: [id], onDelete: Cascade)
+  
+  @@index([sceneGenerationId])
+  @@index([sceneGenerationId, orderIndex])
+  @@map("scenes")
+}
+

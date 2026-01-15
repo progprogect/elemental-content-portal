@@ -91,6 +91,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
   
   // Check if Stock Media page is active
   const isStockMediaActive = location.pathname === '/stock-media'
+  
+  // Check if Scene Generation page is active
+  const isSceneGenerationActive = location.pathname.startsWith('/scene-generation')
 
   const handleListClick = (listId: string) => {
     navigate(`/lists/${listId}`)
@@ -367,6 +370,29 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, o
             >
               <FilmIcon className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && <span className="flex-1 text-left">Stock Media</span>}
+            </button>
+          </div>
+
+          {/* Generation Section */}
+          <div className="px-2 py-2 border-t border-gray-200">
+            {!isCollapsed && (
+              <h2 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                Generation
+              </h2>
+            )}
+            <button
+              onClick={() => {
+                navigate('/scene-generation')
+                onMobileClose()
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isSceneGenerationActive
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <FilmIcon className="h-5 w-5 flex-shrink-0" />
+              {!isCollapsed && <span className="flex-1 text-left">Scene Generation</span>}
             </button>
           </div>
 

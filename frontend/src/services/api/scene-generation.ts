@@ -1,0 +1,79 @@
+import axios from 'axios'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+export interface GenerationRequest {
+  prompt: string
+  videos?: Array<{ id: string; path: string }>
+  images?: Array<{ id: string; path: string }>
+  references?: Array<{ id: string; pathOrUrl: string }>
+  aspectRatio?: number
+  reviewScenario?: boolean
+  reviewScenes?: boolean
+  taskId?: string
+  publicationId?: string
+}
+
+export interface SceneGeneration {
+  id: string
+  taskId?: string | null
+  publicationId?: string | null
+  status: string
+  phase: string
+  progress: number
+  prompt?: string | null
+  enrichedContext?: any
+  scenario?: any
+  sceneProjects?: any
+  resultUrl?: string | null
+  resultPath?: string | null
+  error?: string | null
+  createdAt: string
+  updatedAt: string
+  completedAt?: string | null
+  scenes?: Scene[]
+}
+
+export interface Scene {
+  id: string
+  sceneGenerationId: string
+  sceneId: string
+  kind: string
+  status: string
+  progress: number
+  sceneProject?: any
+  renderedAssetPath?: string | null
+  renderedAssetUrl?: string | null
+  error?: string | null
+  orderIndex: number
+  createdAt: string
+  updatedAt: string
+}
+
+export const sceneGenerationApi = {
+  generate: async (data: GenerationRequest): Promise<SceneGeneration> => {
+    const response = await axios.post(`${API_BASE_URL}/api/scene-generation/generate`, data)
+    return response.data
+  },
+
+  getStatus: async (generationId: string): Promise<SceneGeneration> => {
+    const response = await axios.get(`${API_BASE_URL}/api/scene-generation/${generationId}`)
+    return response.data
+  },
+
+  getScenario: async (generationId: string): Promise<{ id: string; scenario: any; status: string; phase: string }> => {
+    const response = await axios.get(`${API_BASE_URL}/api/scene-generation/${generationId}/scenario`)
+    return response.data
+  },
+
+  updateScenario: async (generationId: string, scenario: any): Promise<{ id: string; scenario: any }> => {
+    const response = await axios.put(`${API_BASE_URL}/api/scene-generation/${generationId}/scenario`, { scenario })
+    return response.data
+  },
+
+  cancel: async (generationId: string): Promise<{ id: string; status: string }> => {
+    const response = await axios.delete(`${API_BASE_URL}/api/scene-generation/${generationId}`)
+    return response.data
+  },
+}
+

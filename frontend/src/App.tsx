@@ -9,6 +9,8 @@ import LearningMaterials from './pages/LearningMaterials'
 import TrainingTopicDetail from './pages/TrainingTopicDetail'
 import Gallery from './pages/Gallery'
 import StockMedia from './pages/StockMedia'
+import SceneGeneration from './pages/SceneGeneration'
+import SceneGenerationDetail from './pages/SceneGenerationDetail'
 
 function App() {
   return (
@@ -24,6 +26,8 @@ function App() {
           <Route path="/learning-materials/:id" element={<TrainingTopicDetail />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/stock-media" element={<StockMedia />} />
+          <Route path="/scene-generation" element={<SceneGeneration />} />
+          <Route path="/scene-generation/:id" element={<SceneGenerationDetail />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
