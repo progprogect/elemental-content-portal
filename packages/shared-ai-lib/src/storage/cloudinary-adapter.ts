@@ -30,21 +30,39 @@ export class CloudinaryAdapter implements StorageAdapter {
       const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
       // If folderPath is provided, include it in public_id, but don't set folder option separately
       // to avoid duplication
-      const publicId = folderPath ? `${folderPath}/${nameWithoutExt}` : nameWithoutExt;
+      // Normalize folderPath: remove leading/trailing slashes
+      const normalizedFolderPath = folderPath ? folderPath.replace(/^\/+|\/+$/g, '') : '';
+      const publicId = normalizedFolderPath ? `${normalizedFolderPath}/${nameWithoutExt}` : nameWithoutExt;
+
+      // Detect resource type from filename extension
+      const extension = filename.split('.').pop()?.toLowerCase();
+      let resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto';
+      if (extension === 'mp4' || extension === 'mov' || extension === 'avi' || extension === 'webm') {
+        resourceType = 'video';
+      } else if (extension === 'png' || extension === 'jpg' || extension === 'jpeg' || extension === 'gif' || extension === 'webp') {
+        resourceType = 'image';
+      }
 
       const uploadOptions: any = {
-        resource_type: 'auto', // Automatically detect image/video/raw
+        resource_type: resourceType,
         public_id: publicId,
         overwrite: false,
       };
 
-      // Don't set folder if public_id already contains the path to avoid duplication
-      // Cloudinary will use public_id as the full path, so folder is not needed
+      console.log('[CloudinaryAdapter] Uploading file:', {
+        filename,
+        folderPath,
+        normalizedFolderPath,
+        publicId,
+        resourceType,
+        fileSize: file.length,
+      });
 
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
         (error: Error | undefined, result: any) => {
           if (error) {
+            console.error('[CloudinaryAdapter] Upload error:', error);
             reject(error);
             return;
           }
@@ -54,8 +72,15 @@ export class CloudinaryAdapter implements StorageAdapter {
             return;
           }
 
+          console.log('[CloudinaryAdapter] Upload successful:', {
+            publicId: result.public_id,
+            url: result.secure_url,
+            resourceType: result.resource_type,
+            format: result.format,
+          });
+
           resolve({
-            path: result.public_id,
+            path: result.public_id, // Store public_id (without extension) for Cloudinary
             url: result.secure_url,
             size: result.bytes || file.length,
           });
@@ -87,33 +112,77 @@ export class CloudinaryAdapter implements StorageAdapter {
 
   async download(path: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      cloudinary.api.resource(path, (error: Error | undefined, result: any) => {
+      console.log('[CloudinaryAdapter] Downloading resource:', { path });
+      
+      // Try to detect resource type from path (video files might need explicit resource_type)
+      const isVideo = path.includes('.mp4') || path.includes('.mov') || path.includes('.avi') || path.includes('.webm');
+      const resourceType = isVideo ? 'video' : 'image';
+      
+      // Remove file extension from path if present (Cloudinary public_id doesn't include extension)
+      const publicId = path.replace(/\.(mp4|mov|avi|webm|png|jpg|jpeg|gif|webp)$/i, '');
+      
+      console.log('[CloudinaryAdapter] Resolved public_id:', { originalPath: path, publicId, resourceType });
+      
+      cloudinary.api.resource(publicId, { resource_type: resourceType }, (error: Error | undefined, result: any) => {
         if (error) {
-          reject(error);
+          console.error('[CloudinaryAdapter] Resource lookup error:', { path, publicId, error: error.message });
+          // Try with 'auto' resource type as fallback
+          cloudinary.api.resource(publicId, (fallbackError: Error | undefined, fallbackResult: any) => {
+            if (fallbackError) {
+              console.error('[CloudinaryAdapter] Fallback resource lookup error:', { path, publicId, error: fallbackError.message });
+              reject(new Error(`Resource not found: ${path} (${fallbackError.message})`));
+              return;
+            }
+            
+            if (!fallbackResult || !fallbackResult.secure_url) {
+              reject(new Error(`Resource not found: ${path}`));
+              return;
+            }
+            
+            console.log('[CloudinaryAdapter] Resource found (fallback):', { publicId, url: fallbackResult.secure_url });
+            this.downloadFromUrl(fallbackResult.secure_url, resolve, reject);
+          });
           return;
         }
 
         if (!result || !result.secure_url) {
-          reject(new Error('Resource not found'));
+          console.error('[CloudinaryAdapter] Resource not found:', { path, publicId });
+          reject(new Error(`Resource not found: ${path}`));
           return;
         }
 
-        // Download file from Cloudinary URL using Node.js https/http
-        const parsedUrl = new URL(result.secure_url);
-        const client = parsedUrl.protocol === 'https:' ? https : http;
-        
-        client.get(result.secure_url, (response) => {
-          if (response.statusCode !== 200) {
-            reject(new Error(`Failed to download: ${response.statusCode}`));
-            return;
-          }
-
-          const chunks: Buffer[] = [];
-          response.on('data', (chunk: Buffer) => chunks.push(chunk));
-          response.on('end', () => resolve(Buffer.concat(chunks)));
-          response.on('error', reject);
-        }).on('error', reject);
+        console.log('[CloudinaryAdapter] Resource found:', { publicId, url: result.secure_url });
+        this.downloadFromUrl(result.secure_url, resolve, reject);
       });
+    });
+  }
+
+  private downloadFromUrl(url: string, resolve: (value: Buffer) => void, reject: (reason?: any) => void): void {
+    // Download file from Cloudinary URL using Node.js https/http
+    const parsedUrl = new URL(url);
+    const client = parsedUrl.protocol === 'https:' ? https : http;
+    
+    client.get(url, (response) => {
+      if (response.statusCode !== 200) {
+        console.error('[CloudinaryAdapter] Download failed:', { url, statusCode: response.statusCode });
+        reject(new Error(`Failed to download: ${response.statusCode}`));
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk: Buffer) => chunks.push(chunk));
+      response.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        console.log('[CloudinaryAdapter] Download completed:', { url, size: buffer.length });
+        resolve(buffer);
+      });
+      response.on('error', (err) => {
+        console.error('[CloudinaryAdapter] Download stream error:', { url, error: err });
+        reject(err);
+      });
+    }).on('error', (err) => {
+      console.error('[CloudinaryAdapter] Download request error:', { url, error: err });
+      reject(err);
     });
   }
 }

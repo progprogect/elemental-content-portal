@@ -84,8 +84,22 @@ export class BannerPipeline {
 
       // Step 4: Upload to storage
       const videoBuffer = fs.readFileSync(outputVideoPath);
-      const storagePath = `scene-generation/scenes/${sceneProject.sceneId}/rendered.mp4`;
+      const storagePath = `scene-generation/scenes/${sceneProject.sceneId}`;
+      logger.info({ 
+        sceneId: sceneProject.sceneId, 
+        storagePath, 
+        videoSize: videoBuffer.length,
+        outputVideoPath,
+      }, 'Uploading rendered video to storage');
+      
       const uploadResult = await storage.upload(videoBuffer, 'rendered.mp4', storagePath);
+      
+      logger.info({ 
+        sceneId: sceneProject.sceneId,
+        uploadPath: uploadResult.path,
+        uploadUrl: uploadResult.url,
+        uploadSize: uploadResult.size,
+      }, 'Video uploaded to storage successfully');
 
       // Get public URL
       const renderedAssetUrl = uploadResult.url;
@@ -98,7 +112,12 @@ export class BannerPipeline {
         fs.unlinkSync(outputVideoPath);
       }
 
-      logger.info({ sceneId: sceneProject.sceneId, duration }, 'Banner pipeline render completed');
+      logger.info({ 
+        sceneId: sceneProject.sceneId, 
+        duration,
+        renderedAssetPath: uploadResult.path,
+        renderedAssetUrl,
+      }, 'Banner pipeline render completed');
 
       return {
         sceneId: sceneProject.sceneId,

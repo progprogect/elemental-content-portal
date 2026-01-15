@@ -53,21 +53,44 @@ export async function phase4FinalComposition(
 
     // Step 2: Download all scene videos in correct order
     const sceneVideoPaths: string[] = [];
+    logger.info({ generationId, completedScenesCount: completedScenes.length }, 'Downloading scenes for composition');
+    
     for (let i = 0; i < completedScenes.length; i++) {
       const scene = completedScenes[i];
       if (!scene.renderedAssetPath) {
-        logger.warn({ sceneId: scene.sceneId }, 'Skipping scene without rendered asset path');
+        logger.warn({ sceneId: scene.sceneId, sceneIndex: i }, 'Skipping scene without rendered asset path');
         continue;
       }
       
+      logger.info({ 
+        sceneId: scene.sceneId, 
+        sceneIndex: i, 
+        renderedAssetPath: scene.renderedAssetPath,
+        renderedAssetUrl: scene.renderedAssetUrl,
+      }, 'Downloading scene for composition');
+      
       try {
         const sceneBuffer = await storage.download(scene.renderedAssetPath);
+        logger.info({ 
+          sceneId: scene.sceneId, 
+          sceneIndex: i, 
+          bufferSize: sceneBuffer.length 
+        }, 'Scene downloaded successfully');
+        
         const scenePath = path.join(tempDir, `scene-${i}.mp4`);
         fs.writeFileSync(scenePath, sceneBuffer);
+        logger.info({ sceneId: scene.sceneId, scenePath, fileSize: sceneBuffer.length }, 'Scene saved to temp file');
         sceneVideoPaths.push(scenePath);
       } catch (error: any) {
-        logger.error({ error, sceneId: scene.sceneId }, 'Failed to download scene for composition');
-        throw new Error(`Failed to download scene ${scene.sceneId}: ${error.message}`);
+        logger.error({ 
+          error: error.message || error, 
+          errorStack: error.stack,
+          sceneId: scene.sceneId, 
+          sceneIndex: i,
+          renderedAssetPath: scene.renderedAssetPath,
+          renderedAssetUrl: scene.renderedAssetUrl,
+        }, 'Failed to download scene for composition');
+        throw new Error(`Failed to download scene ${scene.sceneId}: ${error.message || error}`);
       }
     }
     

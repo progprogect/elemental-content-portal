@@ -65,7 +65,20 @@ export async function phase3ScenePipelines(
           });
 
           // Render scene
+          logger.info({ 
+            sceneId: sceneProject.sceneId, 
+            kind: sceneProject.scenarioItem.kind,
+            generationId,
+          }, 'Rendering scene');
+          
           const renderedScene = await pipelineRegistry.render(sceneProject, renderContext);
+          
+          logger.info({ 
+            sceneId: sceneProject.sceneId,
+            renderedAssetPath: renderedScene.renderedAssetPath,
+            renderedAssetUrl: renderedScene.renderedAssetUrl,
+            duration: renderedScene.duration,
+          }, 'Scene rendered, updating database');
 
           // Update scene with rendered asset
           await prisma.scene.updateMany({
@@ -80,6 +93,12 @@ export async function phase3ScenePipelines(
               renderedAssetUrl: renderedScene.renderedAssetUrl,
             },
           });
+
+          logger.info({ 
+            sceneId: sceneProject.sceneId,
+            renderedAssetPath: renderedScene.renderedAssetPath,
+            renderedAssetUrl: renderedScene.renderedAssetUrl,
+          }, 'Scene database updated successfully');
 
           emitSceneComplete(generationId, renderedScene.sceneId, renderedScene.renderedAssetUrl);
           logger.info({ sceneId: sceneProject.sceneId }, 'Scene rendered successfully');
