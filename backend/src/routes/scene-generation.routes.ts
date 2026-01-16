@@ -213,5 +213,30 @@ router.delete(
   })
 );
 
+/**
+ * @swagger
+ * /api/scene-generation/{generationId}/continue:
+ *   post:
+ *     summary: Continue generation after review (proxy to Scene Generation Service)
+ *     tags: [Scene Generation]
+ */
+router.post(
+  '/:generationId/continue',
+  asyncHandler(async (req, res) => {
+    try {
+      const result = await sceneGenerationClient.continueGeneration(req.params.generationId);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes('not available')) {
+        return res.status(503).json({
+          error: 'Scene Generation Service is not available',
+          message: 'The Scene Generation Service is currently unavailable. Please ensure it is running and configured correctly.',
+        });
+      }
+      throw error;
+    }
+  })
+);
+
 export default router;
 

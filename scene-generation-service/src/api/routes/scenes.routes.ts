@@ -70,5 +70,10 @@ router.post(
   asyncHandler(scenesController.regenerateScene)
 );
 
+router.post(
+  '/:generationId/continue',
+  asyncHandler(scenesController.continueGeneration)
+);
+
 export default router;
 

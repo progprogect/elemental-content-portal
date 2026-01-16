@@ -64,7 +64,16 @@ try {
       logger.info({ jobId: job.id, jobName: job.name }, 'Processing scene generation job');
 
       try {
-        if (job.name === 'regenerate-scene') {
+        if (job.name === 'continue') {
+          // Handle generation continuation after review
+          const { generationId } = job.data as {
+            generationId: string;
+          };
+
+          const { continueGeneration } = await import('../services/orchestrator');
+          await continueGeneration(generationId);
+          logger.info({ jobId: job.id, generationId }, 'Generation continuation completed');
+        } else if (job.name === 'regenerate-scene') {
           // Handle scene regeneration
           const { generationId, sceneId, sceneProject } = job.data as {
             generationId: string;

@@ -50,7 +50,24 @@ import { GenerationRequest } from '../../types/scene-generation';
 export async function generateScenes(req: Request, res: Response) {
   const data = req.body as GenerationRequest;
 
+  logger.info({ 
+    reviewScenario: data.reviewScenario, 
+    reviewScenes: data.reviewScenes,
+    reviewScenarioType: typeof data.reviewScenario,
+    reviewScenesType: typeof data.reviewScenes,
+  }, 'Received generation request with review flags');
+
   try {
+    const reviewScenario = data.reviewScenario === true || data.reviewScenario === 'true';
+    const reviewScenes = data.reviewScenes === true || data.reviewScenes === 'true';
+
+    logger.info({ 
+      reviewScenario, 
+      reviewScenes,
+      originalReviewScenario: data.reviewScenario,
+      originalReviewScenes: data.reviewScenes,
+    }, 'Processed review flags for database');
+
     const generation = await prisma.sceneGeneration.create({
       data: {
         prompt: data.prompt,
@@ -59,8 +76,21 @@ export async function generateScenes(req: Request, res: Response) {
         status: 'queued',
         phase: 'phase0',
         progress: 0,
+        reviewScenario,
+        reviewScenes,
       },
     });
+
+    // Verify that review flags were saved correctly
+    const savedGeneration = await prisma.sceneGeneration.findUnique({
+      where: { id: generation.id },
+      select: { reviewScenario: true, reviewScenes: true },
+    });
+    logger.info({ 
+      generationId: generation.id,
+      savedReviewScenario: savedGeneration?.reviewScenario,
+      savedReviewScenes: savedGeneration?.reviewScenes,
+    }, 'Verified review flags in database after creation');
 
     // Add job to queue (or execute directly if Redis unavailable)
     try {
@@ -268,6 +298,22 @@ export async function updateScenario(req: Request, res: Response) {
   const { generationId } = req.params;
   const { scenario } = req.body;
 
+  // Validate scenario structure
+  if (!scenario || !scenario.timeline || !Array.isArray(scenario.timeline)) {
+    return res.status(400).json({
+      error: 'Invalid scenario structure: timeline array is required',
+    });
+  }
+
+  // Validate each timeline item
+  for (const item of scenario.timeline) {
+    if (!item.id || !item.kind || !item.detailedRequest) {
+      return res.status(400).json({
+        error: `Invalid timeline item: missing required fields (id, kind, or detailedRequest)`,
+      });
+    }
+  }
+
   const generation = await prisma.sceneGeneration.update({
     where: { id: generationId },
     data: {
@@ -326,6 +372,64 @@ export async function cancelGeneration(req: Request, res: Response) {
     id: generation.id,
     status: generation.status,
   });
+}
+
+/**
+ * @swagger
+ * /api/v1/scenes/{generationId}/continue:
+ *   post:
+ *     summary: Continue generation after review
+ *     tags: [Scenes]
+ *     parameters:
+ *       - in: path
+ *         name: generationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Generation continued
+ *       400:
+ *         description: Cannot continue generation (invalid status)
+ */
+export async function continueGeneration(req: Request, res: Response) {
+  const { generationId } = req.params;
+
+  try {
+    const { continueGeneration: continueGenerationFn } = await import('../../services/orchestrator');
+    
+    // Add job to queue (or execute directly if Redis unavailable)
+    try {
+      const { sceneGenerationQueue } = await import('../../jobs/scene-generation.job');
+      await sceneGenerationQueue.add('continue', {
+        generationId,
+      });
+    } catch (queueError: any) {
+      // If queue is unavailable, execute directly
+      if (queueError.message?.includes('Redis') || queueError.message?.includes('not available')) {
+        logger.warn({ generationId }, 'Queue unavailable, executing continuation directly');
+        // Execute in background (don't await)
+        continueGenerationFn(generationId).catch((err) => {
+          logger.error({ error: err, generationId }, 'Direct generation continuation failed');
+        });
+      } else {
+        throw queueError;
+      }
+    }
+
+    logger.info({ generationId }, 'Generation continuation queued');
+
+    res.json({
+      id: generationId,
+      status: 'processing',
+    });
+  } catch (error: any) {
+    logger.error({ error, generationId }, 'Failed to continue generation');
+    res.status(400).json({
+      error: 'Failed to continue generation',
+      message: error.message,
+    });
+  }
 }
 
 /**

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { XMarkIcon, PhotoIcon, VideoCameraIcon, LinkIcon } from '@heroicons/react/24/outline'
+import { filesApi } from '../../services/api/tasks'
 
 interface SceneGenerationFormProps {
   onSubmit: (data: {
@@ -19,13 +20,15 @@ interface SceneGenerationFormProps {
 
 export default function SceneGenerationForm({ onSubmit, onCancel, isLoading }: SceneGenerationFormProps) {
   const [prompt, setPrompt] = useState('')
-  const [videos, setVideos] = useState<Array<{ id: string; path: string; file?: File }>>([])
-  const [images, setImages] = useState<Array<{ id: string; path: string; file?: File }>>([])
+  const [videos, setVideos] = useState<Array<{ id: string; path: string; file?: File; uploaded?: boolean }>>([])
+  const [images, setImages] = useState<Array<{ id: string; path: string; file?: File; uploaded?: boolean }>>([])
   const [references, setReferences] = useState<Array<{ id: string; pathOrUrl: string }>>([])
   const [referenceUrl, setReferenceUrl] = useState('')
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9)
   const [reviewScenario, setReviewScenario] = useState(false)
   const [reviewScenes, setReviewScenes] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -77,23 +80,74 @@ export default function SceneGenerationForm({ onSubmit, onCancel, isLoading }: S
     setReferences((prev) => prev.filter((r) => r.id !== id))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!prompt.trim()) {
       return
     }
 
-    // TODO: Upload files to storage and get paths
-    // For now, use temporary paths
-    onSubmit({
-      prompt: prompt.trim(),
-      videos: videos.map((v) => ({ id: v.id, path: v.path })),
-      images: images.map((i) => ({ id: i.id, path: i.path })),
-      references: references.map((r) => ({ id: r.id, pathOrUrl: r.pathOrUrl })),
-      aspectRatio,
-      reviewScenario,
-      reviewScenes,
-    })
+    setIsUploading(true)
+    setUploadError(null)
+
+    try {
+      // Upload videos to storage
+      const uploadedVideos: Array<{ id: string; path: string }> = []
+      for (const video of videos) {
+        if (video.file) {
+          try {
+            const uploadResult = await filesApi.uploadFile(video.file)
+            uploadedVideos.push({ id: video.id, path: uploadResult.path })
+            // Revoke blob URL
+            URL.revokeObjectURL(video.path)
+          } catch (error: any) {
+            console.error('Failed to upload video:', error)
+            setUploadError(`Failed to upload video ${video.file.name}: ${error.message || 'Unknown error'}`)
+            setIsUploading(false)
+            return
+          }
+        } else {
+          // If no file, use existing path (might be a URL or already uploaded path)
+          uploadedVideos.push({ id: video.id, path: video.path })
+        }
+      }
+
+      // Upload images to storage
+      const uploadedImages: Array<{ id: string; path: string }> = []
+      for (const image of images) {
+        if (image.file) {
+          try {
+            const uploadResult = await filesApi.uploadFile(image.file)
+            uploadedImages.push({ id: image.id, path: uploadResult.path })
+            // Revoke blob URL
+            URL.revokeObjectURL(image.path)
+          } catch (error: any) {
+            console.error('Failed to upload image:', error)
+            setUploadError(`Failed to upload image ${image.file?.name}: ${error.message || 'Unknown error'}`)
+            setIsUploading(false)
+            return
+          }
+        } else {
+          // If no file, use existing path
+          uploadedImages.push({ id: image.id, path: image.path })
+        }
+      }
+
+      // Submit with uploaded file paths
+      onSubmit({
+        prompt: prompt.trim(),
+        videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
+        images: uploadedImages.length > 0 ? uploadedImages : undefined,
+        references: references.length > 0 ? references : undefined,
+        aspectRatio,
+        reviewScenario,
+        reviewScenes,
+      })
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      setUploadError(error.message || 'Failed to upload files')
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
@@ -245,12 +299,18 @@ export default function SceneGenerationForm({ onSubmit, onCancel, isLoading }: S
         </label>
       </div>
 
+      {uploadError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-700">{uploadError}</p>
+        </div>
+      )}
+
       <div className="flex justify-end gap-3">
-        <Button type="button" onClick={onCancel} variant="ghost" disabled={isLoading}>
+        <Button type="button" onClick={onCancel} variant="ghost" disabled={isLoading || isUploading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading || !prompt.trim()}>
-          {isLoading ? 'Generating...' : 'Generate Scene'}
+        <Button type="submit" disabled={isLoading || isUploading || !prompt.trim()}>
+          {isUploading ? 'Uploading files...' : isLoading ? 'Generating...' : 'Generate Scene'}
         </Button>
       </div>
     </form>

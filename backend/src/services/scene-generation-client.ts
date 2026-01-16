@@ -129,6 +129,12 @@ class SceneGenerationClient {
       method: 'DELETE',
     });
   }
+
+  async continueGeneration(generationId: string) {
+    return this.request(`/api/v1/scenes/${generationId}/continue`, {
+      method: 'POST',
+    });
+  }
 }
 
 export const sceneGenerationClient = new SceneGenerationClient();

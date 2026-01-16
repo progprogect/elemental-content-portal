@@ -82,5 +82,10 @@ export const sceneGenerationApi = {
     const response = await apiClient.delete(`/scene-generation/${generationId}`)
     return response.data
   },
+
+  continue: async (generationId: string): Promise<{ id: string; status: string }> => {
+    const response = await apiClient.post(`/scene-generation/${generationId}/continue`)
+    return response.data
+  },
 }
 

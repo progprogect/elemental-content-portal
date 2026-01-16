@@ -14,10 +14,12 @@ model SceneGeneration {
   id            String   @id @default(uuid())
   taskId        String?  @map("task_id")
   publicationId String?  @map("publication_id")
-  status        String   @default("queued") // queued, processing, completed, failed, cancelled
+  status        String   @default("queued") // queued, processing, completed, failed, cancelled, waiting_for_review, waiting_for_scene_review
   phase         String   @default("phase0") // phase0, phase1, phase2, phase3, phase4
   progress      Int      @default(0)        // 0-100
   prompt        String?  @db.Text
+  reviewScenario Boolean  @default(false) @map("review_scenario")
+  reviewScenes  Boolean  @default(false) @map("review_scenes")
   enrichedContext Json?  @map("enriched_context") // Phase 0 output
   scenario      Json?    // Phase 1 output
   sceneProjects Json?    @map("scene_projects") // Phase 2 output

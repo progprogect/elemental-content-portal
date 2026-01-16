@@ -30,13 +30,21 @@ export default function ScenarioReview() {
     },
   })
 
+  const continueMutation = useMutation({
+    mutationFn: () => sceneGenerationApi.continue(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scene-generation', id] })
+      navigate(`/scene-generation/${id}`)
+    },
+  })
+
   const handleSave = (scenario: Scenario) => {
     updateScenarioMutation.mutate(scenario)
   }
 
   const handleApprove = () => {
-    // Navigate back to detail page
-    navigate(`/scene-generation/${id}`)
+    // Continue generation after review
+    continueMutation.mutate()
   }
 
   if (isLoading || !scenarioData) {
@@ -71,12 +79,12 @@ export default function ScenarioReview() {
       </div>
 
       <div className="mt-6 flex justify-end gap-4">
-        <Button onClick={() => navigate(`/scene-generation/${id}`)} variant="ghost">
+        <Button onClick={() => navigate(`/scene-generation/${id}`)} variant="ghost" disabled={continueMutation.isPending}>
           Cancel
         </Button>
-        <Button onClick={handleApprove} variant="primary">
+        <Button onClick={handleApprove} variant="primary" disabled={continueMutation.isPending}>
           <CheckIcon className="h-5 w-5 mr-2" />
-          Approve and Continue
+          {continueMutation.isPending ? 'Continuing...' : 'Approve and Continue'}
         </Button>
       </div>
     </div>

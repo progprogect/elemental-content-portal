@@ -92,6 +92,13 @@ export default function SceneGenerationDetail() {
     },
   })
 
+  const continueMutation = useMutation({
+    mutationFn: () => sceneGenerationApi.continue(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scene-generation', id] })
+    },
+  })
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -145,23 +152,46 @@ export default function SceneGenerationDetail() {
                   ? 'bg-green-100 text-green-800'
                   : generation.status === 'failed'
                   ? 'bg-red-100 text-red-800'
-                  : generation.status === 'processing'
+                  : generation.status === 'processing' || generation.status === 'queued'
                   ? 'bg-blue-100 text-blue-800'
+                  : generation.status === 'waiting_for_review' || generation.status === 'waiting_for_scene_review'
+                  ? 'bg-yellow-100 text-yellow-800'
                   : 'bg-gray-100 text-gray-800'
               }`}
             >
-              {generation.status}
+              {generation.status === 'waiting_for_review' ? 'Waiting for Review' :
+               generation.status === 'waiting_for_scene_review' ? 'Waiting for Scene Review' :
+               generation.status}
             </span>
           </div>
-          {generation.status === 'processing' || generation.status === 'queued' ? (
-            <Button
-              onClick={() => cancelMutation.mutate()}
-              variant="danger"
-              disabled={cancelMutation.isPending}
-            >
-              Cancel
-            </Button>
-          ) : null}
+          <div className="flex gap-2">
+            {generation.status === 'waiting_for_review' && (
+              <Button
+                onClick={() => navigate(`/scene-generation/${id}/review-scenario`)}
+                variant="primary"
+              >
+                Review Scenario
+              </Button>
+            )}
+            {(generation.status === 'waiting_for_review' || generation.status === 'waiting_for_scene_review') && (
+              <Button
+                onClick={() => continueMutation.mutate()}
+                variant="primary"
+                disabled={continueMutation.isPending}
+              >
+                {continueMutation.isPending ? 'Continuing...' : 'Continue Generation'}
+              </Button>
+            )}
+            {(generation.status === 'processing' || generation.status === 'queued') && (
+              <Button
+                onClick={() => cancelMutation.mutate()}
+                variant="danger"
+                disabled={cancelMutation.isPending}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Progress */}
