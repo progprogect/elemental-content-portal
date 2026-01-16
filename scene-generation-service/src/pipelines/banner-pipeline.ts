@@ -175,6 +175,14 @@ export class BannerPipeline {
         const animationHints = sceneProject.extra?.animationHints || sceneProject.scenarioItem.detailedRequest?.animationHints || [];
         
         if (textContent) {
+          logger.debug({ 
+            sceneId: sceneProject.sceneId,
+            frame,
+            textContent,
+            textLength: textContent.length,
+            animationHints,
+            progress,
+          }, 'Rendering text on frame');
           this.renderText(ctx, textContent, width, height, progress, animationHints, visualStyle);
         } else {
           logger.warn({ 
@@ -182,7 +190,7 @@ export class BannerPipeline {
             frame,
             extra: sceneProject.extra,
             detailedRequest: sceneProject.scenarioItem.detailedRequest,
-          }, 'No text content to render');
+          }, 'No text content to render on frame');
         }
 
         // Save frame
@@ -416,8 +424,19 @@ export class BannerPipeline {
     visualStyle: string[] = []
   ): void {
     if (!text || text.trim().length === 0) {
+      logger.warn({ text, textLength: text?.length }, 'renderText called with empty text');
       return;
     }
+    
+    logger.debug({ 
+      text: text.substring(0, 50),
+      textLength: text.length,
+      width,
+      height,
+      progress,
+      animationHints,
+      visualStyle,
+    }, 'renderText: Starting text rendering');
 
     // Determine text color based on background
     const isDarkBackground = visualStyle.includes('blue') || visualStyle.includes('dark');
