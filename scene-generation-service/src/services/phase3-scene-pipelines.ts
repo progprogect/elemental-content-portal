@@ -44,14 +44,62 @@ export async function phase3ScenePipelines(
 
     const renderedScenes: RenderedScene[] = [];
 
+    // Log input data for Phase 3
+    logger.info({ 
+      generationId, 
+      sceneProjectsCount: sceneProjects.length,
+      sceneProjects: sceneProjects.map(sp => ({
+        sceneId: sp.sceneId,
+        kind: sp.kind,
+        hasVideo: !!sp.inputs.video,
+        hasImages: !!sp.inputs.images?.length,
+        renderContext: sp.renderContext,
+        extraKeys: Object.keys(sp.extra || {}),
+      })),
+      tempDir,
+    }, 'Phase 3: Input data - SceneProjects received');
+
     // Process scenes in parallel (with concurrency limit)
     const concurrency = 3; // Process 3 scenes at a time
     for (let i = 0; i < sceneProjects.length; i += concurrency) {
       const batch = sceneProjects.slice(i, i + concurrency);
       
+      logger.info({ 
+        generationId, 
+        batchIndex: i, 
+        batchSize: batch.length,
+        batchSceneIds: batch.map(sp => sp.sceneId),
+      }, 'Phase 3: Processing batch of scenes');
+      
       // Use Promise.allSettled to continue processing even if some scenes fail
       const batchResults = await Promise.allSettled(
         batch.map(async (sceneProject) => {
+          // Log input SceneProject data
+          logger.info({ 
+            sceneId: sceneProject.sceneId, 
+            kind: sceneProject.kind,
+            generationId,
+            sceneProjectInput: {
+              sceneId: sceneProject.sceneId,
+              kind: sceneProject.kind,
+              renderContext: sceneProject.renderContext,
+              inputs: {
+                hasVideo: !!sceneProject.inputs.video,
+                videoId: sceneProject.inputs.video?.id,
+                videoSegment: sceneProject.inputs.video ? `${sceneProject.inputs.video.fromSeconds}-${sceneProject.inputs.video.toSeconds}s` : null,
+                imageIds: sceneProject.inputs.images || [],
+                imageCount: sceneProject.inputs.images?.length || 0,
+              },
+              extra: sceneProject.extra,
+              scenarioItem: {
+                id: sceneProject.scenarioItem.id,
+                kind: sceneProject.scenarioItem.kind,
+                durationSeconds: sceneProject.scenarioItem.durationSeconds,
+                hasDetailedRequest: !!sceneProject.scenarioItem.detailedRequest,
+              },
+            },
+          }, 'Phase 3: Starting render - SceneProject input data');
+          
           // Update scene status to processing
           await prisma.scene.updateMany({
             where: {
@@ -69,9 +117,21 @@ export async function phase3ScenePipelines(
             sceneId: sceneProject.sceneId, 
             kind: sceneProject.scenarioItem.kind,
             generationId,
-          }, 'Rendering scene');
+          }, 'Phase 3: Calling pipeline registry render');
           
           const renderedScene = await pipelineRegistry.render(sceneProject, renderContext);
+          
+          // Log output RenderedScene data
+          logger.info({ 
+            sceneId: sceneProject.sceneId,
+            renderedSceneOutput: {
+              sceneId: renderedScene.sceneId,
+              renderedAssetPath: renderedScene.renderedAssetPath,
+              renderedAssetUrl: renderedScene.renderedAssetUrl,
+              duration: renderedScene.duration,
+            },
+            generationId,
+          }, 'Phase 3: Render completed - RenderedScene output data');
           
           logger.info({ 
             sceneId: sceneProject.sceneId,
@@ -112,6 +172,11 @@ export async function phase3ScenePipelines(
         const sceneProject = batch[j];
         
         if (result.status === 'fulfilled') {
+          logger.info({ 
+            sceneId: sceneProject.sceneId,
+            renderedScene: result.value,
+            generationId,
+          }, 'Phase 3: Scene render succeeded - adding to renderedScenes array');
           renderedScenes.push(result.value);
         } else {
           // Scene failed - already logged in pipeline, just update status
@@ -189,11 +254,21 @@ export async function phase3ScenePipelines(
       },
     });
 
+    // Log final output summary
     logger.info({ 
       generationId, 
       renderedSceneCount: renderedScenes.length,
       totalScenes: sceneProjects.length,
-    }, 'Phase 3 completed');
+      renderedScenes: renderedScenes.map(rs => ({
+        sceneId: rs.sceneId,
+        renderedAssetPath: rs.renderedAssetPath,
+        renderedAssetUrl: rs.renderedAssetUrl,
+        duration: rs.duration,
+      })),
+      allRenderedScenesHavePath: renderedScenes.every(rs => !!rs.renderedAssetPath),
+      allRenderedScenesHaveUrl: renderedScenes.every(rs => !!rs.renderedAssetUrl),
+      allRenderedScenesHaveDuration: renderedScenes.every(rs => rs.duration > 0),
+    }, 'Phase 3 completed - Final output summary');
     return renderedScenes;
   } catch (error: any) {
     logger.error({ error, generationId }, 'Phase 3 failed');

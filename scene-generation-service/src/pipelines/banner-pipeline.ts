@@ -17,7 +17,19 @@ export class BannerPipeline {
   }
 
   async render(sceneProject: SceneProject, context: RenderContext): Promise<RenderedScene> {
-    logger.info({ sceneId: sceneProject.sceneId }, 'Starting banner pipeline render');
+    logger.info({ 
+      sceneId: sceneProject.sceneId,
+      inputData: {
+        sceneId: sceneProject.sceneId,
+        kind: sceneProject.kind,
+        durationSeconds: sceneProject.scenarioItem.durationSeconds,
+        renderContext: sceneProject.renderContext,
+        hasImages: !!sceneProject.inputs.images?.length,
+        imageIds: sceneProject.inputs.images || [],
+        extra: sceneProject.extra,
+        detailedRequest: sceneProject.scenarioItem.detailedRequest,
+      },
+    }, 'Banner Pipeline: Starting render - Input SceneProject');
 
     const { storage, tempDir } = context;
     const duration = sceneProject.scenarioItem.durationSeconds || 5;
@@ -25,6 +37,18 @@ export class BannerPipeline {
     const width = sceneProject.renderContext.width;
     const height = sceneProject.renderContext.height;
     const totalFrames = Math.ceil(duration * fps);
+    
+    logger.info({ 
+      sceneId: sceneProject.sceneId,
+      renderParams: {
+        duration,
+        fps,
+        width,
+        height,
+        totalFrames,
+        tempDir,
+      },
+    }, 'Banner Pipeline: Render parameters calculated');
 
     try {
       // Step 1: Load or generate images
@@ -189,19 +213,28 @@ export class BannerPipeline {
         fs.unlinkSync(outputVideoPath);
       }
 
-      logger.info({ 
-        sceneId: sceneProject.sceneId, 
-        duration,
-        renderedAssetPath: uploadResult.path,
-        renderedAssetUrl,
-      }, 'Banner pipeline render completed');
-
-      return {
+      const result: RenderedScene = {
         sceneId: sceneProject.sceneId,
         renderedAssetPath: uploadResult.path,
         renderedAssetUrl,
         duration,
       };
+      
+      logger.info({ 
+        sceneId: sceneProject.sceneId, 
+        outputData: {
+          sceneId: result.sceneId,
+          renderedAssetPath: result.renderedAssetPath,
+          renderedAssetUrl: result.renderedAssetUrl,
+          duration: result.duration,
+          hasPath: !!result.renderedAssetPath,
+          hasUrl: !!result.renderedAssetUrl,
+          urlFormat: result.renderedAssetUrl?.startsWith('http') ? 'http' : 'other',
+          pathFormat: result.renderedAssetPath?.includes('.mp4') ? 'mp4' : 'other',
+        },
+      }, 'Banner Pipeline: Render completed - Output RenderedScene');
+
+      return result;
     } catch (error: any) {
       logger.error({ error, sceneId: sceneProject.sceneId }, 'Banner pipeline render failed');
       throw error;

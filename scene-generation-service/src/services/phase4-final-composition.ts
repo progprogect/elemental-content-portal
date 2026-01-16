@@ -36,6 +36,8 @@ export async function phase4FinalComposition(
 
     // Step 1: Get successfully rendered scenes from database, sorted by orderIndex
     // This ensures correct order even if some scenes failed
+    logger.info({ generationId }, 'Phase 4: Fetching completed scenes from database');
+    
     const completedScenes = await prisma.scene.findMany({
       where: {
         sceneGenerationId: generationId,
@@ -46,6 +48,19 @@ export async function phase4FinalComposition(
         orderIndex: 'asc',
       },
     });
+
+    logger.info({ 
+      generationId,
+      completedScenesCount: completedScenes.length,
+      completedScenes: completedScenes.map(s => ({
+        sceneId: s.sceneId,
+        orderIndex: s.orderIndex,
+        renderedAssetPath: s.renderedAssetPath,
+        renderedAssetUrl: s.renderedAssetUrl,
+        hasPath: !!s.renderedAssetPath,
+        hasUrl: !!s.renderedAssetUrl,
+      })),
+    }, 'Phase 4: Completed scenes fetched from database');
 
     if (completedScenes.length === 0) {
       throw new Error('No scenes were successfully rendered');
@@ -121,7 +136,19 @@ export async function phase4FinalComposition(
         
         const scenePath = path.join(tempDir, `scene-${i}.mp4`);
         fs.writeFileSync(scenePath, sceneBuffer);
-        logger.info({ sceneId: scene.sceneId, scenePath, fileSize: sceneBuffer.length }, 'Scene saved to temp file');
+        
+        // Verify file was created and has content
+        const fileStats = fs.statSync(scenePath);
+        logger.info({ 
+          sceneId: scene.sceneId, 
+          sceneIndex: i,
+          scenePath, 
+          fileSize: sceneBuffer.length,
+          fileSizeOnDisk: fileStats.size,
+          fileExists: fs.existsSync(scenePath),
+          isFile: fileStats.isFile(),
+        }, 'Phase 4: Scene saved to temp file - verification');
+        
         sceneVideoPaths.push(scenePath);
       } catch (error: any) {
         logger.error({ 
@@ -140,19 +167,80 @@ export async function phase4FinalComposition(
       throw new Error('No scene videos available for composition');
     }
 
+    // Verify all scene files exist and have content
+    logger.info({ 
+      generationId,
+      sceneVideoPathsCount: sceneVideoPaths.length,
+      sceneVideoPaths: sceneVideoPaths.map((p, idx) => {
+        const stats = fs.existsSync(p) ? fs.statSync(p) : null;
+        return {
+          index: idx,
+          path: p,
+          exists: fs.existsSync(p),
+          size: stats?.size || 0,
+          isFile: stats?.isFile() || false,
+        };
+      }),
+      allFilesExist: sceneVideoPaths.every(p => fs.existsSync(p)),
+      allFilesHaveSize: sceneVideoPaths.every(p => {
+        if (!fs.existsSync(p)) return false;
+        const stats = fs.statSync(p);
+        return stats.size > 0;
+      }),
+    }, 'Phase 4: Scene video files verification before concatenation');
+
     // Step 3: Create concat file list for FFmpeg
     const concatFilePath = path.join(tempDir, 'concat.txt');
     const concatLines = sceneVideoPaths.map((p) => `file '${p}'`).join('\n');
     fs.writeFileSync(concatFilePath, concatLines);
+    
+    logger.info({ 
+      generationId,
+      concatFilePath,
+      concatLines,
+      concatFileSize: fs.statSync(concatFilePath).size,
+    }, 'Phase 4: FFmpeg concat file created');
 
     // Step 4: Concatenate videos with transitions
     const outputPath = path.join(tempDir, `final-${generationId}.mp4`);
+    logger.info({ 
+      generationId,
+      outputPath,
+      inputScenesCount: sceneVideoPaths.length,
+    }, 'Phase 4: Starting video concatenation');
+    
     await concatenateVideos(concatFilePath, outputPath);
+    
+    // Verify output file
+    const outputStats = fs.statSync(outputPath);
+    logger.info({ 
+      generationId,
+      outputPath,
+      outputFileSize: outputStats.size,
+      outputFileExists: fs.existsSync(outputPath),
+      outputIsFile: outputStats.isFile(),
+      outputHasContent: outputStats.size > 0,
+    }, 'Phase 4: Video concatenation completed - output file verification');
 
     // Step 5: Upload final video to storage
     const finalVideoBuffer = fs.readFileSync(outputPath);
+    logger.info({ 
+      generationId,
+      finalVideoBufferSize: finalVideoBuffer.length,
+      storagePath: `scene-generation/generations/${generationId}/final.mp4`,
+    }, 'Phase 4: Uploading final video to storage');
+    
     const storagePath = `scene-generation/generations/${generationId}/final.mp4`;
     const uploadResult = await storage.upload(finalVideoBuffer, 'final.mp4', storagePath);
+    
+    logger.info({ 
+      generationId,
+      uploadResult: {
+        path: uploadResult.path,
+        url: uploadResult.url,
+        size: uploadResult.size,
+      },
+    }, 'Phase 4: Final video uploaded to storage');
 
     // Get public URL
     const resultUrl = uploadResult.url;

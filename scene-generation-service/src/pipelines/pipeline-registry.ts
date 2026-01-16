@@ -30,11 +30,39 @@ export class PipelineRegistry {
   }
 
   async render(sceneProject: SceneProject, context: RenderContext): Promise<RenderedScene> {
+    const { logger } = await import('../config/logger');
+    
+    logger.info({ 
+      sceneId: sceneProject.sceneId,
+      kind: sceneProject.kind,
+      availablePipelines: this.pipelines.map(p => p.constructor.name),
+    }, 'Pipeline Registry: Selecting pipeline for scene');
+    
     const pipeline = await this.getPipeline(sceneProject.kind);
     if (!pipeline) {
       throw new Error(`No pipeline found for scene kind: ${sceneProject.kind}`);
     }
-    return pipeline.render(sceneProject, context);
+    
+    logger.info({ 
+      sceneId: sceneProject.sceneId,
+      kind: sceneProject.kind,
+      selectedPipeline: pipeline.constructor.name,
+    }, 'Pipeline Registry: Pipeline selected, calling render');
+    
+    const result = await pipeline.render(sceneProject, context);
+    
+    logger.info({ 
+      sceneId: sceneProject.sceneId,
+      kind: sceneProject.kind,
+      result: {
+        sceneId: result.sceneId,
+        renderedAssetPath: result.renderedAssetPath,
+        renderedAssetUrl: result.renderedAssetUrl,
+        duration: result.duration,
+      },
+    }, 'Pipeline Registry: Render completed, returning RenderedScene');
+    
+    return result;
   }
 
   async getPipeline(kind: SceneKind): Promise<ScenePipeline | null> {

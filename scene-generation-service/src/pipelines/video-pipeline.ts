@@ -28,7 +28,16 @@ export class VideoPipeline {
   }
 
   async render(sceneProject: SceneProject, context: RenderContext): Promise<RenderedScene> {
-    logger.info({ sceneId: sceneProject.sceneId }, 'Starting video pipeline render');
+    logger.info({ 
+      sceneId: sceneProject.sceneId,
+      inputData: {
+        sceneId: sceneProject.sceneId,
+        kind: sceneProject.kind,
+        videoInput: sceneProject.inputs.video,
+        renderContext: sceneProject.renderContext,
+        tempDir: context.tempDir,
+      },
+    }, 'Video Pipeline: Starting render - Input SceneProject');
 
     if (!sceneProject.inputs.video) {
       throw new Error('Video input is required for video pipeline');
@@ -36,6 +45,16 @@ export class VideoPipeline {
 
     const { video } = sceneProject.inputs;
     const { storage, tempDir } = context;
+    
+    logger.info({ 
+      sceneId: sceneProject.sceneId,
+      videoInput: {
+        id: video.id,
+        fromSeconds: video.fromSeconds,
+        toSeconds: video.toSeconds,
+        segmentDuration: video.toSeconds - video.fromSeconds,
+      },
+    }, 'Video Pipeline: Video input parameters');
 
     try {
       // Download source video
@@ -75,14 +94,28 @@ export class VideoPipeline {
         }
       });
 
-      logger.info({ sceneId: sceneProject.sceneId, duration }, 'Video pipeline render completed');
-
-      return {
+      const result: RenderedScene = {
         sceneId: sceneProject.sceneId,
         renderedAssetPath: uploadResult.path,
         renderedAssetUrl,
         duration,
       };
+      
+      logger.info({ 
+        sceneId: sceneProject.sceneId,
+        outputData: {
+          sceneId: result.sceneId,
+          renderedAssetPath: result.renderedAssetPath,
+          renderedAssetUrl: result.renderedAssetUrl,
+          duration: result.duration,
+          hasPath: !!result.renderedAssetPath,
+          hasUrl: !!result.renderedAssetUrl,
+          urlFormat: result.renderedAssetUrl?.startsWith('http') ? 'http' : 'other',
+          pathFormat: result.renderedAssetPath?.includes('.mp4') ? 'mp4' : 'other',
+        },
+      }, 'Video Pipeline: Render completed - Output RenderedScene');
+
+      return result;
     } catch (error: any) {
       logger.error({ error, sceneId: sceneProject.sceneId }, 'Video pipeline render failed');
       throw error;
