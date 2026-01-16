@@ -68,59 +68,73 @@ export class BannerPipeline {
         }
       }
       
-      // Generate images if we don't have any
+      // Generate images ONLY if explicitly requested via imageHints
+      // Don't auto-generate for simple text banners
       if (images.length === 0) {
-        const description = sceneProject.scenarioItem.detailedRequest?.description || sceneProject.scenarioItem.detailedRequest?.goal || 'beautiful scene';
         const imageHints = sceneProject.scenarioItem.detailedRequest?.imageHints || [];
-        const visualStyle = sceneProject.scenarioItem.detailedRequest?.visualStyle || [];
+        const hasExplicitImageRequest = imageHints.length > 0 && 
+          imageHints.some(hint => 
+            hint.toLowerCase().includes('image') || 
+            hint.toLowerCase().includes('photo') || 
+            hint.toLowerCase().includes('picture') ||
+            hint.toLowerCase().includes('illustration')
+          );
         
-        // Build prompt for image generation
-        let imagePrompt = description;
-        if (imageHints.length > 0) {
-          imagePrompt += ', ' + imageHints.join(', ');
-        }
-        if (visualStyle.length > 0) {
-          imagePrompt += ', style: ' + visualStyle.join(', ');
-        }
-        imagePrompt += ', high quality, professional, cinematic';
-        
-        logger.info({ 
-          sceneId: sceneProject.sceneId, 
-          imagePrompt,
-          description,
-          imageHints,
-          visualStyle,
-        }, 'Generating image for banner');
-        
-        try {
-          // Calculate aspect ratio from width/height
-          const aspectRatio = width / height;
-          let aspectRatioStr: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' = '16:9';
-          if (Math.abs(aspectRatio - 1) < 0.1) {
-            aspectRatioStr = '1:1';
-          } else if (Math.abs(aspectRatio - 16/9) < 0.1) {
-            aspectRatioStr = '16:9';
-          } else if (Math.abs(aspectRatio - 9/16) < 0.1) {
-            aspectRatioStr = '9:16';
-          } else if (Math.abs(aspectRatio - 4/3) < 0.1) {
-            aspectRatioStr = '4:3';
-          } else if (Math.abs(aspectRatio - 3/4) < 0.1) {
-            aspectRatioStr = '3:4';
+        // Only generate image if explicitly requested
+        if (hasExplicitImageRequest) {
+          const description = sceneProject.scenarioItem.detailedRequest?.description || sceneProject.scenarioItem.detailedRequest?.goal || 'beautiful scene';
+          const visualStyle = sceneProject.scenarioItem.detailedRequest?.visualStyle || [];
+          
+          // Build prompt for image generation - use imageHints, not description
+          let imagePrompt = imageHints.join(', ');
+          if (visualStyle.length > 0) {
+            imagePrompt += ', style: ' + visualStyle.join(', ');
           }
+          imagePrompt += ', high quality, professional, cinematic, abstract background';
           
-          const generatedImageResult = await generateImage({
-            prompt: imagePrompt,
-            aspectRatio: aspectRatioStr,
-          }, {
-            storage,
-          });
+          logger.info({ 
+            sceneId: sceneProject.sceneId, 
+            imagePrompt,
+            imageHints,
+            visualStyle,
+          }, 'Generating image for banner (explicitly requested)');
           
-          // Download the generated image from storage
-          const imageBuffer = await storage.download(generatedImageResult.assetPath);
-          images.push(imageBuffer);
-          logger.info({ sceneId: sceneProject.sceneId, imageSize: imageBuffer.length, assetPath: generatedImageResult.assetPath }, 'Image generated and downloaded successfully');
-        } catch (error: any) {
-          logger.error({ error: error.message, sceneId: sceneProject.sceneId }, 'Failed to generate image, continuing without image');
+          try {
+            // Calculate aspect ratio from width/height
+            const aspectRatio = width / height;
+            let aspectRatioStr: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' = '16:9';
+            if (Math.abs(aspectRatio - 1) < 0.1) {
+              aspectRatioStr = '1:1';
+            } else if (Math.abs(aspectRatio - 16/9) < 0.1) {
+              aspectRatioStr = '16:9';
+            } else if (Math.abs(aspectRatio - 9/16) < 0.1) {
+              aspectRatioStr = '9:16';
+            } else if (Math.abs(aspectRatio - 4/3) < 0.1) {
+              aspectRatioStr = '4:3';
+            } else if (Math.abs(aspectRatio - 3/4) < 0.1) {
+              aspectRatioStr = '3:4';
+            }
+            
+            const generatedImageResult = await generateImage({
+              prompt: imagePrompt,
+              aspectRatio: aspectRatioStr,
+            }, {
+              storage,
+            });
+            
+            // Download the generated image from storage
+            const imageBuffer = await storage.download(generatedImageResult.assetPath);
+            images.push(imageBuffer);
+            logger.info({ sceneId: sceneProject.sceneId, imageSize: imageBuffer.length, assetPath: generatedImageResult.assetPath }, 'Image generated and downloaded successfully');
+          } catch (error: any) {
+            logger.error({ error: error.message, sceneId: sceneProject.sceneId }, 'Failed to generate image, continuing without image');
+          }
+        } else {
+          logger.info({ 
+            sceneId: sceneProject.sceneId,
+            imageHints,
+            reason: 'No explicit image request - using background only for text banner',
+          }, 'Skipping image generation for simple text banner');
         }
       }
 
@@ -148,12 +162,12 @@ export class BannerPipeline {
         const visualStyle = sceneProject.extra?.visualStyle || sceneProject.scenarioItem.detailedRequest?.visualStyle || [];
         this.renderBackground(ctx, width, height, visualStyle);
 
-        // Render images
+        // Render images FIRST (as background layer)
         if (images.length > 0) {
           await this.renderImages(ctx, images, width, height, progress);
         }
 
-        // Render text
+        // Render text LAST (on top of images/background)
         const textContent = sceneProject.extra?.textContent || 
                            sceneProject.scenarioItem.detailedRequest?.textContent ||
                            sceneProject.scenarioItem.detailedRequest?.description ||
@@ -162,6 +176,13 @@ export class BannerPipeline {
         
         if (textContent) {
           this.renderText(ctx, textContent, width, height, progress, animationHints, visualStyle);
+        } else {
+          logger.warn({ 
+            sceneId: sceneProject.sceneId,
+            frame,
+            extra: sceneProject.extra,
+            detailedRequest: sceneProject.scenarioItem.detailedRequest,
+          }, 'No text content to render');
         }
 
         // Save frame
@@ -447,8 +468,10 @@ export class BannerPipeline {
         ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
       }
     } else if (animationHints.includes('fade-in')) {
-      // Fade in
-      ctx.globalAlpha = Math.min(1, progress * 2);
+      // Fade in - start from 0.1 opacity so text is visible even on first frame
+      const minOpacity = 0.1;
+      const fadeProgress = Math.min(1, progress * 2);
+      ctx.globalAlpha = minOpacity + (fadeProgress * (1 - minOpacity));
       
       // Wrap text for fade-in
       for (let i = 0; i < words.length && yOffset < maxLines * lineHeight; i++) {
