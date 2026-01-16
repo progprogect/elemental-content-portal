@@ -158,7 +158,7 @@ try {
     logger.error({ jobId: job?.id, error: err }, 'Job failed');
   });
 
-  sceneGenerationWorker.on('error', (err) => {
+  sceneGenerationWorker.on('error', (err: any) => {
     // Log as warning if it's a connection issue, error otherwise
     if (err.message?.includes('connect') || err.message?.includes('ECONNREFUSED') || err.code === 'ECONNREFUSED') {
       logger.warn({ error: err.message || err }, 'Scene generation worker Redis connection issue (will retry)');
@@ -167,7 +167,7 @@ try {
     }
   });
 
-  sceneGenerationQueue.on('error', (err) => {
+  sceneGenerationQueue.on('error', (err: any) => {
     // Log as warning if it's a connection issue, error otherwise
     if (err.message?.includes('connect') || err.message?.includes('ECONNREFUSED') || err.code === 'ECONNREFUSED') {
       logger.warn({ error: err.message || err }, 'Scene generation queue Redis connection issue (will retry)');

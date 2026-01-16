@@ -1,6 +1,6 @@
 import { SceneProject } from '../types/scene-generation';
 import { logger } from '../config/logger';
-import { createStorageAdapter, StorageAdapter, generateImage, AIConfig } from '@elemental-content/shared-ai-lib';
+import { createStorageAdapter, StorageAdapter, generateImage } from '@elemental-content/shared-ai-lib';
 import { RenderedScene, RenderContext } from './video-pipeline';
 import { createCanvas, loadImage, CanvasRenderingContext2D } from 'canvas';
 import * as fs from 'fs';
@@ -69,13 +69,32 @@ export class BannerPipeline {
         }, 'Generating image for banner');
         
         try {
-          const generatedImage = await generateImage({
+          // Calculate aspect ratio from width/height
+          const aspectRatio = width / height;
+          let aspectRatioStr: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' = '16:9';
+          if (Math.abs(aspectRatio - 1) < 0.1) {
+            aspectRatioStr = '1:1';
+          } else if (Math.abs(aspectRatio - 16/9) < 0.1) {
+            aspectRatioStr = '16:9';
+          } else if (Math.abs(aspectRatio - 9/16) < 0.1) {
+            aspectRatioStr = '9:16';
+          } else if (Math.abs(aspectRatio - 4/3) < 0.1) {
+            aspectRatioStr = '4:3';
+          } else if (Math.abs(aspectRatio - 3/4) < 0.1) {
+            aspectRatioStr = '3:4';
+          }
+          
+          const generatedImageResult = await generateImage({
             prompt: imagePrompt,
-            width: width,
-            height: height,
+            aspectRatio: aspectRatioStr,
+          }, {
+            storage,
           });
-          images.push(generatedImage);
-          logger.info({ sceneId: sceneProject.sceneId, imageSize: generatedImage.length }, 'Image generated successfully');
+          
+          // Download the generated image from storage
+          const imageBuffer = await storage.download(generatedImageResult.assetPath);
+          images.push(imageBuffer);
+          logger.info({ sceneId: sceneProject.sceneId, imageSize: imageBuffer.length, assetPath: generatedImageResult.assetPath }, 'Image generated and downloaded successfully');
         } catch (error: any) {
           logger.error({ error: error.message, sceneId: sceneProject.sceneId }, 'Failed to generate image, continuing without image');
         }
@@ -99,7 +118,8 @@ export class BannerPipeline {
         ctx.fillRect(0, 0, width, height);
 
         // Apply background (gradient or color)
-        this.renderBackground(ctx, width, height, sceneProject.extra?.visualStyle || []);
+        const visualStyle = sceneProject.extra?.visualStyle || sceneProject.scenarioItem.detailedRequest?.visualStyle || [];
+        this.renderBackground(ctx, width, height, visualStyle);
 
         // Render images
         if (images.length > 0) {
@@ -111,7 +131,6 @@ export class BannerPipeline {
                            sceneProject.scenarioItem.detailedRequest?.textContent ||
                            sceneProject.scenarioItem.detailedRequest?.description ||
                            '';
-        const visualStyle = sceneProject.extra?.visualStyle || sceneProject.scenarioItem.detailedRequest?.visualStyle || [];
         const animationHints = sceneProject.extra?.animationHints || sceneProject.scenarioItem.detailedRequest?.animationHints || [];
         
         if (textContent) {
@@ -309,14 +328,15 @@ export class BannerPipeline {
       // Typewriter effect
       const charsToShow = Math.floor(text.length * progress);
       const displayText = text.substring(0, charsToShow);
+      const displayWords = displayText.split(' ').filter(w => w.length > 0);
       
-      // Wrap text for typewriter
-      for (let i = 0; i < words.length && yOffset < maxLines * lineHeight; i++) {
-        const testLine = line + words[i] + ' ';
+      // Wrap text for typewriter using displayWords
+      for (let i = 0; i < displayWords.length && yOffset < maxLines * lineHeight; i++) {
+        const testLine = line + displayWords[i] + ' ';
         const metrics = ctx.measureText(testLine);
         if (metrics.width > maxWidth && line.length > 0) {
           ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
-          line = words[i] + ' ';
+          line = displayWords[i] + ' ';
           yOffset += lineHeight;
         } else {
           line = testLine;

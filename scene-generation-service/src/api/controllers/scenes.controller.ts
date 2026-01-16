@@ -58,8 +58,12 @@ export async function generateScenes(req: Request, res: Response) {
   }, 'Received generation request with review flags');
 
   try {
-    const reviewScenario = data.reviewScenario === true || data.reviewScenario === 'true';
-    const reviewScenes = data.reviewScenes === true || data.reviewScenes === 'true';
+    // Handle both boolean and string values from HTTP requests
+    // TypeScript sees this as boolean | undefined, but HTTP can send strings
+    const reviewScenarioValue = data.reviewScenario as boolean | string | undefined;
+    const reviewScenesValue = data.reviewScenes as boolean | string | undefined;
+    const reviewScenario = reviewScenarioValue === true || reviewScenarioValue === 'true' || String(reviewScenarioValue) === 'true';
+    const reviewScenes = reviewScenesValue === true || reviewScenesValue === 'true' || String(reviewScenesValue) === 'true';
 
     logger.info({ 
       reviewScenario, 
