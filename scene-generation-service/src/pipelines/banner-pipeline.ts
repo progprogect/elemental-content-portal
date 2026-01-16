@@ -466,37 +466,64 @@ export class BannerPipeline {
   private framesToVideo(framesDir: string, outputPath: string, fps: number, expectedFrameCount: number): Promise<void> {
     return new Promise((resolve, reject) => {
       // Use absolute path for input pattern to avoid issues
-      const inputPattern = path.resolve(framesDir, 'frame-%06d.png');
+      const absFramesDir = path.resolve(framesDir);
+      const inputPattern = path.join(absFramesDir, 'frame-%06d.png');
       let ffmpegStderr = '';
 
       // Verify first frame exists before starting
-      const firstFramePath = path.resolve(framesDir, 'frame-000000.png');
+      const firstFramePath = path.join(absFramesDir, 'frame-000000.png');
       if (!fs.existsSync(firstFramePath)) {
         const error = new Error(`First frame not found: ${firstFramePath}`);
         logger.error({ 
           firstFramePath,
-          framesDir,
-          filesInDir: fs.readdirSync(framesDir).slice(0, 10),
+          framesDir: absFramesDir,
+          filesInDir: fs.readdirSync(absFramesDir).slice(0, 10),
         }, 'First frame verification failed');
         return reject(error);
       }
 
+      // Verify a few more frames exist
+      const sampleFrames = [0, 1, Math.floor(expectedFrameCount / 2), expectedFrameCount - 1].filter(n => n >= 0 && n < expectedFrameCount);
+      const frameChecks = sampleFrames.map(n => {
+        const frameName = `frame-${n.toString().padStart(6, '0')}.png`;
+        const framePath = path.join(absFramesDir, frameName);
+        return {
+          index: n,
+          name: frameName,
+          path: framePath,
+          exists: fs.existsSync(framePath),
+          size: fs.existsSync(framePath) ? fs.statSync(framePath).size : 0,
+        };
+      });
+
+      const missingFrames = frameChecks.filter(f => !f.exists || f.size === 0);
+      if (missingFrames.length > 0) {
+        const error = new Error(`Some sample frames are missing or empty: ${missingFrames.map(f => f.name).join(', ')}`);
+        logger.error({ 
+          missingFrames,
+          frameChecks,
+          framesDir: absFramesDir,
+        }, 'Frame verification failed');
+        return reject(error);
+      }
+
       logger.info({ 
-        framesDir: path.resolve(framesDir), 
+        framesDir: absFramesDir, 
         outputPath: path.resolve(outputPath), 
         inputPattern, 
         fps,
         expectedFrameCount,
-        firstFrameExists: fs.existsSync(firstFramePath),
-        firstFrameSize: fs.statSync(firstFramePath).size,
+        frameChecks,
+        allFramesExist: frameChecks.every(f => f.exists && f.size > 0),
       }, 'Starting FFmpeg conversion with verified inputs');
 
+      // Try using pattern_type sequence which is more reliable
       const ffmpegProcess = ffmpeg()
         .input(inputPattern)
-        .inputFPS(fps)
         .inputOptions([
           '-framerate', fps.toString(),
           '-start_number', '0',
+          '-pattern_type', 'sequence', // Use sequence pattern type
         ])
         .outputOptions([
           '-c:v', 'libx264',
@@ -504,12 +531,14 @@ export class BannerPipeline {
           '-r', fps.toString(),
           '-y', // Overwrite output file if exists
           '-movflags', '+faststart', // Optimize for web playback
+          '-preset', 'medium', // Encoding preset
+          '-crf', '23', // Quality setting
         ])
         .output(outputPath)
         .on('start', (commandLine) => {
           logger.info({ 
             commandLine, 
-            framesDir: path.resolve(framesDir), 
+            framesDir: absFramesDir, 
             outputPath: path.resolve(outputPath),
             inputPattern,
           }, 'FFmpeg command started');
@@ -540,6 +569,12 @@ export class BannerPipeline {
           }
           
           const outputStats = fs.statSync(outputPath);
+          if (outputStats.size === 0) {
+            const error = new Error(`Output video file is empty: ${outputPath}`);
+            logger.error({ outputPath, framesDir, outputSize: outputStats.size, stderr: ffmpegStderr }, 'FFmpeg completed but output file is empty');
+            return reject(error);
+          }
+          
           logger.info({ 
             framesDir, 
             outputPath,
@@ -554,35 +589,24 @@ export class BannerPipeline {
           const errorCode = err?.code || 'UNKNOWN';
           const errorStack = err?.stack || '';
           
-          // Check if input files exist
-          const sampleFrames = ['frame-000000.png', 'frame-000001.png', 'frame-000002.png'];
-          const frameCheck = sampleFrames.map(f => {
-            const framePath = path.join(framesDir, f);
-            return {
-              name: f,
-              path: framePath,
-              exists: fs.existsSync(framePath),
-              size: fs.existsSync(framePath) ? fs.statSync(framePath).size : 0,
-            };
-          });
-          
           logger.error({ 
             error: {
               message: errorMessage,
               code: errorCode,
               stack: errorStack,
-              stderr: ffmpegStderr.substring(0, 1000), // First 1000 chars
+              stderr: ffmpegStderr.substring(0, 2000), // First 2000 chars
             },
-            framesDir: path.resolve(framesDir), 
+            framesDir: absFramesDir, 
             outputPath: path.resolve(outputPath),
             inputPattern,
             fps,
             expectedFrameCount,
-            frameCheck,
-            allFramesInDir: fs.readdirSync(framesDir).filter(f => f.endsWith('.png')).length,
+            frameChecks,
+            allFramesInDir: fs.readdirSync(absFramesDir).filter(f => f.endsWith('.png')).length,
+            sampleFrameFiles: fs.readdirSync(absFramesDir).filter(f => f.endsWith('.png')).slice(0, 10),
           }, 'Failed to convert frames to video');
           
-          reject(new Error(`Failed to convert frames to video: ${errorMessage} (code: ${errorCode}). FFmpeg stderr: ${ffmpegStderr.substring(0, 1000)}`));
+          reject(new Error(`Failed to convert frames to video: ${errorMessage} (code: ${errorCode}). FFmpeg stderr: ${ffmpegStderr.substring(0, 2000)}`));
         });
 
       ffmpegProcess.run();
