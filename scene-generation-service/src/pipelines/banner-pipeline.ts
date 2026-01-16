@@ -32,14 +32,53 @@ export class BannerPipeline {
       
       if (sceneProject.inputs.images && sceneProject.inputs.images.length > 0) {
         // Load existing images from storage
+        logger.info({ sceneId: sceneProject.sceneId, imageCount: sceneProject.inputs.images.length }, 'Loading images from storage');
         for (const imageId of sceneProject.inputs.images) {
-          const imageBuffer = await storage.download(imageId);
-          images.push(imageBuffer);
+          try {
+            const imageBuffer = await storage.download(imageId);
+            images.push(imageBuffer);
+            logger.debug({ sceneId: sceneProject.sceneId, imageId, bufferSize: imageBuffer.length }, 'Image loaded from storage');
+          } catch (error: any) {
+            logger.warn({ error: error.message, sceneId: sceneProject.sceneId, imageId }, 'Failed to load image from storage, will generate new one');
+          }
         }
-      } else if (sceneProject.extra?.imageHints && sceneProject.extra.imageHints.length > 0) {
-        // Generate images if needed (simplified - would use LLM for better prompts)
-        logger.info({ sceneId: sceneProject.sceneId }, 'Generating images for banner');
-        // For MVP, skip image generation - use placeholder
+      }
+      
+      // Generate images if we don't have any
+      if (images.length === 0) {
+        const description = sceneProject.scenarioItem.detailedRequest?.description || sceneProject.scenarioItem.detailedRequest?.goal || 'beautiful scene';
+        const imageHints = sceneProject.scenarioItem.detailedRequest?.imageHints || [];
+        const visualStyle = sceneProject.scenarioItem.detailedRequest?.visualStyle || [];
+        
+        // Build prompt for image generation
+        let imagePrompt = description;
+        if (imageHints.length > 0) {
+          imagePrompt += ', ' + imageHints.join(', ');
+        }
+        if (visualStyle.length > 0) {
+          imagePrompt += ', style: ' + visualStyle.join(', ');
+        }
+        imagePrompt += ', high quality, professional, cinematic';
+        
+        logger.info({ 
+          sceneId: sceneProject.sceneId, 
+          imagePrompt,
+          description,
+          imageHints,
+          visualStyle,
+        }, 'Generating image for banner');
+        
+        try {
+          const generatedImage = await generateImage({
+            prompt: imagePrompt,
+            width: width,
+            height: height,
+          });
+          images.push(generatedImage);
+          logger.info({ sceneId: sceneProject.sceneId, imageSize: generatedImage.length }, 'Image generated successfully');
+        } catch (error: any) {
+          logger.error({ error: error.message, sceneId: sceneProject.sceneId }, 'Failed to generate image, continuing without image');
+        }
       }
 
       // Step 2: Create canvas frames
@@ -68,8 +107,15 @@ export class BannerPipeline {
         }
 
         // Render text
-        if (sceneProject.extra?.textContent) {
-          this.renderText(ctx, sceneProject.extra.textContent, width, height, progress, sceneProject.extra.animationHints || []);
+        const textContent = sceneProject.extra?.textContent || 
+                           sceneProject.scenarioItem.detailedRequest?.textContent ||
+                           sceneProject.scenarioItem.detailedRequest?.description ||
+                           '';
+        const visualStyle = sceneProject.extra?.visualStyle || sceneProject.scenarioItem.detailedRequest?.visualStyle || [];
+        const animationHints = sceneProject.extra?.animationHints || sceneProject.scenarioItem.detailedRequest?.animationHints || [];
+        
+        if (textContent) {
+          this.renderText(ctx, textContent, width, height, progress, animationHints, visualStyle);
         }
 
         // Save frame
@@ -78,11 +124,23 @@ export class BannerPipeline {
         fs.writeFileSync(framePath, buffer);
       }
 
-      // Step 3: Convert frames to video using FFmpeg
+      // Step 3: Verify frames were created
+      const frameFiles = fs.readdirSync(framesDir).filter(f => f.endsWith('.png')).sort();
+      if (frameFiles.length === 0) {
+        throw new Error(`No frames created in ${framesDir}`);
+      }
+      logger.info({ 
+        sceneId: sceneProject.sceneId, 
+        framesDir, 
+        frameCount: frameFiles.length,
+        expectedFrames: totalFrames,
+      }, 'Frames created, starting video conversion');
+
+      // Step 4: Convert frames to video using FFmpeg
       const outputVideoPath = path.join(tempDir, `banner-${sceneProject.sceneId}.mp4`);
       await this.framesToVideo(framesDir, outputVideoPath, fps);
 
-      // Step 4: Upload to storage
+      // Step 5: Upload to storage
       const videoBuffer = fs.readFileSync(outputVideoPath);
       const storagePath = `scene-generation/scenes/${sceneProject.sceneId}`;
       logger.info({ 
@@ -160,17 +218,51 @@ export class BannerPipeline {
   ): Promise<void> {
     if (images.length === 0) return;
 
-    const image = await loadImage(images[0]);
-    const imageWidth = Math.min(width * 0.4, image.width);
-    const imageHeight = (image.height / image.width) * imageWidth;
-    const x = width * 0.1;
-    const y = (height - imageHeight) / 2;
+    try {
+      const image = await loadImage(images[0]);
+      
+      // Calculate image size to fit nicely (use up to 60% of width or height)
+      const maxImageWidth = width * 0.6;
+      const maxImageHeight = height * 0.6;
+      
+      let imageWidth = image.width;
+      let imageHeight = image.height;
+      
+      // Scale to fit within bounds while maintaining aspect ratio
+      const scaleX = maxImageWidth / imageWidth;
+      const scaleY = maxImageHeight / imageHeight;
+      const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
+      
+      imageWidth = imageWidth * scale;
+      imageHeight = imageHeight * scale;
+      
+      // Center the image
+      const x = (width - imageWidth) / 2;
+      const y = (height - imageHeight) / 2;
 
-    // Fade in animation
-    const opacity = Math.min(1, progress * 2);
-    ctx.globalAlpha = opacity;
-    ctx.drawImage(image, x, y, imageWidth, imageHeight);
-    ctx.globalAlpha = 1;
+      // Add subtle shadow/border effect
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 5;
+
+      // Fade in animation
+      const opacity = Math.min(1, progress * 2);
+      ctx.globalAlpha = opacity;
+      
+      // Draw image
+      ctx.drawImage(image, x, y, imageWidth, imageHeight);
+      
+      ctx.globalAlpha = 1;
+      
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    } catch (error: any) {
+      logger.warn({ error: error.message }, 'Failed to render image, skipping');
+    }
   }
 
   private renderText(
@@ -179,52 +271,163 @@ export class BannerPipeline {
     width: number,
     height: number,
     progress: number,
-    animationHints: string[]
+    animationHints: string[],
+    visualStyle: string[] = []
   ): void {
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 48px Arial';
+    if (!text || text.trim().length === 0) {
+      return;
+    }
+
+    // Determine text color based on background
+    const isDarkBackground = visualStyle.includes('blue') || visualStyle.includes('dark');
+    ctx.fillStyle = isDarkBackground ? '#ffffff' : '#000000';
+    
+    // Use larger, more readable font
+    const fontSize = Math.min(width / 15, 72); // Responsive font size
+    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    // Add text shadow for better readability
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+
     const x = width / 2;
     const y = height / 2;
+
+    // Handle long text - wrap if needed
+    const maxWidth = width * 0.8;
+    const words = text.split(' ');
+    let line = '';
+    let yOffset = 0;
+    const lineHeight = fontSize * 1.2;
+    const maxLines = 3;
 
     if (animationHints.includes('typewriter')) {
       // Typewriter effect
       const charsToShow = Math.floor(text.length * progress);
       const displayText = text.substring(0, charsToShow);
-      ctx.fillText(displayText, x, y);
+      
+      // Wrap text for typewriter
+      for (let i = 0; i < words.length && yOffset < maxLines * lineHeight; i++) {
+        const testLine = line + words[i] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && line.length > 0) {
+          ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
+          line = words[i] + ' ';
+          yOffset += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line && yOffset < maxLines * lineHeight) {
+        ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
+      }
     } else if (animationHints.includes('fade-in')) {
       // Fade in
       ctx.globalAlpha = Math.min(1, progress * 2);
-      ctx.fillText(text, x, y);
+      
+      // Wrap text for fade-in
+      for (let i = 0; i < words.length && yOffset < maxLines * lineHeight; i++) {
+        const testLine = line + words[i] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && line.length > 0) {
+          ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
+          line = words[i] + ' ';
+          yOffset += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line && yOffset < maxLines * lineHeight) {
+        ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
+      }
+      
       ctx.globalAlpha = 1;
     } else {
-      // Default: show text immediately
-      ctx.fillText(text, x, y);
+      // Default: show text immediately with wrapping
+      for (let i = 0; i < words.length && yOffset < maxLines * lineHeight; i++) {
+        const testLine = line + words[i] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && line.length > 0) {
+          ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
+          line = words[i] + ' ';
+          yOffset += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line && yOffset < maxLines * lineHeight) {
+        ctx.fillText(line, x, y + yOffset - (lineHeight * (maxLines - 1) / 2));
+      }
     }
+
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
   }
 
   private framesToVideo(framesDir: string, outputPath: string, fps: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      ffmpeg()
-        .input(path.join(framesDir, 'frame-%06d.png'))
+      const inputPattern = path.join(framesDir, 'frame-%06d.png');
+      let ffmpegStderr = '';
+
+      logger.info({ 
+        framesDir, 
+        outputPath, 
+        inputPattern, 
+        fps,
+      }, 'Starting FFmpeg conversion');
+
+      const ffmpegProcess = ffmpeg()
+        .input(inputPattern)
         .inputFPS(fps)
         .outputOptions([
           '-c:v libx264',
           '-pix_fmt yuv420p',
           '-r ' + fps,
+          '-y', // Overwrite output file if exists
         ])
         .output(outputPath)
+        .on('start', (commandLine) => {
+          logger.info({ commandLine, framesDir, outputPath }, 'FFmpeg command started');
+        })
+        .on('progress', (progress) => {
+          logger.debug({ progress, framesDir, outputPath }, 'FFmpeg progress');
+        })
+        .on('stderr', (stderrLine) => {
+          ffmpegStderr += stderrLine + '\n';
+        })
         .on('end', () => {
-          logger.info({ framesDir, outputPath }, 'Frames converted to video');
+          logger.info({ framesDir, outputPath }, 'Frames converted to video successfully');
           resolve();
         })
-        .on('error', (err) => {
-          logger.error({ error: err, framesDir, outputPath }, 'Failed to convert frames to video');
-          reject(new Error(`Failed to convert frames to video: ${err.message}`));
-        })
-        .run();
+        .on('error', (err: any) => {
+          const errorMessage = err?.message || 'Unknown FFmpeg error';
+          const errorCode = err?.code || 'UNKNOWN';
+          const errorStack = err?.stack || '';
+          
+          logger.error({ 
+            error: {
+              message: errorMessage,
+              code: errorCode,
+              stack: errorStack,
+              stderr: ffmpegStderr,
+            },
+            framesDir, 
+            outputPath,
+            inputPattern,
+            fps,
+          }, 'Failed to convert frames to video');
+          
+          reject(new Error(`Failed to convert frames to video: ${errorMessage}. FFmpeg stderr: ${ffmpegStderr.substring(0, 500)}`));
+        });
+
+      ffmpegProcess.run();
     });
   }
 }

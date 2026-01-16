@@ -147,6 +147,41 @@ export async function phase3ScenePipelines(
       logger.warn({ error: cleanupError, tempDir }, 'Failed to cleanup temp directory');
     }
 
+    // Check if we have any successfully rendered scenes
+    if (renderedScenes.length === 0) {
+      const allScenes = await prisma.scene.findMany({
+        where: {
+          sceneGenerationId: generationId,
+        },
+        select: {
+          sceneId: true,
+          status: true,
+          error: true,
+        },
+      });
+
+      const failedScenes = allScenes.filter(s => s.status === 'failed');
+      const errorMessages = failedScenes.map(s => `${s.sceneId}: ${s.error || 'Unknown error'}`).join('; ');
+
+      logger.error({
+        generationId,
+        totalScenes: allScenes.length,
+        failedScenes: failedScenes.length,
+        errorMessages,
+      }, 'All scenes failed to render in Phase 3');
+
+      await prisma.sceneGeneration.update({
+        where: { id: generationId },
+        data: {
+          status: 'failed',
+          progress: 80,
+          error: `All ${allScenes.length} scenes failed to render. Errors: ${errorMessages}`,
+        },
+      });
+
+      throw new Error(`All scenes failed to render. ${failedScenes.length} scenes failed. Errors: ${errorMessages}`);
+    }
+
     await prisma.sceneGeneration.update({
       where: { id: generationId },
       data: {
@@ -154,7 +189,11 @@ export async function phase3ScenePipelines(
       },
     });
 
-    logger.info({ generationId, renderedSceneCount: renderedScenes.length }, 'Phase 3 completed');
+    logger.info({ 
+      generationId, 
+      renderedSceneCount: renderedScenes.length,
+      totalScenes: sceneProjects.length,
+    }, 'Phase 3 completed');
     return renderedScenes;
   } catch (error: any) {
     logger.error({ error, generationId }, 'Phase 3 failed');

@@ -317,8 +317,34 @@ export async function continueGeneration(generationId: string): Promise<void> {
         },
       });
 
+      // Get all scenes to show statistics
+      const allScenes = await prisma.scene.findMany({
+        where: {
+          sceneGenerationId: generationId,
+        },
+        select: {
+          sceneId: true,
+          status: true,
+          error: true,
+        },
+      });
+
+      const failedScenes = allScenes.filter(s => s.status === 'failed');
+      const pendingScenes = allScenes.filter(s => s.status === 'pending' || s.status === 'processing');
+
+      logger.info({
+        generationId,
+        completedScenesCount: completedScenes.length,
+        totalScenesCount: allScenes.length,
+        failedScenesCount: failedScenes.length,
+        pendingScenesCount: pendingScenes.length,
+        failedSceneIds: failedScenes.map(s => s.sceneId),
+      }, 'Scene status summary before Phase 4');
+
       if (completedScenes.length === 0) {
-        throw new Error('No completed scenes available for composition');
+        const errorMessage = `No completed scenes available for composition. Total scenes: ${allScenes.length}, Failed: ${failedScenes.length}, Pending: ${pendingScenes.length}. Failed scene errors: ${failedScenes.map(s => `${s.sceneId}: ${s.error || 'Unknown error'}`).join('; ')}`;
+        logger.error({ generationId, allScenes, failedScenes }, errorMessage);
+        throw new Error(errorMessage);
       }
 
       const renderedScenes = completedScenes
@@ -358,6 +384,68 @@ export async function continueGeneration(generationId: string): Promise<void> {
       emitGenerationComplete(generationId, finalResult.resultUrl);
       emitProgress(generationId, 100, 'phase4');
 
+    } else if (generation.status === 'failed') {
+      // Try to recover: check if we can continue from a specific phase
+      logger.warn({ generationId, status: generation.status, phase: generation.phase }, 'Attempting to recover from failed status');
+      
+      // If we're in phase3 and have some completed scenes, try to continue to phase4
+      if (generation.phase === 'phase3') {
+        const completedScenes = await prisma.scene.findMany({
+          where: {
+            sceneGenerationId: generationId,
+            status: 'completed',
+            renderedAssetPath: { not: null },
+            renderedAssetUrl: { not: null },
+          },
+          orderBy: {
+            orderIndex: 'asc',
+          },
+        });
+
+        if (completedScenes.length > 0) {
+          logger.info({ generationId, completedScenesCount: completedScenes.length }, 'Recovering: continuing to Phase 4 with available scenes');
+          
+          await prisma.sceneGeneration.update({
+            where: { id: generationId },
+            data: {
+              status: 'processing',
+              phase: 'phase4',
+              progress: 80,
+            },
+          });
+
+          const renderedScenes = completedScenes
+            .filter(scene => scene.renderedAssetPath && scene.renderedAssetUrl)
+            .map(scene => ({
+              sceneId: scene.sceneId,
+              renderedAssetPath: scene.renderedAssetPath!,
+              renderedAssetUrl: scene.renderedAssetUrl!,
+              duration: 0,
+            }));
+
+          emitPhaseChange(generationId, 'phase4', 80);
+
+          const finalResult = await phase4FinalComposition(generationId, renderedScenes);
+          
+          await prisma.sceneGeneration.update({
+            where: { id: generationId },
+            data: {
+              status: 'completed',
+              phase: 'phase4',
+              progress: 100,
+              completedAt: new Date(),
+              resultUrl: finalResult.resultUrl,
+              resultPath: finalResult.resultPath,
+            },
+          });
+
+          emitGenerationComplete(generationId, finalResult.resultUrl);
+          emitProgress(generationId, 100, 'phase4');
+          return;
+        }
+      }
+      
+      throw new Error(`Cannot continue generation: status is ${generation.status} and no recovery path available`);
     } else {
       throw new Error(`Cannot continue generation: invalid status ${generation.status}`);
     }

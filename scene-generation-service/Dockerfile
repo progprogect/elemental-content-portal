@@ -1,8 +1,8 @@
 # Use Node.js LTS version
 FROM node:20-alpine AS base
 
-# Install OpenSSL and libc6-compat for Prisma
-RUN apk add --no-cache openssl libc6-compat
+# Install OpenSSL, libc6-compat for Prisma, and FFmpeg for video processing
+RUN apk add --no-cache openssl libc6-compat ffmpeg
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -35,6 +35,9 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# Verify FFmpeg is available
+RUN ffmpeg -version || (echo "FFmpeg not found!" && exit 1)
 
 # Copy necessary files
 COPY --from=builder /app/dist ./dist
