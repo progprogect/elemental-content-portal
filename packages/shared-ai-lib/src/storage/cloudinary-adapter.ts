@@ -114,46 +114,54 @@ export class CloudinaryAdapter implements StorageAdapter {
     return new Promise((resolve, reject) => {
       console.log('[CloudinaryAdapter] Downloading resource:', { path });
       
-      // Try to detect resource type from path (video files might need explicit resource_type)
-      const isVideo = path.includes('.mp4') || path.includes('.mov') || path.includes('.avi') || path.includes('.webm');
-      const resourceType = isVideo ? 'video' : 'image';
-      
       // Remove file extension from path if present (Cloudinary public_id doesn't include extension)
       const publicId = path.replace(/\.(mp4|mov|avi|webm|png|jpg|jpeg|gif|webp)$/i, '');
       
-      console.log('[CloudinaryAdapter] Resolved public_id:', { originalPath: path, publicId, resourceType });
+      // Try different resource types in order: video, image, auto
+      const tryResourceType = (resourceType: 'video' | 'image' | 'auto', attempt: number) => {
+        console.log('[CloudinaryAdapter] Trying resource lookup:', { publicId, resourceType, attempt });
+        
+        cloudinary.api.resource(
+          publicId, 
+          resourceType === 'auto' ? {} : { resource_type: resourceType },
+          (error: Error | undefined, result: any) => {
+            if (error) {
+              console.error('[CloudinaryAdapter] Resource lookup error:', { path, publicId, resourceType, error: error.message });
+              
+              // Try next resource type
+              if (resourceType === 'video') {
+                tryResourceType('image', attempt + 1);
+              } else if (resourceType === 'image') {
+                tryResourceType('auto', attempt + 1);
+              } else {
+                // All attempts failed
+                console.error('[CloudinaryAdapter] All resource type attempts failed:', { path, publicId });
+                reject(new Error(`Resource not found: ${path} (tried video, image, auto)`));
+              }
+              return;
+            }
+
+            if (!result || !result.secure_url) {
+              console.error('[CloudinaryAdapter] Resource not found (no URL):', { path, publicId, resourceType });
+              // Try next resource type
+              if (resourceType === 'video') {
+                tryResourceType('image', attempt + 1);
+              } else if (resourceType === 'image') {
+                tryResourceType('auto', attempt + 1);
+              } else {
+                reject(new Error(`Resource not found: ${path}`));
+              }
+              return;
+            }
+
+            console.log('[CloudinaryAdapter] Resource found:', { publicId, resourceType, url: result.secure_url });
+            this.downloadFromUrl(result.secure_url, resolve, reject);
+          }
+        );
+      };
       
-      cloudinary.api.resource(publicId, { resource_type: resourceType }, (error: Error | undefined, result: any) => {
-        if (error) {
-          console.error('[CloudinaryAdapter] Resource lookup error:', { path, publicId, error: error.message });
-          // Try with 'auto' resource type as fallback
-          cloudinary.api.resource(publicId, (fallbackError: Error | undefined, fallbackResult: any) => {
-            if (fallbackError) {
-              console.error('[CloudinaryAdapter] Fallback resource lookup error:', { path, publicId, error: fallbackError.message });
-              reject(new Error(`Resource not found: ${path} (${fallbackError.message})`));
-              return;
-            }
-            
-            if (!fallbackResult || !fallbackResult.secure_url) {
-              reject(new Error(`Resource not found: ${path}`));
-              return;
-            }
-            
-            console.log('[CloudinaryAdapter] Resource found (fallback):', { publicId, url: fallbackResult.secure_url });
-            this.downloadFromUrl(fallbackResult.secure_url, resolve, reject);
-          });
-          return;
-        }
-
-        if (!result || !result.secure_url) {
-          console.error('[CloudinaryAdapter] Resource not found:', { path, publicId });
-          reject(new Error(`Resource not found: ${path}`));
-          return;
-        }
-
-        console.log('[CloudinaryAdapter] Resource found:', { publicId, url: result.secure_url });
-        this.downloadFromUrl(result.secure_url, resolve, reject);
-      });
+      // Start with video (most likely for scene generation)
+      tryResourceType('video', 1);
     });
   }
 

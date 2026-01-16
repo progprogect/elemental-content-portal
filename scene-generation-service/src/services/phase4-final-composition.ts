@@ -70,12 +70,54 @@ export async function phase4FinalComposition(
       }, 'Downloading scene for composition');
       
       try {
-        const sceneBuffer = await storage.download(scene.renderedAssetPath);
-        logger.info({ 
-          sceneId: scene.sceneId, 
-          sceneIndex: i, 
-          bufferSize: sceneBuffer.length 
-        }, 'Scene downloaded successfully');
+        let sceneBuffer: Buffer;
+        
+        // Prefer using URL for direct download (more reliable than path lookup)
+        if (scene.renderedAssetUrl) {
+          logger.info({ 
+            sceneId: scene.sceneId, 
+            url: scene.renderedAssetUrl,
+          }, 'Downloading scene from URL');
+          
+          try {
+            const response = await fetch(scene.renderedAssetUrl);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            sceneBuffer = Buffer.from(arrayBuffer);
+            logger.info({ 
+              sceneId: scene.sceneId, 
+              bufferSize: sceneBuffer.length,
+            }, 'Scene downloaded from URL successfully');
+          } catch (urlError: any) {
+            logger.warn({ 
+              error: urlError, 
+              sceneId: scene.sceneId,
+              url: scene.renderedAssetUrl,
+            }, 'Failed to download from URL, trying storage path');
+            
+            // Fallback to storage path
+            if (scene.renderedAssetPath) {
+              sceneBuffer = await storage.download(scene.renderedAssetPath);
+            } else {
+              throw new Error(`No URL or path available for scene ${scene.sceneId}`);
+            }
+          }
+        } else if (scene.renderedAssetPath) {
+          // Fallback to storage path if URL not available
+          logger.info({ 
+            sceneId: scene.sceneId, 
+            path: scene.renderedAssetPath,
+          }, 'Downloading scene from storage path');
+          sceneBuffer = await storage.download(scene.renderedAssetPath);
+          logger.info({ 
+            sceneId: scene.sceneId, 
+            bufferSize: sceneBuffer.length,
+          }, 'Scene downloaded from storage path successfully');
+        } else {
+          throw new Error(`No URL or path available for scene ${scene.sceneId}`);
+        }
         
         const scenePath = path.join(tempDir, `scene-${i}.mp4`);
         fs.writeFileSync(scenePath, sceneBuffer);
