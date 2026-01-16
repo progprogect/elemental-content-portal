@@ -141,17 +141,36 @@ export async function phase3ScenePipelines(
           }, 'Scene rendered, updating database');
 
           // Update scene with rendered asset
+          // Include debug frames if available (from banner pipeline)
+          const updateData: any = {
+            status: 'completed',
+            progress: 100,
+            renderedAssetPath: renderedScene.renderedAssetPath,
+            renderedAssetUrl: renderedScene.renderedAssetUrl,
+          };
+          
+          // If renderedScene has debugFrames, save them in sceneProject
+          if ((renderedScene as any).debugFrames) {
+            const currentSceneProject = sceneProject.sceneProject || {};
+            updateData.sceneProject = {
+              ...currentSceneProject,
+              extra: {
+                ...(currentSceneProject.extra || {}),
+                debugFrames: (renderedScene as any).debugFrames,
+              },
+            };
+            logger.info({ 
+              sceneId: sceneProject.sceneId,
+              debugFramesCount: (renderedScene as any).debugFrames.length,
+            }, 'Saving debug frames to scene project');
+          }
+          
           await prisma.scene.updateMany({
             where: {
               sceneGenerationId: generationId,
               sceneId: sceneProject.sceneId,
             },
-            data: {
-              status: 'completed',
-              progress: 100,
-              renderedAssetPath: renderedScene.renderedAssetPath,
-              renderedAssetUrl: renderedScene.renderedAssetUrl,
-            },
+            data: updateData,
           });
 
           logger.info({ 

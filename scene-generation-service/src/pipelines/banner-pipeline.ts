@@ -133,6 +133,9 @@ export class BannerPipeline {
       const canvas = createCanvas(width, height);
       const ctx = canvas.getContext('2d');
 
+      // Store debug frame URLs
+      const debugFrames: Array<{ frame: number; url: string; path: string }> = [];
+
       // Render frames
       for (let frame = 0; frame < totalFrames; frame++) {
         const progress = frame / totalFrames;
@@ -171,6 +174,11 @@ export class BannerPipeline {
           try {
             const debugFramePath = `scene-generation/debug-frames/${sceneProject.sceneId}/frame-${frame.toString().padStart(6, '0')}.png`;
             const uploadResult = await storage.upload(buffer, `frame-${frame.toString().padStart(6, '0')}.png`, debugFramePath);
+            debugFrames.push({
+              frame,
+              url: uploadResult.url,
+              path: uploadResult.path,
+            });
             logger.info({ 
               sceneId: sceneProject.sceneId,
               frame,
@@ -276,6 +284,9 @@ export class BannerPipeline {
         duration,
       };
       
+      // Store debug frames in result for saving to DB
+      (result as any).debugFrames = debugFrames;
+      
       logger.info({ 
         sceneId: sceneProject.sceneId, 
         outputData: {
@@ -287,6 +298,7 @@ export class BannerPipeline {
           hasUrl: !!result.renderedAssetUrl,
           urlFormat: result.renderedAssetUrl?.startsWith('http') ? 'http' : 'other',
           pathFormat: result.renderedAssetPath?.includes('.mp4') ? 'mp4' : 'other',
+          debugFramesCount: debugFrames.length,
         },
       }, 'Banner Pipeline: Render completed - Output RenderedScene');
 
