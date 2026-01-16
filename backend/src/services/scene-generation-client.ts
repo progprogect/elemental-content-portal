@@ -44,6 +44,7 @@ class SceneGenerationClient {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'X-Internal-Request': 'true', // Mark as internal request to skip rate limiting
         },
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
