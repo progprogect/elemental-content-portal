@@ -165,6 +165,23 @@ export class BannerPipeline {
         const framePath = path.join(framesDir, `frame-${frame.toString().padStart(6, '0')}.png`);
         const buffer = canvas.toBuffer('image/png');
         fs.writeFileSync(framePath, buffer);
+        
+        // Save first 3 frames to storage for debugging (frame 0, middle, last)
+        if (frame === 0 || frame === Math.floor(totalFrames / 2) || frame === totalFrames - 1) {
+          try {
+            const debugFramePath = `scene-generation/debug-frames/${sceneProject.sceneId}/frame-${frame.toString().padStart(6, '0')}.png`;
+            const uploadResult = await storage.upload(buffer, `frame-${frame.toString().padStart(6, '0')}.png`, debugFramePath);
+            logger.info({ 
+              sceneId: sceneProject.sceneId,
+              frame,
+              frameSize: buffer.length,
+              debugFrameUrl: uploadResult.url,
+              debugFramePath: uploadResult.path,
+            }, 'Debug frame saved to storage');
+          } catch (error: any) {
+            logger.warn({ error: error.message, sceneId: sceneProject.sceneId, frame }, 'Failed to save debug frame to storage');
+          }
+        }
       }
 
       // Step 3: Verify frames were created
