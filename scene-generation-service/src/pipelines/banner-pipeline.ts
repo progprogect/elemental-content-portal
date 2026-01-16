@@ -518,12 +518,16 @@ export class BannerPipeline {
       }, 'Starting FFmpeg conversion with verified inputs');
 
       // Try using pattern_type sequence which is more reliable
+      // Add scale filter to ensure height is divisible by 2 (required by libx264)
       const ffmpegProcess = ffmpeg()
         .input(inputPattern)
         .inputOptions([
           '-framerate', fps.toString(),
           '-start_number', '0',
           '-pattern_type', 'sequence', // Use sequence pattern type
+        ])
+        .videoFilters([
+          'scale=trunc(iw/2)*2:trunc(ih/2)*2', // Ensure width and height are divisible by 2
         ])
         .outputOptions([
           '-c:v', 'libx264',
