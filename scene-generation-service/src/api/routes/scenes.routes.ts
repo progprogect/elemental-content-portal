@@ -75,5 +75,10 @@ router.post(
   asyncHandler(scenesController.continueGeneration)
 );
 
+router.get(
+  '/:generationId/scenes/:sceneId/debug-frames',
+  asyncHandler(scenesController.getDebugFrames)
+);
+
 export default router;
 

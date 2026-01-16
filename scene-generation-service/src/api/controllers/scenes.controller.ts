@@ -554,3 +554,41 @@ export async function regenerateScene(req: Request, res: Response) {
   });
 }
 
+/**
+ * Get debug frames for a scene
+ */
+export async function getDebugFrames(req: Request, res: Response) {
+  const { generationId, sceneId } = req.params;
+
+  const scene = await prisma.scene.findFirst({
+    where: {
+      sceneGenerationId: generationId,
+      sceneId: sceneId,
+    },
+  });
+
+  if (!scene) {
+    return res.status(404).json({ error: 'Scene not found' });
+  }
+
+  // Build debug frame URLs based on storage path pattern
+  const { createStorageAdapter } = await import('@elemental-content/shared-ai-lib');
+  const storage = createStorageAdapter();
+  
+  // Debug frames are saved at: scene-generation/debug-frames/{sceneId}/frame-*.png
+  const debugFrames: Array<{ frame: number; url: string; path: string }> = [];
+  
+  // Try to get frames: frame-000000.png, frame-middle, frame-last
+  // We'll construct URLs based on the storage adapter
+  const basePath = `scene-generation/debug-frames/${sceneId}`;
+  
+  // For now, return the base path - the actual URLs will be in logs
+  // In production, we could list files in storage or store URLs in DB
+  res.json({
+    sceneId,
+    generationId,
+    debugFramesPath: basePath,
+    note: 'Debug frame URLs are logged during generation. Check server logs for actual URLs.',
+  });
+}
+
